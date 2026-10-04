@@ -18,6 +18,8 @@ namespace OneMoreFloor
         int shots;
         float speed = 3f;
         int onlyShift = -1;
+        int frames;
+        float frameTime, worst;
 
         public static void TryStart(GameRoot root)
         {
@@ -28,6 +30,8 @@ namespace OneMoreFloor
             ap.outDir = i + 1 < args.Length && !args[i + 1].StartsWith("-") ? args[i + 1] : Path.Combine(Application.persistentDataPath, "autopilot");
             int s = System.Array.IndexOf(args, "-omfAutopilotShift");
             if (s >= 0 && s + 1 < args.Length) int.TryParse(args[s + 1], out ap.onlyShift);
+            int sp = System.Array.IndexOf(args, "-omfAutopilotSpeed");
+            if (sp >= 0 && sp + 1 < args.Length) float.TryParse(args[sp + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ap.speed);
         }
 
         void Awake()
@@ -87,6 +91,7 @@ namespace OneMoreFloor
                 {
                     yield return null;
                     played += Time.unscaledDeltaTime * speed;
+                    if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
                     if (played >= nextShot)
                     {
                         Time.timeScale = 0f;
@@ -134,6 +139,7 @@ namespace OneMoreFloor
                 yield return Wait(1.5f);
             }
 
+            if (frames > 0) Debug.Log($"[AutoPilot] perf: {frames / frameTime:0} fps average during play, worst frame {worst * 1000f:0} ms (captures excluded)");
             Debug.Log(errors == 0 ? "[AutoPilot] done: PASS" : $"[AutoPilot] done: FAIL ({errors} problems)");
             yield return Wait(0.5f);
             Application.Quit(errors == 0 ? 0 : 1);

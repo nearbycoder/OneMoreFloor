@@ -403,9 +403,6 @@ namespace OneMoreFloor
                 case Ev.ChangedMind: { var p = Sim.Find(e.Pid); if (p != null) a.Voice(p.Kind, 0f, 0.4f); break; }
                 case Ev.StreakBroken: if (e.Value >= 3) a.Sfx("record_scratch", 0.6f); break;
                 case Ev.RushHour: a.Sting("sting_rush", 0.5f); a.Sfx("alarm_bell", 0.5f); break;
-                case Ev.Beat:
-                    if (e.Text == "saturday:ocean" && !Attract) StartCoroutine(OceanMoment());
-                    break;
                 case Ev.ClockStarted: a.Sfx("punch_clock", 0.5f, 1.2f); break;
                 case Ev.Fired: a.Sfx("sad_trombone", 0.9f); break;
                 case Ev.ShiftEnded: if (e.Aux == 0) a.Sfx("punch_clock", 0.8f); break;

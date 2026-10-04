@@ -13,6 +13,8 @@ namespace OneMoreFloor
         public static AudioDirector Instance { get; private set; }
 
         public float MasterVolume = 1f, MusicVolume = 0.8f, SfxVolume = 0.9f;
+        // gain staging: every clip is mastered near full scale, so the sums need headroom
+        const float MusicGain = 0.42f, SfxGain = 0.6f;
 
         enum Stem { Bed, Melody, Trouble, Rush, Night }
         static readonly string[] StemNames = { "going_up_bed", "going_up_melody", "going_up_trouble", "going_up_rush", "going_up_night" };
@@ -39,6 +41,8 @@ namespace OneMoreFloor
             go.transform.SetParent(parent, false);
             var a = go.AddComponent<AudioDirector>();
             go.AddComponent<AudioListener>();
+            go.AddComponent<MasterLimiter>();
+            AudioTap.TryStart(go);
             a.Build();
             Instance = a;
             return a;
@@ -130,7 +134,7 @@ namespace OneMoreFloor
 
             float speed = Mathf.Abs(sim.Car.Vel) / Tuning.MaxSpeed;
             motorLevel = Mathf.Lerp(motorLevel, speed, Ease.Damp(10f, dt));
-            motor.volume = motorLevel * 0.35f * SfxVolume * MasterVolume * (paused ? 0f : 1f);
+            motor.volume = motorLevel * 0.35f * SfxVolume * MasterVolume * SfxGain * (paused ? 0f : 1f);
             motor.pitch = 0.8f + motorLevel * 0.5f;
 
             bool ocean = sim.B.Has(FloorId.Ocean);
@@ -146,7 +150,7 @@ namespace OneMoreFloor
             duck = Mathf.MoveTowards(duck, duckTarget, dt * (duckTarget < duck ? 6f : 1.2f));
             if (!sting.isPlaying) duckTarget = 1f;
 
-            float music = MusicVolume * MasterVolume * duck;
+            float music = MusicVolume * MasterVolume * duck * MusicGain;
             stemVol[(int)Stem.Bed] = 0.9f;
             stemVol[(int)Stem.Melody] = 0.85f * calmMelody;
             stemVol[(int)Stem.Trouble] = Mathf.SmoothStep(0f, 0.95f, (trouble - 0.15f) / 0.6f);
@@ -165,7 +169,7 @@ namespace OneMoreFloor
             title.volume = titleMix * music * 0.85f;
             titleLp.cutoffFrequency = Mathf.Lerp(22000f, 1200f, muffleTitle);
             if (titleMix <= 0f && title.isPlaying && gameplay) title.Stop();
-            ambCity.volume = 0.25f * SfxVolume * MasterVolume;
+            ambCity.volume = 0.25f * SfxVolume * MasterVolume * SfxGain;
             if (!gameplay)
             {
                 motor.volume = Mathf.MoveTowards(motor.volume, 0f, dt);
@@ -182,7 +186,7 @@ namespace OneMoreFloor
             if (c == null) return;
             sting.Stop();
             sting.clip = c;
-            sting.volume = volume * MusicVolume * MasterVolume;
+            sting.volume = volume * MusicVolume * MasterVolume * MusicGain * 1.4f;
             sting.Play();
             duckTarget = duckTo;
         }
@@ -200,7 +204,7 @@ namespace OneMoreFloor
             foreach (var s in pool) if (!s.isPlaying) { src = s; break; }
             if (src == null) src = pool[0];
             src.clip = c;
-            src.volume = volume * SfxVolume * MasterVolume;
+            src.volume = volume * SfxVolume * MasterVolume * SfxGain;
             src.pitch = pitch * (1f + Random.Range(-pitchJitter, pitchJitter));
             src.panStereo = Mathf.Clamp(pan, -1f, 1f) * 0.6f;
             src.Play();

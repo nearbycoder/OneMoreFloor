@@ -312,6 +312,74 @@ namespace OneMoreFloor
             }
         }
 
+        // ---------------------------------------------------------------- route preview
+
+        sealed class RouteMark { public RectTransform Rt; public Image Bg, Icon; public TextMeshProUGUI Text; }
+        readonly List<RouteMark> marks = new List<RouteMark>();
+        RectTransform routeLayer;
+
+        RouteMark Mark(int i)
+        {
+            while (marks.Count <= i)
+            {
+                if (routeLayer == null) routeLayer = UiKit.Stretch("Route", transform);
+                var bg = UiKit.Image("Mark", routeLayer, UiKit.Circle, Color.white, new Vector2(40, 40));
+                bg.rectTransform.anchorMin = bg.rectTransform.anchorMax = Vector2.zero;
+                var icon = UiKit.Image("Icon", bg.transform, null, Color.white, new Vector2(30, 30));
+                icon.preserveAspect = true;
+                var t = UiKit.Text("T", bg.transform, "", 18, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(60, 30));
+                t.outlineWidth = 0.2f;
+                t.outlineColor = new Color32(30, 20, 34, 255);
+                marks.Add(new RouteMark { Rt = bg.rectTransform, Bg = bg, Icon = icon, Text = t });
+            }
+            return marks[i];
+        }
+
+        /// <summary>While hovering a destination: where will the car stop, and what will happen there?</summary>
+        void UpdateRoutePreview()
+        {
+            var sim = runner.Sim;
+            int used = 0;
+            FloorId? target = runner.HoverFloor;
+            if (target.HasValue && sim.B.Has(target.Value) && !sim.Ended && !runner.Attract)
+            {
+                int to = sim.B.SlotOf(target.Value);
+                float from = sim.Car.Pos;
+                bool kid = sim.Car.Has(Kind.Kid);
+                bool vamp = sim.Car.Has(Kind.Vampire);
+                int dir = to > from ? 1 : -1;
+                int start = dir > 0 ? Mathf.FloorToInt(from + 0.001f) + 1 : Mathf.CeilToInt(from - 0.001f) - 1;
+                if (Mathf.Abs(to - from) > 0.01f)
+                    for (int slot = kid ? start : to; dir > 0 ? slot <= to : slot >= to; slot += dir)
+                    {
+                        var f = sim.B.At(slot);
+                        bool sunny = Defs.Sunny(f);
+                        int off = 0;
+                        foreach (var r in sim.Car.Riders)
+                            if (r.Dest == f && (r.Kind != Kind.Houseplant || r.Sunned || sunny)) off++;
+                        bool plantSun = sunny && sim.Car.Riders.Exists(r => r.Kind == Kind.Houseplant && !r.Sunned);
+                        var m = Mark(used++);
+                        m.Rt.gameObject.SetActive(true);
+                        bool danger = sunny && vamp;
+                        bool dest = slot == to;
+                        m.Bg.color = danger ? Palette.Bad : plantSun ? Palette.Hex(0xFFC857) : dest ? Palette.Hex(0x6CCB5F) : new Color(1f, 0.9f, 0.7f, 0.9f);
+                        m.Icon.sprite = danger ? Icons.Badge("fangs") : plantSun ? Icons.Badge("sun") : null;
+                        m.Icon.enabled = m.Icon.sprite != null;
+                        m.Text.text = off > 0 ? "+" + off : danger ? "!" : "";
+                        m.Text.rectTransform.anchoredPosition = m.Icon.enabled ? new Vector2(34, -14) : Vector2.zero;
+                        float size = dest ? 46f : 30f;
+                        m.Rt.sizeDelta = new Vector2(size, size);
+                        float pulse = danger ? 1f + 0.15f * Mathf.Sin(Time.unscaledTime * 12f) : 1f;
+                        m.Rt.localScale = Vector3.one * pulse;
+                        var world = runner.Building[f].transform.position + new Vector3(Layout.ShaftHalf + 0.55f, 1.25f, -1.4f);
+                        var screen = worldCam.WorldToScreenPoint(world);
+                        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);
+                        m.Rt.anchoredPosition = local + canvasRt.rect.size * 0.5f;
+                    }
+            }
+            for (int i = used; i < marks.Count; i++) marks[i].Rt.gameObject.SetActive(false);
+        }
+
         TextMeshProUGUI banner;
         float bannerT = 1f;
 
@@ -407,6 +475,7 @@ namespace OneMoreFloor
             UpdatePopups(dt);
             UpdateBanner(dt);
             UpdateCoins(dt);
+            UpdateRoutePreview();
             Panel.Tick(dt);
         }
     }

@@ -117,6 +117,8 @@ namespace OneMoreFloor.EditorTools
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.SplashScreen.show = false;
             PlayerSettings.SplashScreen.showUnityLogo = false;
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/Icons/kind_bellhop.png");
+            if (icon != null) PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
         }
 
         static void ConfigureUrp()
