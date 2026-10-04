@@ -1,0 +1,7 @@
+<Project>
+  <!-- Keep build/restore output out of the source tree (under the gitignored Temp/). -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../Temp/simharness/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../Temp/simharness/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

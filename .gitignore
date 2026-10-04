@@ -1,0 +1,41 @@
+# Unity
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/Build/
+/Builds/
+/UserSettings/
+/MemoryCaptures/
+/Recordings/
+/Screenshots/
+*.csproj
+*.sln
+*.slnx
+*.pidb
+*.userprefs
+*.unityproj
+.vs/
+.idea/
+.vscode/
+sysinfo.txt
+crashlytics-build.properties
+.consulo/
+
+# Blender
+*.blend1
+*.blend2
+
+# Python
+__pycache__/
+*.pyc
+
+# Local tooling
+/Tools/.libs/
+/.scaffold/
+/ArtSource/preview/
+/ArtSource/out/
+.DS_Store
+
+# keep the rules harness project (Unity csproj files are generated and ignored above)
+!/Tools/simharness/SimHarness.csproj

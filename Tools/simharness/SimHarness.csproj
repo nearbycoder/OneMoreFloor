@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the pure-C# game rules (Assets/Scripts/Core) outside Unity for balancing and quick checks.
+       Build/run with Tools/sim.sh. Uses the .NET SDK bundled with the Unity editor. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/Scripts/Core/**/*.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>
