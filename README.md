@@ -14,6 +14,7 @@ eight kinds of guest, ten shifts of two to three minutes, plus an endless Overti
 | ![Thursday at dusk](docs/screenshots/thursday.png) | ![Graveyard Shift](docs/screenshots/graveyard.png) |
 | ![Route preview: a kid and a vampire aboard](docs/screenshots/route_preview.png) | ![Clock out](docs/screenshots/results.png) |
 | ![Duty roster](docs/screenshots/roster.png) | ![Shift intro](docs/screenshots/intro.png) |
+| ![Gamepad play, zoomed in: floor cursor, picked guest, button prompts](docs/screenshots/gamepad_closeup.png) | |
 
 ## Playing
 

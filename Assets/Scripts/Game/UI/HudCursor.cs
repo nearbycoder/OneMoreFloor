@@ -179,7 +179,7 @@ namespace OneMoreFloor
             {
                 items.Add(("A", PadA, confirm));
                 if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add(("X", PadX, "Let off"));
-                items.Add(("Y", PadY, "Everyone in"));
+                if (confirm != "Everyone in") items.Add(("Y", PadY, "Everyone in"));
                 items.Add(("LB RB", Shoulder, "Guest"));
                 if (guest != null) items.Add(("B", PadB, "Unpick"));
                 items.Add(("RT", Shoulder, "Zoom"));
@@ -188,7 +188,7 @@ namespace OneMoreFloor
             {
                 items.Add(("ENTER", KeyCap, confirm));
                 if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add(("F", KeyCap, "Let off"));
-                items.Add(("SPACE", KeyCap, "Everyone in"));
+                if (confirm != "Everyone in") items.Add(("SPACE", KeyCap, "Everyone in"));
                 items.Add(("← →", KeyCap, "Guest"));
                 items.Add(("Z", KeyCap, "Zoom"));
             }
