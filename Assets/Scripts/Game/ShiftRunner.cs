@@ -44,7 +44,8 @@ namespace OneMoreFloor
             views.Clear();
             Sim = new ShiftSim(def, seed);
             Building.Setup(Sim.B);
-            Car.Setup(Building.TopY + 3.2f);
+            Car.Setup(Building.PulleyY - 0.82f);
+            Car.Pulley = Building.Pulley;
             Hud.Clear();
             Hud.SetShiftName(def.Day, def.Title);
             Rig.Frame(Building);

@@ -154,7 +154,8 @@ namespace OneMoreFloor
             b.Pop = Mathf.Min(1f, b.Pop + dt * 4f);
             b.Wobble = Mathf.Max(0f, b.Wobble - dt * 2f);
             bool riding = p.State == PState.Riding;
-            float scale = Ease.OutBack(b.Pop, 2f) * (riding ? 0.78f : 1f);
+            float sizeK = Mathf.Lerp(1.05f, 0.82f, Mathf.InverseLerp(5f, 9f, runner.Sim.B.Count));
+            float scale = Ease.OutBack(b.Pop, 2f) * (riding ? 0.78f : 1f) * sizeK;
             if (frac < 0.25f && !p.Fuming) scale *= 1f + 0.08f * Mathf.Sin(Time.time * 14f);
             b.Root.localScale = Vector3.one * scale;
             b.Root.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Time.time * 30f) * 12f * b.Wobble);
@@ -184,7 +185,9 @@ namespace OneMoreFloor
             b.BadgeText.fontSize = badge.Length > 2 ? 10 : 15;
             if (p.Fuming) b.Disc.color = Palette.Bad;
 
-            var screen = worldCam.WorldToScreenPoint(v.BubbleAnchor);
+            var anchor = v.BubbleAnchor;
+            if (p.State == PState.Waiting && runner.Sim.Waiting[(int)p.At].IndexOf(p) % 2 == 1) anchor += Vector3.up * 0.75f;
+            var screen = worldCam.WorldToScreenPoint(anchor);
             if (screen.z < 0f) { b.Root.gameObject.SetActive(false); return; }
             b.Root.gameObject.SetActive(true);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);

@@ -10,6 +10,19 @@ namespace OneMoreFloor
         Texture2D gradient;
         Transform backdrop, skyline;
         Renderer[] windows;
+        System.Collections.Generic.List<Transform> clouds;
+
+        void Update()
+        {
+            if (clouds == null) return;
+            foreach (var c in clouds)
+            {
+                var p = c.localPosition;
+                p.x += Time.deltaTime * 0.8f;
+                if (p.x > 150f) p.x -= 300f;
+                c.localPosition = p;
+            }
+        }
 
         public struct Preset
         {
@@ -33,10 +46,38 @@ namespace OneMoreFloor
             skyMat.SetTexture("_BaseMap", gradient);
             backdrop = Prims.Make("Backdrop", Prims.Quad, skyMat, transform, new Vector3(0, 30, 220), new Vector3(520, 300, 1), null, false).transform;
 
-            // a distant skyline of blocky towers with lit windows
+            // a distant skyline of Deco towers with lit windows
             skyline = new GameObject("Skyline").transform;
             skyline.SetParent(transform, false);
             var rng = new System.Random(7);
+            if (ModelLibrary.Prefab("Tower0") != null)
+            {
+                var wins = new System.Collections.Generic.List<Renderer>();
+                for (int i = 0; i < 34; i++)
+                {
+                    float x = -190f + i * 11.5f + (float)rng.NextDouble() * 5f;
+                    var t = ModelLibrary.Instantiate("Tower" + rng.Next(5));
+                    t.transform.SetParent(skyline, false);
+                    float z = 150f + (float)rng.NextDouble() * 110f;
+                    t.transform.localPosition = new Vector3(x, -3f, z);
+                    t.transform.localScale = Vector3.one * (0.8f + (float)rng.NextDouble() * 0.6f);
+                    var w = t.transform.Find("Windows");
+                    if (w) wins.Add(w.GetComponent<Renderer>());
+                }
+                windows = wins.ToArray();
+                clouds = new System.Collections.Generic.List<Transform>();
+                for (int i = 0; i < 9; i++)
+                {
+                    var c = ModelLibrary.Instantiate("Cloud");
+                    if (c == null) break;
+                    c.transform.SetParent(transform, false);
+                    c.transform.localPosition = new Vector3(-120f + i * 30f + (float)rng.NextDouble() * 12f, 22f + (float)rng.NextDouble() * 30f, 110f + (float)rng.NextDouble() * 40f);
+                    c.transform.localScale = Vector3.one * (1.6f + (float)rng.NextDouble() * 1.6f);
+                    foreach (var r in c.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    clouds.Add(c.transform);
+                }
+                return;
+            }
             var bodyMat = Mats.Lit(Palette.Hex(0x2B2F4A), 0.1f);
             var winMats = new System.Collections.Generic.List<Renderer>();
             for (int i = 0; i < 46; i++)
@@ -135,8 +176,14 @@ namespace OneMoreFloor
             RenderSettings.ambientEquatorColor = p.AmbientEquator;
             RenderSettings.ambientGroundColor = p.AmbientGround;
             cam.backgroundColor = p.Top;
+            // atmospheric perspective: the skyline fades into the horizon colour
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = Color.Lerp(p.Horizon, p.Top, 0.25f);
+            RenderSettings.fogStartDistance = 120f;
+            RenderSettings.fogEndDistance = 360f;
             var winMat = Mats.Glow(p.Windows, id == "night" || id == "dusk" || id == "evening" ? 1.6f : 0.4f);
-            foreach (var w in windows) w.sharedMaterial = winMat;
+            foreach (var w in windows) if (w) w.sharedMaterial = winMat;
         }
     }
 }

@@ -29,8 +29,8 @@ namespace OneMoreFloor
         {
             framed = b;
             framedAspect = Cam.aspect;
-            float bottom = -3.2f;
-            float top = b.TopY + 3.6f;
+            float bottom = -2.7f;
+            float top = b.TopY + 4.5f;
             float h = top - bottom;
             float cy = (top + bottom) * 0.5f;
             float fov = Cam.fieldOfView * Mathf.Deg2Rad;

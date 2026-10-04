@@ -7,14 +7,15 @@ namespace OneMoreFloor
     /// <summary>World layout shared by every view (metres). Slot 0's floor top is at y = 0.</summary>
     public static class Layout
     {
-        public const float SlotHeight = 3.2f;
-        public const float SlabThickness = 0.32f;
-        public const float HalfWidth = 7.8f;          // floor modules span -HalfWidth..HalfWidth
-        public const float ShaftHalf = 1.95f;         // shaft opening
+        // Must match ArtSource/build_floors.py
+        public const float SlotHeight = 2.8f;
+        public const float SlabThickness = 0.3f;
+        public const float HalfWidth = 7.6f;          // floor modules span -HalfWidth..HalfWidth
+        public const float ShaftHalf = 1.9f;          // shaft opening
         public const float FrontZ = -2.1f;            // front edge of the floor slab
         public const float BackZ = 3.0f;              // back wall
         public const float CarZ = 0.15f;
-        public const float CarWidth = 3.5f, CarHeight = 2.75f, CarDepth = 2.5f;
+        public const float CarWidth = 3.5f, CarHeight = 2.4f, CarDepth = 2.5f;
         public const float QueueZ = -1.05f;
         public const float QueueX0 = 2.75f, QueueStep = 0.82f;
         public const float PopOutZ = -4.2f;           // how far floors pull toward the camera when they shuffle

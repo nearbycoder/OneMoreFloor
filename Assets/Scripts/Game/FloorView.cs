@@ -22,6 +22,10 @@ namespace OneMoreFloor
         Renderer[] highlightRenderers;
         Light lamp;
         float lampBase;
+        readonly System.Collections.Generic.List<Transform> drums = new System.Collections.Generic.List<Transform>();
+        readonly System.Collections.Generic.List<Transform> needles = new System.Collections.Generic.List<Transform>();
+        readonly System.Collections.Generic.List<Transform> waves = new System.Collections.Generic.List<Transform>();
+        Vector3[] waveBase;
 
         // shuffle animation
         float animT = 1f, animDur = 0.7f, fromY, toY, popZ, delay;
@@ -55,21 +59,27 @@ namespace OneMoreFloor
             if (model != null)
             {
                 model.transform.SetParent(Content, false);
+                foreach (Transform c in model.transform)
+                {
+                    if (c.name.StartsWith("Drum")) drums.Add(c);
+                    else if (c.name.StartsWith("Needle")) needles.Add(c);
+                    else if (c.name.StartsWith("Wave")) waves.Add(c);
+                }
             }
             else BuildGreybox(col);
 
             // Sign above the shaft opening: floor name on a plaque in its colour, slot number beside it.
-            var plaque = Prims.Box("Plaque", Content, new Vector3(0f, 2.62f, Layout.FrontZ + 0.02f), new Vector3(3.3f, 0.5f, 0.08f), Mats.Lit(col * 0.85f, 0.5f));
+            var plaque = Prims.Box("Plaque", Content, new Vector3(0f, 2.27f, -1.6f), new Vector3(3.0f, 0.4f, 0.06f), Mats.Lit(col * 0.85f, 0.5f));
             plaque.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            signText = UiKit.WorldText(Content, Defs.Floor(Id).Name.ToUpperInvariant(), new Vector3(0.18f, 2.62f, Layout.FrontZ - 0.04f), 2.6f, Palette.Cream, UiKit.Signage);
+            signText = UiKit.WorldText(Content, Defs.Floor(Id).Name.ToUpperInvariant(), new Vector3(0.18f, 2.27f, -1.66f), 2.2f, Palette.Cream, UiKit.Signage);
             var numPlate = Prims.Make("NumPlate", Prims.Cylinder, Mats.Lit(Palette.Brass, 0.75f, 0.85f), Content,
-                new Vector3(-1.45f, 2.62f, Layout.FrontZ - 0.01f), new Vector3(0.56f, 0.05f, 0.56f), Quaternion.Euler(90, 0, 0), false);
-            numberText = UiKit.WorldText(Content, "1", new Vector3(-1.45f, 2.6f, Layout.FrontZ - 0.08f), 3.4f, Palette.Ink, UiKit.Signage);
+                new Vector3(-1.3f, 2.27f, -1.66f), new Vector3(0.46f, 0.05f, 0.46f), Quaternion.Euler(90, 0, 0), false);
+            numberText = UiKit.WorldText(Content, "1", new Vector3(-1.3f, 2.25f, -1.72f), 2.8f, Palette.Ink, UiKit.Signage);
 
             // "Leaving in N" sign that drops down when the floor is checking out
             leavingSign = new GameObject("LeavingSign");
             leavingSign.transform.SetParent(Content, false);
-            leavingSign.transform.localPosition = new Vector3(4.9f, 2.25f, Layout.FrontZ - 0.05f);
+            leavingSign.transform.localPosition = new Vector3(4.9f, 2.15f, Layout.FrontZ - 0.05f);
             Prims.Box("Board", leavingSign.transform, Vector3.zero, new Vector3(2.4f, 0.62f, 0.06f), Mats.Lit(Palette.Hex(0xFFD23F), 0.4f));
             Prims.Box("Stripe", leavingSign.transform, new Vector3(0, -0.27f, -0.01f), new Vector3(2.4f, 0.08f, 0.06f), Mats.Lit(Palette.Ink));
             leavingText = UiKit.WorldText(leavingSign.transform, "LEAVING IN 5", new Vector3(0, 0.02f, -0.05f), 2.2f, Palette.Ink, UiKit.Signage);
@@ -77,7 +87,7 @@ namespace OneMoreFloor
 
             lamp = new GameObject("Lamp").AddComponent<Light>();
             lamp.transform.SetParent(Content, false);
-            lamp.transform.localPosition = new Vector3(3.6f, 2.3f, -0.3f);
+            lamp.transform.localPosition = new Vector3(3.6f, 2.1f, -0.3f);
             lamp.type = LightType.Point;
             lamp.range = 9f;
             lamp.color = Color.Lerp(Palette.Hex(0xFFD9A0), col, 0.25f);
@@ -185,6 +195,20 @@ namespace OneMoreFloor
             flash = 1f;
         }
 
+        void AnimateProps(float dt)
+        {
+            float t = Time.time;
+            for (int i = 0; i < drums.Count; i++) drums[i].localRotation *= Quaternion.Euler(0, 0, (i % 2 == 0 ? 240f : -180f) * dt);
+            for (int i = 0; i < needles.Count; i++)
+                needles[i].localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * (1.3f + i) + i) * 35f + Mathf.PerlinNoise(t * 3f, i) * 20f);
+            if (waves.Count > 0)
+            {
+                if (waveBase == null) { waveBase = new Vector3[waves.Count]; for (int i = 0; i < waves.Count; i++) waveBase[i] = waves[i].localPosition; }
+                for (int i = 0; i < waves.Count; i++)
+                    waves[i].localPosition = waveBase[i] + new Vector3(Mathf.Sin(t * 0.6f + i) * 0.35f, Mathf.Sin(t * 1.7f + i * 0.9f) * 0.06f, Mathf.Sin(t * 0.9f + i * 1.3f) * 0.08f);
+            }
+        }
+
         public void SetHover(bool on) => hoverTarget = on ? 1f : 0f;
         public void Flash(float amount = 1f) => flash = Mathf.Max(flash, amount);
         public void Kick(float v) => bounce.Velocity += v;
@@ -196,6 +220,7 @@ namespace OneMoreFloor
             flash = Mathf.Max(0f, flash - dt * 1.8f);
             if (lamp) lamp.intensity = lampBase * (1f + 0.35f * hover + 0.6f * flash);
             bounce.Step(0f, 260f, 14f, dt);
+            AnimateProps(dt);
 
             if (mode == 0)
             {

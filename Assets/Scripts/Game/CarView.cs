@@ -9,7 +9,7 @@ namespace OneMoreFloor
         public Transform Body;      // squashes
         public Transform Riders;    // passengers parent (inside Body)
         public Transform Bellhop;
-        Transform doorL, doorR, counterweight, cableRoot;
+        Transform doorL, doorR, cableRoot;
         Transform cable;
         Light interior;
         Spinner pulley;
@@ -17,6 +17,8 @@ namespace OneMoreFloor
         float shaftTop;
         Spring squash, tilt;
         float lastVel;
+        Transform bellhopHead;
+        public Transform Pulley;
         float bellhopCheer, bellhopWorry;
 
         public static CarView Create(Transform parent)
@@ -67,9 +69,16 @@ namespace OneMoreFloor
             interior.color = Palette.Hex(0xFFE2B0);
             interior.shadows = LightShadows.None;
 
-            Bellhop = PassengerView.BuildBellhop(Body);
+            var bell = ModelLibrary.Instantiate("Char_Bellhop");
+            if (bell != null)
+            {
+                bell.transform.SetParent(Body, false);
+                Bellhop = bell.transform;
+                bellhopHead = Bellhop.Find("Head");
+            }
+            else Bellhop = PassengerView.BuildBellhop(Body);
             Bellhop.localPosition = new Vector3(-1.35f, 0.02f, 0.75f);
-            Bellhop.localRotation = Quaternion.Euler(0, 160, 0);
+            Bellhop.localRotation = Quaternion.Euler(0, 165, 0);
         }
 
         /// <summary>An Art Deco accordion gate anchored at the car's side; it folds up toward that side to open.</summary>
@@ -110,7 +119,7 @@ namespace OneMoreFloor
             cableRoot.SetParent(transform.parent, false);
             var steel = Mats.Lit(Palette.Hex(0x2C2C30), 0.6f, 0.9f);
             cable = Prims.Make("Cable", Prims.Cylinder, steel, cableRoot, Vector3.zero, Vector3.one, null, false).transform;
-            counterweight = Prims.BoxMinMax("Counterweight", cableRoot, new Vector3(-0.35f, 0f, -0.25f), new Vector3(0.35f, 1.8f, 0.25f), Mats.Lit(Palette.Hex(0x3A3A44), 0.4f, 0.6f)).transform;
+
         }
 
         public void Cheer() => bellhopCheer = 1f;
@@ -151,14 +160,14 @@ namespace OneMoreFloor
             // cables & counterweight
             if (cable)
             {
-                float top = shaftTop - 0.6f;
+                float top = shaftTop;
                 float bottom = y + Layout.CarHeight + 0.2f;
                 cable.localPosition = new Vector3(0f, (top + bottom) * 0.5f, Layout.CarZ);
                 cable.localScale = new Vector3(0.06f, Mathf.Max(0.01f, (top - bottom) * 0.5f), 0.06f);
-                float cw = Mathf.Lerp(shaftTop - 3.2f, 0.2f, Mathf.InverseLerp(0f, shaftTop - 3.2f, y));
-                counterweight.localPosition = new Vector3(1.45f, cw, 1.1f);
+
             }
             if (interior) interior.intensity = 2.6f + 0.5f * Mathf.Sin(Time.time * 1.7f) * 0.1f;
+            if (Pulley) Pulley.localRotation *= Quaternion.Euler(-car.Vel * Layout.SlotHeight / 0.82f * Mathf.Rad2Deg * dt, 0, 0);
 
             // bellhop: salute when the doors open, sweat when it's going badly
             bellhopCheer = Mathf.Max(0f, bellhopCheer - dt * 1.5f);
@@ -168,6 +177,7 @@ namespace OneMoreFloor
                 float hop = Mathf.Abs(Mathf.Sin(bellhopCheer * Mathf.PI * 3f)) * 0.25f * bellhopCheer;
                 float jitter = bellhopWorry > 0.6f ? Mathf.Sin(Time.time * 40f) * 0.02f * bellhopWorry : 0f;
                 Bellhop.localPosition = new Vector3(-1.35f + jitter, 0.02f + hop, 0.75f);
+                if (bellhopHead) bellhopHead.localRotation = Quaternion.Euler(-12f * bellhopCheer, Mathf.Sin(Time.time * 0.7f) * 12f, 0);
             }
         }
 

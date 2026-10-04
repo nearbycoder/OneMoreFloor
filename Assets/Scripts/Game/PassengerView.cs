@@ -13,7 +13,10 @@ namespace OneMoreFloor
         public Transform Visual;     // squash/rotate this
         public Transform Head;
         Transform[] leaves;
-        Transform cape, balloons, mirror;
+        Transform cape, balloons, mirror, propeller;
+        Vector3[] leafAxes;
+        Quaternion[] leafBase;
+        float anchorY = 2.3f;
         Renderer[] tintables;
         BoxCollider click;
 
@@ -30,7 +33,7 @@ namespace OneMoreFloor
         Vector3 exitTarget;
 
         public bool Leaving => mode == Mode.Exit || mode == Mode.StormOff || mode == Mode.Poof || mode == Mode.Gone || mode == Mode.Bats;
-        public Vector3 BubbleAnchor => (Head ? Head.position : transform.position + Vector3.up * 1.6f) + Vector3.up * (P != null && P.Kind == Kind.Mirror ? 0.95f : 0.62f);
+        public Vector3 BubbleAnchor => transform.position + Vector3.up * anchorY * Visual.localScale.y;
 
         public static PassengerView Create(Passenger p, Transform parent)
         {
@@ -61,20 +64,72 @@ namespace OneMoreFloor
                 cape = model.transform.Find("Cape");
                 balloons = model.transform.Find("Balloons");
                 mirror = model.transform.Find("Mirror");
+                propeller = model.transform.Find("Propeller");
                 var leafRoot = model.transform.Find("Leaves");
                 if (leafRoot)
                 {
                     leaves = new Transform[leafRoot.childCount];
-                    for (int i = 0; i < leaves.Length; i++) leaves[i] = leafRoot.GetChild(i);
+                    leafAxes = new Vector3[leaves.Length];
+                    leafBase = new Quaternion[leaves.Length];
+                    for (int i = 0; i < leaves.Length; i++)
+                    {
+                        leaves[i] = leafRoot.GetChild(i);
+                        leafBase[i] = leaves[i].localRotation;
+                        // droop axis: horizontal and perpendicular to the leaf's direction
+                        var r = leaves[i].GetComponent<Renderer>();
+                        var dir = r ? leafRoot.InverseTransformPoint(r.bounds.center) : Vector3.forward;
+                        dir.y = 0f;
+                        leafAxes[i] = Vector3.Cross(Vector3.up, dir.sqrMagnitude > 1e-4f ? dir.normalized : Vector3.forward);
+                    }
                 }
+                ApplyVariant(model);
             }
             else BuildGreybox();
+            anchorY = AnchorHeight(P.Kind);
 
             tintables = Visual.GetComponentsInChildren<Renderer>();
             click = gameObject.AddComponent<BoxCollider>();
             float w = P.Kind == Kind.Mirror ? 1.15f : 0.75f;
             click.center = new Vector3(P.Kind == Kind.Mirror ? 0.25f : 0f, 0.85f, 0f);
             click.size = new Vector3(w, 1.9f, 0.8f);
+        }
+
+        static float AnchorHeight(Kind k)
+        {
+            switch (k)
+            {
+                case Kind.Houseplant: return 1.95f;
+                case Kind.Kid: return 2.45f;
+                case Kind.Tycoon: return 2.75f;
+                case Kind.Vampire: return 2.4f;
+                case Kind.Mirror: return 2.35f;
+                default: return 2.3f;
+            }
+        }
+
+        static readonly uint[] SuitVariants = { 0x3D5A80, 0x5C6B73, 0x7A5C45, 0x2F6F6A, 0x8E2433 };
+        static readonly uint[] SkinVariants = { 0xF2C9A0, 0xD9A066, 0xA8714A, 0x6E4630, 0xF5D5BA };
+        static readonly uint[] KidShirts = { 0xF07F3C, 0x6CCB5F, 0xF06EAA, 0x3FA9F5 };
+
+        /// <summary>Recolour suits, shirts and skin per passenger so the crowd isn't a clone army.</summary>
+        void ApplyVariant(GameObject model)
+        {
+            int v = P.Variant + P.Id * 7;
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    string n = mats[i].name;
+                    uint? to = null;
+                    if (P.Kind == Kind.Commuter && n.StartsWith("col_3D5A80")) to = SuitVariants[v % SuitVariants.Length];
+                    else if (n.StartsWith("col_F2C9A0") && P.Kind != Kind.Swimmer) to = SkinVariants[(v / 3) % SkinVariants.Length];
+                    else if (P.Kind == Kind.Kid && n.StartsWith("col_F07F3C")) to = KidShirts[v % KidShirts.Length];
+                    if (to.HasValue) mats[i] = ModelLibrary.Resolve($"col_{to.Value:X6}_s30");
+                }
+                r.sharedMaterials = mats;
+            }
         }
 
         void BuildGreybox()
@@ -378,15 +433,19 @@ namespace OneMoreFloor
             // kind-specific secondary motion
             if (leaves != null)
             {
-                float droop = P != null && P.Kind == Kind.Houseplant ? Mathf.Lerp(38f, -6f, patience) : 0f;
+                float droop = P != null && P.Kind == Kind.Houseplant ? Mathf.Lerp(40f, -4f, patience) : 0f;
                 if (P != null && P.Sunned) droop -= 8f;
                 for (int i = 0; i < leaves.Length; i++)
                 {
-                    var e = leaves[i].localEulerAngles;
-                    float sway = Mathf.Sin(time * 2.3f + i) * 4f + perk * 16f * Mathf.Sin(time * 20f);
-                    leaves[i].localRotation = Quaternion.Euler(-28f - 10f * (i % 2) + droop + sway, i * 60f, 0);
+                    float sway = Mathf.Sin(time * 2.3f + i) * 4f + perk * 16f * Mathf.Sin(time * 20f + i);
+                    if (leafAxes != null)
+                        leaves[i].localRotation = Quaternion.AngleAxis(droop + sway, leafAxes[i]) * leafBase[i];
+                    else
+                        leaves[i].localRotation = Quaternion.Euler(-28f - 10f * (i % 2) + droop + sway, i * 60f, 0);
                 }
             }
+            if (propeller) propeller.localRotation *= Quaternion.Euler(0, (impatient ? 1400f : 520f) * dt, 0);
+            if (mirror) mirror.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(time * 1.4f) * 1.5f + (mode == Mode.Hop ? 8f : 0f));
             if (cape) cape.localRotation = Quaternion.Euler(Mathf.Sin(time * 2f) * 4f + (mode == Mode.Hop ? 25f : 0f) + angry * 20f, 0, 0);
             if (balloons) balloons.localRotation = Quaternion.Euler(Mathf.Sin(time * 1.7f) * 7f, 0, Mathf.Sin(time * 1.3f) * 9f);
         }
