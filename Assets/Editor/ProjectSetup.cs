@@ -107,7 +107,7 @@ namespace OneMoreFloor.EditorTools
             PlayerSettings.companyName = "Nearby";
             PlayerSettings.productName = "One More Floor";
             PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.nearby.onemorefloor");
-            PlayerSettings.bundleVersion = "1.0.0";
+            PlayerSettings.bundleVersion = "0.1.0";
             PlayerSettings.defaultScreenWidth = 1600;
             PlayerSettings.defaultScreenHeight = 900;
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;

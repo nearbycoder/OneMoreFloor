@@ -41,6 +41,12 @@ namespace OneMoreFloor
         public bool CursorMode => Controls.KeyNav && !Attract;
         /// <summary>Fired for each command the AutoBot issues (action, pid or slot).</summary>
         public event System.Action<Bot.Action, int> BotActed;
+        /// <summary>
+        /// Recordings only: runs before the bot on every fixed step (and in FastForward), so scripted commands land
+        /// on the same simulation tick in every pass. Return true to skip the bot for that step.
+        /// </summary>
+        [System.NonSerialized] public System.Func<ShiftSim, bool> PreStep;
+        bool quiet;
 
         readonly Dictionary<int, PassengerView> views = new Dictionary<int, PassengerView>();
         float acc;
@@ -82,7 +88,8 @@ namespace OneMoreFloor
                 int guard = 0;
                 while (acc >= Step && guard++ < 90)
                 {
-                    if (AutoBot != null)
+                    bool scripted = PreStep != null && PreStep(Sim);
+                    if (AutoBot != null && !scripted)
                     {
                         var a = AutoBot.Tick(Sim, Step, out int arg);
                         if (a == Bot.Action.Send) Hud.Panel.Press(arg);
@@ -120,17 +127,32 @@ namespace OneMoreFloor
             }
         }
 
-        /// <summary>Advance the simulation manually (used by captures and tests while paused).</summary>
-        public void FastForward(float seconds)
+        /// <summary>
+        /// Advance the simulation manually (used by captures and tests while paused). With <paramref name="silent"/>
+        /// the skipped stretch makes no sound, particles or popups (recordings jump ahead between shots).
+        /// </summary>
+        public void FastForward(float seconds, bool silent = false)
         {
             float t = 0f;
+            quiet = silent;
+            Hud.Quiet = silent;
             while (t < seconds && !Sim.Ended)
             {
-                AutoBot?.Tick(Sim, Step, out _);
+                bool scripted = PreStep != null && PreStep(Sim);
+                if (!scripted) AutoBot?.Tick(Sim, Step, out _);
                 Sim.Tick(Step);
                 Drain();
                 t += Step;
             }
+            quiet = false;
+            Hud.Quiet = false;
+        }
+
+        /// <summary>Recordings: settle the car and its doors where the simulation has them (after a FastForward).</summary>
+        public void SnapViews()
+        {
+            for (int i = 0; i < 40; i++) Car.Sync(Sim, 1f / 30f);
+            SyncViews(1f);
         }
 
         // ---------------------------------------------------------------- input
@@ -327,6 +349,18 @@ namespace OneMoreFloor
 
         /// <summary>Scripted hover for recordings (pid -1 clears). Only meaningful with InputEnabled off.</summary>
         public void ShowHover(int pid) { HoverFloor = null; SetHover(pid); }
+
+        /// <summary>Scripted floor hover for recordings: highlights the floor and previews the trip there.</summary>
+        public void ShowHoverFloor(FloorId? floor) { HoverFloor = floor; SetHover(-1); }
+
+        /// <summary>Scripted gamepad cursor for recordings (with InputEnabled off and Controls.ForcePad on).</summary>
+        public void ScriptCursor(int slot, int pid)
+        {
+            CursorSlot = slot;
+            CursorPid = pid;
+            HoverFloor = pid < 0 && slot >= 0 && slot < Sim.B.Count ? Sim.B.At(slot) : (FloorId?)null;
+            SetHover(pid);
+        }
 
         /// <summary>Where a guest's body is in the world right now (null if they have no view).</summary>
         public Vector3? GuestPoint(int pid)
@@ -574,8 +608,8 @@ namespace OneMoreFloor
         void Handle(SimEvent e)
         {
             OnEvent?.Invoke(e);
-            if (!Attract) { PlaySound(e); Log.SimEvent(e); }
-            PlayFx(e);
+            if (!Attract) { if (!quiet) PlaySound(e); Log.SimEvent(e); }
+            if (!quiet) PlayFx(e);
             switch (e.Type)
             {
                 case Ev.Spawned:

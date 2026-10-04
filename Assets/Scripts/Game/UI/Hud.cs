@@ -105,6 +105,8 @@ namespace OneMoreFloor
         }
 
         public HudCursor Cursor { get; private set; }
+        /// <summary>Recordings: no popups, banners or flying coins while the simulation is skipped ahead.</summary>
+        public bool Quiet;
 
         public void Clear()
         {
@@ -249,6 +251,7 @@ namespace OneMoreFloor
 
         public void PopupAt(Vector3 world, string text, Color color, float size = 40f, float dur = 1.3f)
         {
+            if (Quiet) return;
             foreach (var other in popups)
                 if (other.T < 0.35f && Vector3.Distance(other.World, world) < 1.6f) world += Vector3.up * 0.9f;
             var t = UiKit.Text("Popup", popupLayer, text, size, color, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(500, size * 1.3f));
@@ -284,6 +287,7 @@ namespace OneMoreFloor
         /// <summary>Coins arc from a world position into the tips counter.</summary>
         public void FlyCoins(Vector3 world, int count)
         {
+            if (Quiet) return;
             var screen = worldCam.WorldToScreenPoint(world);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);
             var from = local + canvasRt.rect.size * 0.5f;
@@ -453,6 +457,7 @@ namespace OneMoreFloor
         /// <summary>A big word that slams in across the middle of the screen and fades.</summary>
         public void Banner(string text, Color color)
         {
+            if (Quiet) return;
             if (banner == null)
             {
                 banner = UiKit.Text("Banner", transform, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 180), new Vector2(-180, 120));

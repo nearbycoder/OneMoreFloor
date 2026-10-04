@@ -22,6 +22,15 @@ namespace OneMoreFloor
         /// <summary>Back in menus: B (Escape is handled by the screens themselves).</summary>
         public static bool Cancel { get; private set; }
         public static bool PausePressed { get; private set; }
+        /// <summary>Recordings: behave as if a gamepad is in use (prompts, cursor mode) without any real input.</summary>
+        public static bool ForcePad;
+
+        /// <summary>Recordings: end a forced-gamepad stretch and go back to pointer mode.</summary>
+        public static void ReleaseForcedPad()
+        {
+            ForcePad = false;
+            Pad = KeyNav = false;
+        }
         /// <summary>Was there any directional/confirm input this frame (used to engage focus rings)?</summary>
         public static bool AnyNav => NavX != 0 || NavY != 0 || Submit || Cancel;
 
@@ -71,6 +80,7 @@ namespace OneMoreFloor
                 if (kb.leftArrowKey.isPressed) k.x -= 1f;
                 if (k != Vector2.zero) { stick = k; keysUsed = true; }
             }
+            if (ForcePad) { Pad = KeyNav = true; NavX = NavY = 0; Submit = Cancel = PausePressed = false; return; }
             if (padUsed && !Pad) { Pad = true; if (!Application.isEditor) Cursor.visible = false; }
             if (padUsed || keysUsed) KeyNav = true;
             if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
