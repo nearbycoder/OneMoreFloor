@@ -39,3 +39,5 @@ __pycache__/
 
 # keep the rules harness project (Unity csproj files are generated and ignored above)
 !/Tools/simharness/SimHarness.csproj
+/Assets/Screenshots/
+/Assets/Screenshots.meta

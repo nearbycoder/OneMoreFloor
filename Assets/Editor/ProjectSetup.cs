@@ -22,17 +22,28 @@ namespace OneMoreFloor.EditorTools
 
         static readonly string[] Fonts = { "Limelight-Regular", "Bungee-Regular", "VarelaRound-Regular", "PatrickHand-Regular" };
 
-        [MenuItem("One More Floor/Apply Project Setup")]
+        /// <summary>Batch entry point (-executeMethod): runs everything, then exits with a status code.</summary>
         public static void Apply()
+        {
+            bool ok = Run(true);
+            if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+        }
+
+        /// <summary>For a resident editor (menu or `unity command eval`): never exits.</summary>
+        [MenuItem("One More Floor/Apply Project Setup")]
+        public static void ApplyInEditor() => Run(false);
+
+        static bool Run(bool rebuildScene)
         {
             bool ok = true;
             try
             {
+                EnsureMaterials();
                 ConfigurePlayer();
                 ConfigureUrp();
                 ok &= ImportTmpEssentials();
                 ok &= BuildFontAssets();
-                BuildScene();
+                if (rebuildScene) BuildScene();
                 AssetDatabase.SaveAssets();
                 Debug.Log("[ProjectSetup] done");
             }
@@ -41,7 +52,53 @@ namespace OneMoreFloor.EditorTools
                 Debug.LogException(ex);
                 ok = false;
             }
-            if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+            return ok;
+        }
+
+        /// <summary>Template materials in Resources so the URP shaders they use always ship in builds.</summary>
+        static void EnsureMaterials()
+        {
+            Directory.CreateDirectory("Assets/Resources/Materials");
+            Ensure("Lit", "Universal Render Pipeline/Lit", null);
+            Ensure("Unlit", "Universal Render Pipeline/Unlit", null);
+            Ensure("LitTransparent", "Universal Render Pipeline/Lit", m =>
+            {
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_Blend", 0f);
+                m.SetOverrideTag("RenderType", "Transparent");
+                m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_ZWrite", 0f);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            });
+            Ensure("Particles", "Universal Render Pipeline/Particles/Unlit", m =>
+            {
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_Blend", 0f);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            });
+        }
+
+        static void Ensure(string name, string shaderName, System.Action<Material> configure)
+        {
+            string path = $"Assets/Resources/Materials/{name}.mat";
+            var shader = Shader.Find(shaderName);
+            if (shader == null) { Debug.LogError("[ProjectSetup] missing shader " + shaderName); return; }
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null)
+            {
+                m = new Material(shader) { name = name };
+                configure?.Invoke(m);
+                AssetDatabase.CreateAsset(m, path);
+            }
+            else
+            {
+                m.shader = shader;
+                configure?.Invoke(m);
+                EditorUtility.SetDirty(m);
+            }
         }
 
         static void ConfigurePlayer()
