@@ -17,7 +17,8 @@ namespace OneMoreFloor
         float shaftTop;
         Spring squash, tilt;
         float lastVel;
-        Transform bellhopHead, bellhopArmL, bellhopArmR;
+        Transform bellhopHead;
+        CharacterRig bellhopRig;
         public Transform Pulley;
         float bellhopCheer, bellhopWorry;
 
@@ -74,9 +75,8 @@ namespace OneMoreFloor
             {
                 bell.transform.SetParent(Body, false);
                 Bellhop = bell.transform;
-                bellhopHead = Bellhop.Find("Head");
-                bellhopArmL = Bellhop.Find("ArmL");
-                bellhopArmR = Bellhop.Find("ArmR");
+                bellhopRig = CharacterRig.Attach(bell, "Char_Bellhop", 0.3f);
+                bellhopHead = bellhopRig ? bellhopRig.Bone("Head") : null;
             }
             else Bellhop = PassengerView.BuildBellhop(Body);
             Bellhop.localPosition = new Vector3(-1.35f, 0.02f, 0.75f);
@@ -179,12 +179,23 @@ namespace OneMoreFloor
                 float hop = Mathf.Abs(Mathf.Sin(bellhopCheer * Mathf.PI * 3f)) * 0.25f * bellhopCheer;
                 float jitter = bellhopWorry > 0.6f ? Mathf.Sin(Time.time * 40f) * 0.02f * bellhopWorry : 0f;
                 Bellhop.localPosition = new Vector3(-1.35f + jitter, 0.02f + hop, 0.75f);
-                if (bellhopHead) bellhopHead.localRotation = Quaternion.Euler(-12f * bellhopCheer, Mathf.Sin(Time.time * 0.7f) * 12f, 0);
-                // a crisp salute with the right hand, the left arm nervously fidgeting when things go badly
-                float salute = Ease.OutCubic(Mathf.Clamp01(bellhopCheer * 2.2f));
-                if (bellhopArmR) bellhopArmR.localRotation = Quaternion.Euler(-150f * salute, 0, -6f - 28f * salute);
-                if (bellhopArmL) bellhopArmL.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 9f) * 14f * Mathf.Clamp01(bellhopWorry - 0.5f) * 2f, 0, 6f);
+                // a crisp salute when the doors open, nervous fidgeting when it's going badly
+                if (bellhopRig)
+                {
+                    float salute = Ease.OutCubic(Mathf.Clamp01(bellhopCheer * 2.2f));
+                    float worry = Mathf.Clamp01(bellhopWorry - 0.5f) * 2f;
+                    bellhopRig.Set("Salute", salute);
+                    bellhopRig.Set("Worry", (1f - salute) * worry);
+                    bellhopRig.Set("Idle", (1f - salute) * (1f - worry));
+                    bellhopRig.Apply();
+                }
             }
+        }
+
+        void LateUpdate()
+        {
+            if (bellhopRig && bellhopHead)
+                bellhopRig.Turn(bellhopHead, Quaternion.Euler(-12f * bellhopCheer, Mathf.Sin(Time.time * 0.7f) * 12f, 0));
         }
 
         public void Bump(float amount) => squash.Velocity -= amount;

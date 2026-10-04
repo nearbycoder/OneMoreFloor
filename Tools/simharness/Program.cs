@@ -12,6 +12,9 @@ static class Program
         if (mode == "trace") return Trace(int.Parse(args[1]), ulong.Parse(args.Length > 2 ? args[2] : "1"), args.Length > 3 ? args[3] : "decent");
         if (mode == "fuzz") return Fuzz();
         if (mode == "stars") return SuggestStars(args.Length > 1 ? int.Parse(args[1]) : 12);
+        if (mode == "human") return Human(args.Length > 1 ? int.Parse(args[1]) : 16);
+        if (mode == "pace") return Pace(args.Length > 1 ? int.Parse(args[1]) : 16);
+        if (mode == "causes") return Causes(args.Length > 1 ? float.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 0.5f, args.Length > 2 ? int.Parse(args[2]) : 16);
         return Balance(args.Length > 1 ? int.Parse(args[1]) : 8);
     }
 
@@ -27,6 +30,102 @@ static class Program
                 var sc = res.Select(r => r.Score).ToList();
                 Console.WriteLine($"{def.Id,-10} {name,-7} {sc.Average(),7:0} {sc.Min(),6} {sc.Max(),6} {res.Average(r => r.DeliveredCount),6:0.0} {res.Average(r => r.Complaints),6:0.0} {res.Count(r => r.Fired),5} {res.Average(r => r.Stops),6:0}  {string.Join(",", res.Select(r => r.StarCount))}  t={res.Average(r => r.Time):0}");
             }
+        }
+        return 0;
+    }
+
+    // How modelled people of three skill levels fare against the star thresholds: mean score and the share
+    // of runs reaching 1/2/3 stars. A first-timer should usually clear a shift in a try or two, a practised
+    // player should be pushing for three.
+    static int Human(int seeds)
+    {
+        var levels = new (string name, float skill)[] { ("new", 0.15f), ("average", 0.5f), ("practised", 0.85f) };
+        Console.WriteLine($"{"shift",-10} {"stars",-20} " + string.Join(" ", levels.Select(l => $"{l.name + " mean  1/2/3*",-30}")));
+        foreach (var def in ShiftCatalog.All)
+        {
+            if (def.Endless) continue;
+            var cols = new List<string>();
+            foreach (var (name, skill) in levels)
+            {
+                var res = new List<ShiftSim>();
+                for (ulong s = 1; s <= (ulong)seeds; s++) res.Add(Bot.PlayOut(def, s * 7919, Bot.Human(s, skill)));
+                double P(int k) => 100.0 * res.Count(r => r.StarCount >= k) / res.Count;
+                cols.Add($"{res.Average(r => r.Score),7:0} {P(1),4:0}% {P(2),4:0}% {P(3),4:0}%      ");
+            }
+            Console.WriteLine($"{def.Id,-10} {string.Join("/", def.Stars),-20} " + string.Join(" ", cols));
+        }
+        return 0;
+    }
+
+    // For each shift: the smallest slow-down of the spawn pacing (both ends of the ramp) at which modelled
+    // average players are rarely fired and new players usually survive, then star thresholds from human
+    // score percentiles at that pacing.
+    static int Pace(int seeds)
+    {
+        foreach (var def in ShiftCatalog.All)
+        {
+            float s0 = def.SpawnStart, e0 = def.SpawnEnd;
+            List<ShiftSim> Run(float skill)
+            {
+                var res = new List<ShiftSim>();
+                for (ulong s = 1; s <= (ulong)seeds; s++) res.Add(Bot.PlayOut(def, s * 7919, Bot.Human(s, skill)));
+                return res;
+            }
+            float chosen = 1f;
+            string line = "";
+            for (float k = 1f; k <= 1.81f; k += 0.05f)
+            {
+                def.SpawnStart = s0 * k;
+                def.SpawnEnd = e0 * k;
+                var avg = Run(0.5f);
+                var nw = Run(0.15f);
+                double firedAvg = avg.Count(r => r.Fired) / (double)seeds, firedNew = nw.Count(r => r.Fired) / (double)seeds;
+                double complAvg = avg.Average(r => r.Complaints);
+                line = $"k={k:0.00} avg fired {firedAvg * 100,3:0}% compl {complAvg:0.0} | new fired {firedNew * 100,3:0}%";
+                chosen = k;
+                if (def.Endless || (firedAvg <= 0.1 && complAvg <= 2.2 && firedNew <= 0.4)) break;
+            }
+            var a = Run(0.5f).Select(r => (double)r.Score).OrderBy(x => x).ToList();
+            var n = Run(0.15f).Select(r => (double)r.Score).OrderBy(x => x).ToList();
+            var pr = Run(0.85f).Select(r => (double)r.Score).OrderBy(x => x).ToList();
+            double Pct(List<double> v, double q) => v[Math.Clamp((int)Math.Round(q * (v.Count - 1)), 0, v.Count - 1)];
+            int one = Round(def.Id == "monday" ? Pct(n, 0.1) : Pct(n, 0.5));
+            int two = Round(Math.Max(Pct(a, 0.6), one + 1500));
+            int three = Round(Math.Max(Pct(pr, 0.6), two + 1500));
+            Console.WriteLine($"{def.Id,-10} {line}  -> SpawnStart = {s0 * chosen:0.00}f, SpawnEnd = {e0 * chosen:0.00}f, Stars = {{ {one}, {two}, {three} }}" +
+                              $"  (1* new {n.Count(x => x >= one) * 100 / n.Count}% avg {a.Count(x => x >= one) * 100 / a.Count}% | 2* avg {a.Count(x => x >= two) * 100 / a.Count}% | 3* pract {pr.Count(x => x >= three) * 100 / pr.Count}%)");
+            def.SpawnStart = s0;
+            def.SpawnEnd = e0;
+        }
+        return 0;
+    }
+
+    // What the complaints are about, for a modelled player of the given skill (mean per run).
+    static int Causes(float skill, int seeds)
+    {
+        var names = Enum.GetNames(typeof(Outcome));
+        foreach (var def in ShiftCatalog.All)
+        {
+            if (def.Endless) continue;
+            var tally = new int[names.Length];
+            int fired = 0;
+            for (ulong s = 1; s <= (ulong)seeds; s++)
+            {
+                var sim = new ShiftSim(def, s * 7919);
+                var bot = Bot.Human(s, skill);
+                float dt = 1f / 30f;
+                while (!sim.Ended && sim.Time < 900)
+                {
+                    bot.Tick(sim, dt, out _);
+                    sim.Tick(dt);
+                    foreach (var e in sim.Events) if (e.Type == Ev.Complaint) tally[e.Aux]++;
+                    sim.Events.Clear();
+                }
+                if (sim.Fired) fired++;
+            }
+            var parts = new List<string>();
+            for (int i = 0; i < names.Length; i++) if (tally[i] > 0) parts.Add($"{names[i]} {tally[i] / (double)seeds:0.00}");
+            Console.WriteLine($"{def.Id,-10} fired {fired * 100 / seeds,3}%  " + string.Join("  ", parts));
         }
         return 0;
     }

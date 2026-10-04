@@ -19,6 +19,8 @@ namespace OneMoreFloor
         public bool ScreenShake = true;
         public bool Fullscreen;
         public bool ShowForecast = true;
+        /// <summary>Camera zoom during play (0 = whole tower, 1 = close-up following the car).</summary>
+        public float Zoom;
 
         static string PathName => System.IO.Path.Combine(Application.persistentDataPath, "save.json");
         static SaveData current;

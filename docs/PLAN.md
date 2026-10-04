@@ -154,8 +154,13 @@ Origin/destination tendencies (for flavour and readable patterns):
 
 ### 3.7 Shifts (levels)
 
-All shifts are score-based, and **1★ unlocks the next**. Star thresholds are set by bot simulation
-(§13): roughly 1★ = a sloppy bot, 2★ = a decent bot, 3★ = a strong greedy bot.
+All shifts are score-based, and **1★ unlocks the next**. Star thresholds are set by simulation (§13).
+The first pass used instant-pointer bots (1★ = a sloppy bot, 2★ = a decent bot, 3★ = a strong one),
+which made the second half of the week a wall for people. The final pass uses a **human model**
+(`Bot.Human`): decision time, Fitts'-law pointer travel for every click, a beat to take in each stop,
+and Space to board a whole queue. The model has three skill levels. 1★ is the median new player, so a
+first-timer unlocks the next shift in a try or two. 2★ is the 60th percentile of average players, and
+3★ is the 60th percentile of practised ones.
 
 | # | Shift | Length | Slots | New thing | Purpose |
 | --- | --- | --- | --- | --- | --- |
@@ -203,6 +208,15 @@ short credits crawl, and Overtime unlocks.
   14, shuffle intensity rises (more cards that aren't Calm, multi-floor cards, then Flips), and the
   type mix gets wider.
 - **Overtime:** everything keeps ramping per minute until five complaints.
+- **Tuned for people, not bots:** `Tools/sim.sh pace` searches each shift for the gentlest spawn pacing
+  at which modelled average players are rarely fired (≤10%) and new players usually survive.
+  `Tools/sim.sh causes` breaks complaints down by cause. That analysis is why later shifts now spawn
+  more slowly than Monday (their rules carry the difficulty), why riding patience drains about 20%
+  more slowly, why the Ocean stays a stop longer with one swimmer after Saturday, and why couriers get
+  six stops of warning.
+- **Real playtests close the loop:** every shift a person plays is logged locally
+  (`playtests.jsonl`), and `Tools/playtest_report.py` turns those logs into suggested thresholds. It
+  also checks the model's reaction-time assumptions against measured ones.
 
 ## 4. Controls & UX
 
@@ -217,12 +231,22 @@ short credits crawl, and Overtime unlocks.
 | **Esc / P** | Pause |
 | **Hover** a passenger | Highlights their destination floor and button |
 | **Hover** a floor/button | Highlights everyone who wants to go there |
+| **Scroll wheel / Z / − =** | Zoom between the whole tower and a close-up that follows the car |
+
+**Gamepad and arrow keys.** The d-pad (or Up/Down) moves a floor cursor, and left/right (or LB/RB,
+Q/E) picks a guest on that floor or in the car. **A** (Enter) sends the car there, lets the picked
+guest in, or lets everyone in when the car is already open there. **X** (F) lets a picked rider off,
+**Y** (Space) lets everyone in, **B** unpicks, the triggers or right stick zoom, and **Start**
+pauses. A prompt strip says what each button will do right now. The menus have a focus ring that the
+d-pad, stick and arrows move; A/Enter confirms, B/Esc goes back, and left/right adjusts sliders and
+switches.
 
 - The panel is the "dashboard": each button's plate shows the **floor icon + name** of the floor in
   that slot (with a split-flap flip when floors move), **pips** for riders heading there, and a
   **count** of people waiting there.
 - Refusals are visible: a passenger who can't board shakes their head and shows why (FULL, 🪞✖🧛).
-- Gamepad support is a stretch goal.
+- Zoomed in, every floor out of view with guests waiting gets an indicator at the screen edge (which
+  floor, how many, the most impatient one's ring). Click one to send the car there.
 
 ## 5. Art direction
 
@@ -238,7 +262,11 @@ short credits crawl, and Overtime unlocks.
   silhouette prop per type (briefcase, pot and leaves, giant gilded mirror, cape and collar, parcel,
   swim cap and towel, propeller beanie and balloons, top hat and monocle). Moving parts (leaves, cape,
   balloons, mirror) are separate objects so they can animate in code.
-- **Animation (procedural in code, no rigs):** idle breathing (squash and stretch), blinking,
+- **Animation (rigged):** every character has a Blender armature (root, hips, spine, head, two-bone
+  arms and legs with skinned elbows and knees, plus capes, leaves, balloons, mirrors and propellers).
+  Each one carries keyframed clips (Idle, Walk, Stomp, Tap, Cheer, Tuck, Fume, plus Salute and Worry
+  for the bellhop) that the game blends with a Playables mixer from what the guest is doing. Code
+  layers secondary motion on top: idle breathing (squash and stretch),
   impatient foot-tap jitter, a hop with squash on landing when boarding, a cheer spin when delivered,
   a storm-off stomp, plant leaves drooping as patience drops and perking up in the sun, the vampire's
   cape flare and hiss, balloons bobbing on springs, the swimmer dripping, and the tycoon puffing up.
@@ -457,6 +485,12 @@ I commit at the end of every milestone, and more often in between.
 - **Autopilot in the real built game:** `-omfAutopilot` makes the bot play shifts through the
   presentation layer, captures screenshots at key moments, and prints PASS/FAIL. It fails on any
   exception in the log.
+- **Gamepad in the built game:** the autopilot drives the menus and a shift through a virtual
+  Input System gamepad (`PadSim`). It checks the focus ring, back, the floor cursor, sending, zoom, and
+  pause/resume.
+- **Audio audit:** `Tools/synth/audit.py` measures every file (BS.1770 loudness, true peak, DC, clicks,
+  loop seams, leading silence, spectral balance, stereo) and every `Sfx` call as the game plays it
+  against its category. With `--mix` it also measures a recording of the final in-game mix.
 - **Manual review:** play-mode screenshots of every shift, menu and results screen, reviewed and
   iterated.
 
@@ -480,5 +514,5 @@ A new player sits down, and within five minutes:
 deliver, score) feel good in greybox before any content gets built on top of it.
 
 ## 15. Stretch goals (only after M8)
-Gamepad support, a per-passenger musical motif layer, a photo mode, a daily-seed Overtime, and a
+A per-passenger musical motif layer, a photo mode, a daily-seed Overtime, and a
 WebGL build.

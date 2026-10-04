@@ -13,7 +13,9 @@ namespace OneMoreFloor
         public static TMP_FontAsset Body => body ? body : (body = Resources.Load<TMP_FontAsset>("Fonts/SDF/VarelaRound-Regular SDF"));
         public static TMP_FontAsset Hand => hand ? hand : (hand = Resources.Load<TMP_FontAsset>("Fonts/SDF/PatrickHand-Regular SDF"));
 
-        static Sprite circle, ring, rounded, softCircle, pill;
+        static Sprite circle, ring, rounded, softCircle, pill, triangle;
+        /// <summary>An anti-aliased triangle pointing up (rotate it for other directions).</summary>
+        public static Sprite Triangle => triangle ? triangle : (triangle = MakeTriangle(96));
         public static Sprite Circle => circle ? circle : (circle = MakeCircle(128, 0f, false));
         public static Sprite Ring => ring ? ring : (ring = MakeCircle(128, 0.2f, false));
         public static Sprite SoftCircle => softCircle ? softCircle : (softCircle = MakeCircle(128, 0f, true));
@@ -37,6 +39,30 @@ namespace OneMoreFloor
                         if (ringWidth > 0f) a *= Mathf.Clamp01((d - (1f - ringWidth)) * r);
                     }
                     px[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255));
+                }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        static Sprite MakeTriangle(int size)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color32[size * size];
+            // apex at the top centre, base along the bottom, 2px inset; coverage from the distance to each edge
+            Vector2 a = new Vector2(size * 0.5f, size - 3f), b = new Vector2(3f, 6f), c = new Vector2(size - 3f, 6f);
+            float Edge(Vector2 p, Vector2 p0, Vector2 p1)
+            {
+                var e = p1 - p0;
+                var n = new Vector2(-e.y, e.x).normalized;
+                return Vector2.Dot(p - p0, n);
+            }
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    var p = new Vector2(x + 0.5f, y + 0.5f);
+                    float d = Mathf.Min(Edge(p, a, b), Mathf.Min(Edge(p, b, c), Edge(p, c, a)));
+                    px[y * size + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(d + 0.5f) * 255));
                 }
             tex.SetPixels32(px);
             tex.Apply(false, true);

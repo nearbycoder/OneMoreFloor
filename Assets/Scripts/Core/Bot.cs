@@ -11,16 +11,44 @@ namespace OneMoreFloor.Core
     {
         public readonly float Reaction;
         public readonly float Noise;
+        /// <summary>
+        /// Human-model bots only: a multiplier on pointer travel time (Fitts' law, a = 0.1 s, b = 0.15 s/bit,
+        /// with target sizes and distances measured on the 1080p layout), plus a perception delay before the
+        /// first action at each stop. 0 = the original instant-pointer bots.
+        /// </summary>
+        public readonly float Motor;
         readonly Rng rng;
         float cooldown;
         int lastDropped = -1;
+        bool wasOpen;
 
-        public Bot(ulong seed, float reaction = 0.45f, float noise = 0.05f)
+        public Bot(ulong seed, float reaction = 0.45f, float noise = 0.05f, float motor = 0f)
         {
             rng = new Rng(seed ^ 0xB07B07UL);
             Reaction = reaction;
             Noise = noise;
+            Motor = motor;
         }
+
+        // Fitts' law movement times for the common targets at 1080p (guest ~55 px from ~300 px away,
+        // panel button ~70 px from ~700 px away), in seconds before the skill multiplier
+        static float Fitts(float distance, float width) => 0.1f + 0.15f * (float)Math.Log(distance / width + 1.0, 2.0);
+        // sending is a mix of panel buttons and clicking the (large) floor itself
+        static readonly float MoveToGuest = Fitts(300f, 55f), MoveToButton = 0.5f * (Fitts(700f, 70f) + Fitts(400f, 100f));
+        // a key press (Space, 1-9) with the hand already on the keyboard
+        const float KeyPress = 0.2f;
+
+        /// <summary>
+        /// A model of a person with a mouse, skill 0 (first time) .. 1 (practised): slower decisions, pointer
+        /// travel for every click, a beat to take in each new stop, and more misjudged routes at low skill.
+        /// </summary>
+        public static Bot Human(ulong seed, float skill)
+        {
+            skill = Math.Clamp(skill, 0f, 1f);
+            return new Bot(seed, Lerp(1.25f, 0.5f, skill), Lerp(0.32f, 0.04f, skill), Lerp(1.3f, 0.8f, skill));
+        }
+
+        static float Lerp(float a, float b, float t) => a + (b - a) * t;
 
         public static Bot Novice(ulong seed) => new Bot(seed, 1.7f, 0.4f);
         public static Bot Sloppy(ulong seed) => new Bot(seed, 1.0f, 0.3f);
@@ -35,13 +63,29 @@ namespace OneMoreFloor.Core
             arg = -1;
             if (sim.Ended) return Action.None;
             cooldown -= dt;
-            if (cooldown > 0f || !sim.Car.IsOpen) return Action.None;
+            bool open = sim.Car.IsOpen;
+            // a person needs a moment to take in the new stop (and where everyone is) before acting
+            if (open && !wasOpen && Motor > 0f) cooldown = Math.Max(cooldown, Reaction * 0.5f + Motor * MoveToGuest);
+            wasOpen = open;
+            if (cooldown > 0f || !open) return Action.None;
 
             var pick = ChooseBoarding(sim);
+            // people let the whole queue in with Space when everyone there is welcome
+            if (pick != null && Motor > 0f && WholeQueueWelcome(sim))
+            {
+                int before = sim.Car.Riders.Count;
+                sim.BoardAll();
+                if (sim.Car.Riders.Count > before)
+                {
+                    cooldown = Reaction * 0.35f + Motor * KeyPress;
+                    arg = pick.Id;
+                    return Action.Board;
+                }
+            }
             if (pick != null)
             {
                 sim.Board(pick.Id);
-                cooldown = Reaction * 0.35f;
+                cooldown = Reaction * 0.35f + Motor * MoveToGuest;
                 arg = pick.Id;
                 return Action.Board;
             }
@@ -49,7 +93,7 @@ namespace OneMoreFloor.Core
             int slot = ChooseSlot(sim);
             if (slot >= 0 && slot != sim.Car.DockedSlot && sim.SendTo(slot))
             {
-                cooldown = Reaction;
+                cooldown = Reaction + Motor * MoveToButton;
                 arg = slot;
                 return Action.Send;
             }
@@ -62,7 +106,7 @@ namespace OneMoreFloor.Core
                 if (v != null && sim.DropHere(v.Id))
                 {
                     lastDropped = v.Id;
-                    cooldown = Reaction * 0.5f;
+                    cooldown = Reaction * 0.5f + Motor * MoveToGuest;
                     arg = v.Id;
                     return Action.Drop;
                 }
@@ -90,6 +134,24 @@ namespace OneMoreFloor.Core
                 if (s > bestScore) { bestScore = s; best = p; }
             }
             return best;
+        }
+
+        /// <summary>Would boarding everyone waiting here (in queue order, as Space does) be what this bot wants?</summary>
+        bool WholeQueueWelcome(ShiftSim sim)
+        {
+            var queue = sim.Waiting[(int)sim.DockedFloor];
+            int size = 0;
+            bool vamp = sim.Car.Has(Kind.Vampire), kid = sim.Car.Has(Kind.Kid), mirror = sim.Car.Has(Kind.Mirror), tycoon = sim.Car.Has(Kind.Tycoon);
+            foreach (var p in queue)
+            {
+                size += p.Size;
+                if (p.Id == lastDropped) return false;
+                if (p.Kind == Kind.Vampire) { if (kid || mirror) return false; vamp = true; }
+                if (p.Kind == Kind.Kid) { if (vamp) return false; kid = true; }
+                if (p.Kind == Kind.Mirror) { if (vamp) return false; mirror = true; }
+                if (p.Kind == Kind.Tycoon || tycoon) return false;
+            }
+            return size <= sim.Car.Free;
         }
 
         static Passenger FindRider(ShiftSim sim, Kind k)

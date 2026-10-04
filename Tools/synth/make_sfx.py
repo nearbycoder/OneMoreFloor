@@ -148,7 +148,7 @@ def shuffle_land():
     # floor slots home: thud, wooden knock, little bounce
     n = int(0.6 * SR)
     t = np.arange(n) / SR
-    thud = kick(0.5, 1.0, 48)
+    thud = kick(0.5, 1.0, 58)
     knock = lowpass(noise(n), 900) * np.exp(-t / 0.03) * 0.6
     bounce = seq([(0.16, kick(0.2, 0.35, 70), 1.0), (0.26, kick(0.15, 0.15, 80), 1.0)], 0.6)
     dust = highpass(noise(n), 3000) * np.exp(-t / 0.15) * 0.05
@@ -159,8 +159,13 @@ def rumble():
     dur = 1.4
     n = int(dur * SR)
     t = np.arange(n) / SR
-    x = lowpass(noise(n), 120, 2) * np.sin(np.pi * t / dur) ** 0.5 * 3
-    x += np.sin(2 * np.pi * 38 * t) * np.sin(np.pi * t / dur) * 0.4
+    env = np.sin(np.pi * t / dur) ** 0.5
+    x = lowpass(noise(n), 120, 2) * env * 1.8
+    x += np.sin(2 * np.pi * 38 * t) * np.sin(np.pi * t / dur) * 0.2
+    # saturate so the rumble grows harmonics a laptop speaker can actually play, plus a rattle of the frame
+    x = np.tanh(x * 2.2) * 0.6
+    rattle = bandpass(noise(n), 160, 1.4) * env * (0.6 + 0.4 * np.sin(2 * np.pi * 11 * t)) * 1.4
+    x += rattle + highpass(lowpass(noise(n), 700), 250) * env * 0.18
     return mono(x, 0.8)
 
 
@@ -526,7 +531,10 @@ def all_sfx():
         out[f"streak_{i}"] = streak_up(i)
     for kind in VOICE_PITCH:
         for k in range(5):
-            out[f"voice_{kind}_{k}"] = voice_clip(kind, k * 1000 + sum(map(ord, kind)))
+            v = voice_clip(kind, k * 1000 + sum(map(ord, kind)))
+            # level every variant to the same loudness so a random pick never jumps out or gets lost
+            v = v * 10 ** ((-14.0 - active_rms_db(v)) / 20)
+            out[f"voice_{kind}_{k}"] = v * min(1.0, 0.89 / max(1e-9, float(np.max(np.abs(v)))))
     return out
 
 
@@ -534,6 +542,7 @@ def main(outdir):
     os.makedirs(outdir, exist_ok=True)
     report = []
     for name, x in all_sfx().items():
+        x = finish(x, loop=name.startswith(("amb_", "motor_loop")))
         write_wav(os.path.join(outdir, name + ".wav"), x)
         peak = float(np.max(np.abs(x)))
         report.append(f"{name:18s} {len(x) / SR:5.2f}s peak {peak:.2f} rms {rms_db(x):6.1f} dB")

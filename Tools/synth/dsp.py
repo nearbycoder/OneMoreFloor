@@ -393,12 +393,56 @@ def normalize(x, peak=0.89):
     return x if m < 1e-9 else x * (peak / m)
 
 
+def active_rms_db(x, floor_db=-40.0):
+    """RMS over the part of a sound that is within floor_db of its peak (its loudness while it's sounding)."""
+    m = np.abs(np.asarray(x, dtype=float))
+    if m.ndim == 2:
+        m = m.max(axis=1)
+    keep = m > np.max(m) * 10 ** (floor_db / 20)
+    y = np.asarray(x, dtype=float)[keep]
+    return rms_db(y) if len(y) else -120.0
+
+
 def rms_db(x):
     return 20 * math.log10(max(1e-9, float(np.sqrt(np.mean(np.square(x))))))
 
 
 def soft_clip(x, drive=1.0):
     return np.tanh(x * drive) / np.tanh(drive)
+
+
+def true_peak_db(x):
+    """Peak level after 4x oversampling (catches inter-sample overs), in dBFS."""
+    x = np.asarray(x, dtype=float)
+    chans = x.T if x.ndim == 2 else x[None]
+    peak = 0.0
+    for c in chans:
+        X = np.fft.rfft(c)
+        up = np.fft.irfft(np.concatenate([X, np.zeros(len(X) * 3 - 3)]), len(c) * 4) * 4
+        peak = max(peak, float(np.max(np.abs(up))))
+    return 20 * math.log10(max(peak, 1e-9))
+
+
+def finish(x, loop=False, ceiling=-1.0):
+    """Last step for every file: remove DC; for one-shots, trim leading near-silence (it reads as input lag)
+    and de-click both ends (2 ms in, 8 ms out: the FFT filters can leave energy on the very first sample);
+    then keep the true peak under the ceiling."""
+    x = np.array(x, dtype=float)
+    chans = [c - c.mean() if loop else highpass(c, 18, 1) for c in (x.T if x.ndim == 2 else x[None])]
+    if not loop:
+        loud = np.max(np.abs(np.stack(chans)), axis=0) > 10 ** (-50 / 20)
+        lead = max(0, min(int(np.argmax(loud)), int(0.03 * SR)) - int(0.001 * SR))
+        a, b = int(0.002 * SR), int(0.008 * SR)
+        for i, c in enumerate(chans):
+            c = c[lead:].copy()
+            c[:a] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a))
+            c[-b:] *= 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, b))
+            chans[i] = c
+    y = np.stack(chans, axis=1) if x.ndim == 2 else chans[0]
+    tp = true_peak_db(y)
+    if tp > ceiling:
+        y = y * 10 ** ((ceiling - tp) / 20)
+    return y
 
 
 def write_wav(path, x):

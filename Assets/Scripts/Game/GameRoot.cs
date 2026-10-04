@@ -31,14 +31,17 @@ namespace OneMoreFloor
             Instance = this;
             var args = System.Environment.GetCommandLineArgs();
             SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0
-                                 || System.Array.IndexOf(args, "-omfDemo") >= 0;
+                                 || System.Array.IndexOf(args, "-omfDemo") >= 0
+                                 || (Application.isEditor && Application.isBatchMode);   // headless editor captures
             // Pace frames ourselves: on Wayland a vsync'd swap blocks on compositor frame callbacks,
             // which some compositors throttle hard for unfocused windows. Compositors don't tear.
             QualitySettings.vSyncCount = 0;
             double hz = Screen.currentResolution.refreshRateRatio.value;
             Application.targetFrameRate = Mathf.Clamp((int)System.Math.Round(hz > 1 ? hz : 60), 60, 240);
+            Controls.Ensure(gameObject);
             BuildWorld();
             BuildUi();
+            gameObject.AddComponent<UiNav>();
         }
 
         TitleScreen title;
@@ -96,6 +99,7 @@ namespace OneMoreFloor
             var def = ShiftCatalog.Get(3);
             Sky.Apply("dusk", Sun, WorldCam);
             Rig.ScreenX = 0.68f;
+            Rig.AllowZoom = false;
             Runner.Attract = true;
             Runner.Begin(def, (ulong)Random.Range(1, 100000));
             Runner.AutoBot = Bot.Strong((ulong)Random.Range(1, 1000));
@@ -148,6 +152,8 @@ namespace OneMoreFloor
             var def = ShiftCatalog.Get(index);
             Sky.Apply(def.Lighting, Sun, WorldCam);
             Rig.ScreenX = 0.505f;
+            Rig.AllowZoom = true;
+            Rig.Zoom = SaveData.Current.Zoom;
             Runner.Attract = false;
             Runner.AutoBot = null;
             Runner.Begin(def, runSeed);
@@ -158,13 +164,27 @@ namespace OneMoreFloor
             Coach?.BeginShift(def);
         }
 
-        public void RestartShift() => BeginShift(currentShift);
+        public void RestartShift()
+        {
+            if (InShift && Runner.Sim != null && !Runner.Sim.Ended) Runner.Log.Finish("restarted");
+            BeginShift(currentShift);
+        }
+
+        /// <summary>Remember the player's zoom level for the next shift.</summary>
+        void SaveZoom()
+        {
+            var save = SaveData.Current;
+            if (Mathf.Abs(save.Zoom - Rig.Zoom) < 0.01f) return;
+            save.Zoom = Rig.Zoom;
+            save.Save();
+        }
 
         public void Pause()
         {
             if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible) return;
             Runner.Paused = true;
             pause.Show();
+            SaveZoom();
         }
 
         public void Resume()
@@ -176,6 +196,7 @@ namespace OneMoreFloor
 
         public void QuitShift()
         {
+            if (InShift && Runner.Sim != null && !Runner.Sim.Ended) Runner.Log.Finish("quit");
             Runner.Paused = false;
             ShowRoster();
         }
@@ -184,8 +205,10 @@ namespace OneMoreFloor
         {
             if (!InShift || Runner.Attract) return;
             var save = SaveData.Current;
+            save.Zoom = Rig.Zoom;
             bool firstGraveyard = sim.Def.Id == "graveyard" && sim.StarCount >= 1 && !save.EndingSeen;
             bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount);
+            Runner.Log.Finish("finished");
             if (firstGraveyard)
             {
                 save.EndingSeen = true;
@@ -353,9 +376,12 @@ namespace OneMoreFloor
         void Update()
         {
             var kb = Keyboard.current;
-            if (kb == null) return;
-            if (InShift && (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame) && !pause.Visible && !settings.Visible && !results.Visible)
+            bool pausePressed = Controls.PausePressed || (kb != null && (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame));
+            if (InShift && pausePressed && !pause.Visible && !settings.Visible && !results.Visible)
                 Pause();
+            else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible)
+                Resume();
+            if (kb == null) return;
             // developer shortcuts: F1..F10 start a shift
             for (int i = 0; i < 10; i++)
             {

@@ -251,18 +251,20 @@ def main(outdir):
         x = x * (10 ** ((levels[name] - rms_db(x)) / 20))
         if np.max(np.abs(x)) > 0.95:
             x = soft_clip(x, 1.2) * 0.95
+        x = finish(x, loop=True)
         write_wav(os.path.join(outdir, name + ".wav"), x)
         seam = float(np.max(np.abs(x[0] - x[-1])))
         report.append(f"{name:20s} {len(x) / SR:6.2f}s rms {rms_db(x):6.1f} dB peak {np.max(np.abs(x)):.2f} seam {seam:.3f}")
 
     lounge = render(88, len(PROG), lambda tr, beat: (bed(tr, beat, lounge=True), melody(tr, beat, LOUNGE_MELODY, -12, 0.7)), ir, 0.28)
     lounge = lounge * (10 ** ((-16.0 - rms_db(lounge)) / 20))
-    write_wav(os.path.join(outdir, "lobby_lounge.wav"), np.clip(lounge, -0.97, 0.97))
+    lounge = finish(soft_clip(lounge, 1.05) if np.max(np.abs(lounge)) > 0.97 else lounge, loop=True)
+    write_wav(os.path.join(outdir, "lobby_lounge.wav"), lounge)
     report.append(f"lobby_lounge         {len(lounge) / SR:6.2f}s rms {rms_db(lounge):6.1f} dB")
 
     for name, fn in (("sting_start", sting_start), ("sting_clockout", sting_clockout), ("sting_rush", sting_rush), ("sting_finale", sting_finale)):
         x = convolve(fn(), ir, 0.25)
-        x = normalize(x, 0.85)
+        x = finish(normalize(x, 0.85))
         write_wav(os.path.join(outdir, name + ".wav"), x)
         report.append(f"{name:20s} {len(x) / SR:6.2f}s rms {rms_db(x):6.1f} dB")
     return report

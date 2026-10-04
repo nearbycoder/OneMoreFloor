@@ -18,6 +18,7 @@ namespace OneMoreFloor
         int shots;
         float speed = 3f;
         int onlyShift = -1;
+        bool padOnly;
         int frames;
         float frameTime, worst;
 
@@ -29,7 +30,11 @@ namespace OneMoreFloor
             var ap = root.gameObject.AddComponent<AutoPilot>();
             ap.outDir = i + 1 < args.Length && !args[i + 1].StartsWith("-") ? args[i + 1] : Path.Combine(Application.persistentDataPath, "autopilot");
             int s = System.Array.IndexOf(args, "-omfAutopilotShift");
-            if (s >= 0 && s + 1 < args.Length) int.TryParse(args[s + 1], out ap.onlyShift);
+            if (s >= 0 && s + 1 < args.Length)
+            {
+                if (args[s + 1] == "pad") ap.padOnly = true;
+                else int.TryParse(args[s + 1], out ap.onlyShift);
+            }
             int sp = System.Array.IndexOf(args, "-omfAutopilotSpeed");
             if (sp >= 0 && sp + 1 < args.Length) float.TryParse(args[sp + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ap.speed);
         }
@@ -70,6 +75,13 @@ namespace OneMoreFloor
             root.ShowRoster();
             yield return Wait(1.2f);
             Shot("roster_locked");
+
+            if (padOnly)
+            {
+                yield return PadCheck(root);
+                yield return Finish();
+                yield break;
+            }
 
             int first = onlyShift >= 0 ? onlyShift : 0;
             int last = onlyShift >= 0 ? onlyShift : ShiftCatalog.All.Count - 1;
@@ -123,6 +135,7 @@ namespace OneMoreFloor
 
             if (onlyShift < 0)
             {
+                yield return PadCheck(root);
                 root.ShowRoster();
                 yield return Wait(1.2f);
                 Shot("roster_unlocked");
@@ -139,10 +152,67 @@ namespace OneMoreFloor
                 yield return Wait(1.5f);
             }
 
+            yield return Finish();
+        }
+
+        IEnumerator Finish()
+        {
             if (frames > 0) Debug.Log($"[AutoPilot] perf: {frames / frameTime:0} fps average during play, worst frame {worst * 1000f:0} ms (captures excluded)");
             Debug.Log(errors == 0 ? "[AutoPilot] done: PASS" : $"[AutoPilot] done: FAIL ({errors} problems)");
             yield return Wait(0.5f);
             Application.Quit(errors == 0 ? 0 : 1);
+        }
+
+        void Check(string what, bool ok)
+        {
+            Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} pad: {what}");
+            if (!ok) errors++;
+        }
+
+        IEnumerator Pad(string script, float gap = 0.35f)
+        {
+            PadSim.Play(script, gap);
+            yield return null;
+            while (PadSim.Busy) yield return null;
+            yield return Wait(0.4f);
+        }
+
+        /// <summary>Drives the menus and a shift with a virtual gamepad through the Input System.</summary>
+        IEnumerator PadCheck(GameRoot root)
+        {
+            var title = FindAnyObjectByType<TitleScreen>(FindObjectsInactive.Include);
+            var roster = FindAnyObjectByType<RosterScreen>(FindObjectsInactive.Include);
+            var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
+            root.ShowTitle();
+            yield return Wait(1.5f);
+            // first press shows the focus ring on START SHIFT, the second moves to DUTY ROSTER, A opens it
+            yield return Pad("down down a");
+            Check("title -> roster with d-pad + A", roster.Visible && Controls.Pad && UiNav.Driving);
+            Shot("pad_roster");
+            yield return Pad("b");
+            Check("B goes back to the title", title.Visible && !roster.Visible);
+
+            root.BeginShift(1);
+            var runner = root.Runner;
+            runner.AutoBot = null;
+            yield return Wait(2.5f);
+            float zoomBefore = runner.Rig.Zoom;
+            yield return Pad("up hold:rt");
+            Check("in-shift floor cursor follows the d-pad", runner.CursorMode && runner.CursorSlot >= 1);
+            Check("RT zooms in", runner.Rig.Zoom > zoomBefore + 0.2f);
+            yield return Pad("a");
+            Check("A sends the car to the cursor floor", runner.Sim.Car.Target == runner.Sim.B.At(runner.CursorSlot) || runner.Sim.Car.DockedSlot == runner.CursorSlot);
+            yield return Wait(4f);
+            yield return Pad("y rb");
+            Shot("pad_play");
+            yield return Pad("start");
+            Check("Start pauses", pause.Visible && runner.Paused);
+            yield return Pad("start");
+            Check("Start resumes", !pause.Visible && !runner.Paused);
+            yield return Pad("hold:lt hold:lt");
+            Check("LT zooms back out", runner.Rig.Zoom < 0.05f);
+            root.QuitShift();
+            yield return Wait(1f);
         }
 
         static IEnumerator Wait(float seconds)

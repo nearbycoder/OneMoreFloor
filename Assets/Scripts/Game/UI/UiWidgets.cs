@@ -13,7 +13,10 @@ namespace OneMoreFloor
         public Image Bg;
         public TextMeshProUGUI Label;
         public bool Interactable = true;
+        /// <summary>The screen's default action (glows while the mouse is in use; Enter runs it).</summary>
         public bool Focused;
+        /// <summary>Set by <see cref="UiNav"/> when the gamepad/keys focus ring is on this button.</summary>
+        public bool NavFocus;
         Image sheen, glow;
         Color baseCol = Color.white, hoverCol = Color.white;
         Color labelCol;
@@ -102,7 +105,8 @@ namespace OneMoreFloor
             t += dt;
             punch = Mathf.Max(0f, punch - dt * 4f);
             hoverShown = Mathf.Lerp(hoverShown, Interactable ? hover : 0f, Ease.Damp(16f, dt));
-            focusShown = Mathf.Lerp(focusShown, Focused && Interactable ? 1f : 0f, Ease.Damp(8f, dt));
+            bool focus = UiNav.Driving ? NavFocus : Focused;
+            focusShown = Mathf.Lerp(focusShown, focus && Interactable ? (UiNav.Driving ? 1.6f : 1f) : 0f, Ease.Damp(UiNav.Driving ? 16f : 8f, dt));
             float h = Mathf.Max(hoverShown, focusShown * 0.6f);
             var target = Vector3.one * (1f + 0.035f * h - 0.04f * press + 0.06f * Mathf.Sin(punch * Mathf.PI));
             transform.localScale = Vector3.Lerp(transform.localScale, target, Ease.Damp(18f, dt));
@@ -118,6 +122,8 @@ namespace OneMoreFloor
     {
         public Action<float> Changed;
         public float Value;
+        public bool NavFocus;
+        Image focusGlow;
         RectTransform track;
         Image fill, knob;
         TextMeshProUGUI readout;
@@ -127,6 +133,7 @@ namespace OneMoreFloor
         public static UiSlider Create(Transform parent, string label, Vector2 pos, float value, Action<float> changed)
         {
             var root = UiKit.Rect("Slider_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 70));
+            var focusGlow = UiKit.Image("Focus", root, Deco.Shadow, new Color(1f, 0.78f, 0.35f, 0f), new Vector2(800, 110));
             Deco.Label("Label", root, label, 26, new Vector2(240, 50), new Vector2(-240, 0), TextAlignmentOptions.Left, Palette.Cream);
             var bg = UiKit.Image("Track", root, Deco.Recess, Color.white, new Vector2(W, 20), new Vector2(80, 0), true);
             var hit = UiKit.Image("Hit", bg.transform, null, new Color(0, 0, 0, 0), new Vector2(W + 40, 60), Vector2.zero, true);
@@ -140,6 +147,7 @@ namespace OneMoreFloor
             s.readout = UiKit.Text("Value", root, "", 24, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(80, 40), new Vector2(330, 0));
             hit.transform.SetAsFirstSibling();
             s.Changed = changed;
+            s.focusGlow = focusGlow;
             s.Set(value, false);
             return s;
         }
@@ -166,8 +174,10 @@ namespace OneMoreFloor
 
         void Update()
         {
-            float s = Mathf.Lerp(knob.rectTransform.localScale.x, 1f + 0.12f * hover, Ease.Damp(14f, UiTime.Dt));
+            float f = NavFocus ? 1f : 0f;
+            float s = Mathf.Lerp(knob.rectTransform.localScale.x, 1f + 0.12f * Mathf.Max(hover, f), Ease.Damp(14f, UiTime.Dt));
             knob.rectTransform.localScale = Vector3.one * s;
+            focusGlow.color = Color.Lerp(focusGlow.color, new Color(1f, 0.78f, 0.35f, 0.32f * f), Ease.Damp(14f, UiTime.Dt));
         }
     }
 
@@ -179,7 +189,8 @@ namespace OneMoreFloor
         public void OnPointerExit(PointerEventData e) => hover = 0f;
         public Action<bool> Changed;
         public bool On;
-        Image fill, knob;
+        public bool NavFocus;
+        Image fill, knob, focusGlow;
         TextMeshProUGUI state;
         float shown;
 
@@ -189,6 +200,8 @@ namespace OneMoreFloor
             Deco.Label("Label", root, label, 26, new Vector2(480, 50), new Vector2(-120, 0), TextAlignmentOptions.Left, Palette.Cream);
             var hit = root.gameObject.AddComponent<Image>();
             hit.color = new Color(0, 0, 0, 0);
+            var focusGlow = UiKit.Image("Focus", root, Deco.Shadow, new Color(1f, 0.78f, 0.35f, 0f), new Vector2(800, 104));
+            focusGlow.transform.SetAsFirstSibling();
             var bg = UiKit.Image("Switch", root, Deco.Recess, Color.white, new Vector2(104, 46), new Vector2(278, 0));
             var t = root.gameObject.AddComponent<UiToggle>();
             t.fill = UiKit.Image("Fill", bg.transform, Deco.GoldPill, Color.white, new Vector2(96, 38));
@@ -196,6 +209,7 @@ namespace OneMoreFloor
             UiKit.Image("KnobShadow", t.knob.transform, Deco.Shadow, new Color(1, 1, 1, 0.8f), new Vector2(64, 64), new Vector2(0, -5)).transform.SetAsFirstSibling();
             t.state = UiKit.Text("State", root, "", 20, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(80, 40), new Vector2(180, 0));
             t.Changed = changed;
+            t.focusGlow = focusGlow;
             t.Set(on, false);
             t.shown = on ? 1f : 0f;
             t.Apply();
@@ -221,8 +235,10 @@ namespace OneMoreFloor
         {
             shown = Mathf.MoveTowards(shown, On ? 1f : 0f, UiTime.Dt * 6f);
             Apply();
-            float s = Mathf.Lerp(knob.rectTransform.localScale.x, 1f + 0.12f * hover, Ease.Damp(14f, UiTime.Dt));
+            float f = NavFocus ? 1f : 0f;
+            float s = Mathf.Lerp(knob.rectTransform.localScale.x, 1f + 0.12f * Mathf.Max(hover, f), Ease.Damp(14f, UiTime.Dt));
             knob.rectTransform.localScale = Vector3.one * s;
+            focusGlow.color = Color.Lerp(focusGlow.color, new Color(1f, 0.78f, 0.35f, 0.32f * f), Ease.Damp(14f, UiTime.Dt));
         }
 
         public void OnPointerClick(PointerEventData e)
@@ -232,9 +248,11 @@ namespace OneMoreFloor
         }
     }
 
-    /// <summary>Base for full-screen menus: fade + slide in/out, Enter/Escape shortcuts.</summary>
+    /// <summary>Base for full-screen menus: fade + slide in/out, Escape shortcut (Enter and pad via UiNav).</summary>
     public abstract class UiScreen : MonoBehaviour
     {
+        /// <summary>Every screen, for <see cref="UiNav"/>.</summary>
+        public static readonly System.Collections.Generic.List<UiScreen> All = new System.Collections.Generic.List<UiScreen>();
         protected RectTransform Root;
         protected CanvasGroup Group;
         float show, target;
@@ -244,6 +262,7 @@ namespace OneMoreFloor
         protected void Init(string name)
         {
             Root = (RectTransform)transform;
+            if (!All.Contains(this)) All.Add(this);
             Group = gameObject.AddComponent<CanvasGroup>();
             Group.alpha = 0f;
             Group.blocksRaycasts = false;
@@ -272,10 +291,10 @@ namespace OneMoreFloor
             Root.anchoredPosition = new Vector2(0, -30f * (1f - Ease.OutCubic(show)));
             if (show <= 0f && target <= 0f) { gameObject.SetActive(false); return; }
             if (target < 0.5f) return;
+            // Enter / A and B are handled by UiNav (it knows about the focus ring)
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
-            if ((kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame) && Primary != null) { AudioDirector.Instance?.Sfx("ui_click", 0.8f); Primary(); }
-            else if (kb.escapeKey.wasPressedThisFrame && Back != null) { AudioDirector.Instance?.Sfx("ui_back", 0.8f); Back(); }
+            if (kb.escapeKey.wasPressedThisFrame && Back != null) { AudioDirector.Instance?.Sfx("ui_back", 0.8f); Back(); }
         }
 
         protected static Image Dim(Transform parent, float alpha = 0.55f) => Deco.Dim(parent, alpha);

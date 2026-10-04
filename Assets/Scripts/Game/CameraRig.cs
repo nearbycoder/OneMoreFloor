@@ -2,7 +2,10 @@ using UnityEngine;
 
 namespace OneMoreFloor
 {
-    /// <summary>Frames the tower with the panel on the right, adds shake and a little idle drift.</summary>
+    /// <summary>
+    /// Frames the tower with the panel on the right, adds shake and a little idle drift. During play the
+    /// player can zoom in (scroll wheel, Z, gamepad triggers) to a close-up that follows the car.
+    /// </summary>
     public sealed class CameraRig : MonoBehaviour
     {
         public Camera Cam;
@@ -29,26 +32,45 @@ namespace OneMoreFloor
         Quaternion targetRot;
         bool hasFrame;
 
+        /// <summary>0 = the whole tower, 1 = the closest view (about five floors), following the car.</summary>
+        public float Zoom { get => zoomTarget; set => zoomTarget = Mathf.Clamp01(value); }
+        /// <summary>Zooming only applies during play; menus always show the whole tower.</summary>
+        public bool AllowZoom;
+        /// <summary>World height the close-up keeps in view (the car).</summary>
+        public float FollowY;
+        public float ZoomShown => zoomShown;
+        float zoomTarget, zoomShown;
+        float frameBottom, frameTop;
+        /// <summary>World height of the close-up view: about five floors plus margins.</summary>
+        public const float CloseHeight = 16.5f;
+
         /// <summary>Fit the whole tower (street to roof) in the middle of the screen, seen from a little right and above.</summary>
         public void Frame(BuildingView b)
         {
             framed = b;
             framedAspect = Cam.aspect;
-            float bottom = -2.7f;
-            float top = b.TopY + 4.5f;
-            float h = top - bottom;
-            float cy = (top + bottom) * 0.5f;
+            frameBottom = -2.7f;
+            frameTop = b.TopY + 4.5f;
+            Retarget();
+            if (!hasFrame) { transform.position = targetPos; transform.rotation = targetRot; framedPos = targetPos; framedRot = targetRot; hasFrame = true; }
+        }
+
+        /// <summary>Where the camera should be for the current framing, zoom and follow point.</summary>
+        void Retarget()
+        {
+            float full = frameTop - frameBottom;
+            float k = AllowZoom ? Ease.InOutCubic(zoomShown) : 0f;
+            float h = Mathf.Lerp(full, Mathf.Min(full, CloseHeight), k);
+            float cy = Mathf.Clamp(FollowY, frameBottom + h * 0.5f, frameTop - h * 0.5f);
+            if (k <= 0f) cy = (frameTop + frameBottom) * 0.5f;
             float fov = Cam.fieldOfView * Mathf.Deg2Rad;
             float dist = h * 0.5f / Mathf.Tan(fov * 0.5f) * 1.06f;
-            baseRot = Quaternion.Euler(Pitch, -Yaw, 0f);
+            targetRot = Quaternion.Euler(Pitch, -Yaw, 0f);
             var center = new Vector3(0.2f, cy, 0.4f);
-            basePos = center - baseRot * Vector3.forward * dist;
+            targetPos = center - targetRot * Vector3.forward * dist;
             // nudge so the tower sits where the layout wants it (between HUD and panel, or right of the menu)
             float visibleW = h * 1.06f * Cam.aspect;
-            basePos += baseRot * Vector3.right * (visibleW * (0.5f - ScreenX));
-            targetPos = basePos;
-            targetRot = baseRot;
-            if (!hasFrame) { transform.position = basePos; transform.rotation = baseRot; framedPos = basePos; framedRot = baseRot; hasFrame = true; }
+            targetPos += targetRot * Vector3.right * (visibleW * (0.5f - ScreenX));
         }
 
         Vector3 framedPos;
@@ -70,7 +92,9 @@ namespace OneMoreFloor
         {
             if (framed && (Mathf.Abs(Cam.aspect - framedAspect) > 0.01f || ScreenX != lastScreenX)) { lastScreenX = ScreenX; Frame(framed); }
             float dt = UiTime.Dt;
-            // glide between framings (menus <-> play)
+            zoomShown = Mathf.MoveTowards(zoomShown, AllowZoom ? zoomTarget : 0f, dt * 2.2f);
+            if (framed) Retarget();
+            // glide between framings (menus <-> play) and follow the car when zoomed
             framedPos = Vector3.Lerp(framedPos, targetPos, Ease.Damp(3.5f, dt));
             framedRot = Quaternion.Slerp(framedRot, targetRot, Ease.Damp(3.5f, dt));
             basePos = framedPos;

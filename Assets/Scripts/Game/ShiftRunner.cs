@@ -27,11 +27,18 @@ namespace OneMoreFloor
         public float TimeScale = 1f;
         public System.Action<ShiftSim> Ended;
         public System.Action<SimEvent> OnEvent;
+        /// <summary>The local playtest log for the player's shifts (see <see cref="Telemetry"/>).</summary>
+        public readonly Telemetry Log = new Telemetry();
         /// <summary>When set, the bot plays (autopilot, attract mode, captures).</summary>
         [System.NonSerialized] public Bot AutoBot;
 
         public FloorId? HoverFloor { get; private set; }
         public int HoverPid { get; private set; } = -1;
+        /// <summary>Gamepad / arrow-key play: the selected floor slot (-1 = none) and selected guest (-1 = none).</summary>
+        public int CursorSlot { get; private set; } = -1;
+        public int CursorPid { get; private set; } = -1;
+        /// <summary>The floor and guest cursors are in charge (the player is on a gamepad or the arrow keys).</summary>
+        public bool CursorMode => Controls.KeyNav && !Attract;
         /// <summary>Fired for each command the AutoBot issues (action, pid or slot).</summary>
         public event System.Action<Bot.Action, int> BotActed;
 
@@ -48,6 +55,7 @@ namespace OneMoreFloor
             foreach (var v in views.Values) if (v) Destroy(v.gameObject);
             views.Clear();
             Sim = new ShiftSim(def, seed);
+            if (!Attract) Log.Begin(Sim, seed);
             Building.Setup(Sim.B);
             Car.Setup(Building.PulleyY - 0.82f);
             Car.Pulley = Building.Pulley;
@@ -58,6 +66,7 @@ namespace OneMoreFloor
             endTimer = -1f;
             endFired = false;
             Paused = false;
+            CursorSlot = CursorPid = -1;
             Drain();
             Car.Sync(Sim, 0.016f);
             SyncViews(1f);
@@ -86,8 +95,10 @@ namespace OneMoreFloor
                 if (acc > Step * 4f) acc = Step * 4f; // never spiral after a hitch
             }
             if (InputEnabled && !Paused && !Attract) HandleInput();
+            if (!Paused && !Attract && AutoBot == null) Log.Tick(Rig.Zoom);
             SyncViews(dt);
             Car.Sync(Sim, Paused ? 0f : dt);
+            UpdateFollow();
             Hud.Tick(dt);
             if (Mathf.Abs(Sim.Car.Vel) > 0.1f) lastCarDir = Mathf.Sign(Sim.Car.Vel);
             if (Audio != null && !Attract)
@@ -96,7 +107,7 @@ namespace OneMoreFloor
                 if (!Sim.Def.Endless && Sim.ClockRunning && !Sim.Ended && Sim.TimeLeft <= 10.5f)
                 {
                     int sec = Mathf.CeilToInt(Sim.TimeLeft);
-                    if (sec != lastTickSecond) { lastTickSecond = sec; Audio.Sfx("tick", 0.7f, sec <= 3 ? 1.25f : 1f); }
+                    if (sec != lastTickSecond) { lastTickSecond = sec; Audio.Sfx("tick", 1f, sec <= 3 ? 1.25f : 1f); }
                 }
             }
 
@@ -128,10 +139,16 @@ namespace OneMoreFloor
         {
             if (Sim == null || Sim.Ended || Paused) return false;
             if (!Sim.SendTo(slot)) return false;
+            if (!Attract && AutoBot == null) Log.Action("send");
             Hud.Panel.Press(slot);
-            Audio?.Sfx("btn_press", 0.8f, 1f + slot * 0.02f, 0.6f);
+            Audio?.Sfx("btn_press", 1f, 1f + slot * 0.02f, 0.6f);
             return true;
         }
+
+        // player commands (logged for the playtest log)
+        void PlayerBoard(int pid) { if (Sim.Board(pid) == BoardResult.Ok) Log.Action("board"); }
+        void PlayerBoardAll() { if (Sim.BoardAll() > 0) Log.Action("boardall"); }
+        void PlayerDrop(int pid) { if (Sim.DropHere(pid)) Log.Action("drop"); }
 
         AudioDirector Audio => AudioDirector.Instance;
         int lastTickSecond = -1;
@@ -145,6 +162,7 @@ namespace OneMoreFloor
         void HandleInput()
         {
             var kb = Keyboard.current;
+            var gp = Gamepad.current;
             if (kb != null)
             {
                 for (int i = 0; i < 9; i++)
@@ -153,8 +171,13 @@ namespace OneMoreFloor
                     var pad = kb[Key.Numpad1 + i];
                     if ((key != null && key.wasPressedThisFrame) || (pad != null && pad.wasPressedThisFrame)) RequestSend(i, true);
                 }
-                if (kb.spaceKey.wasPressedThisFrame) Sim.BoardAll();
+                if (kb.spaceKey.wasPressedThisFrame) PlayerBoardAll();
             }
+            if (gp != null && gp.buttonNorth.wasPressedThisFrame) PlayerBoardAll();
+            HandleZoom(kb, gp);
+
+            if (CursorMode) { HandleCursor(kb, gp); return; }
+            CursorSlot = CursorPid = -1;
 
             var mouse = Mouse.current;
             HoverFloor = null;
@@ -183,14 +206,14 @@ namespace OneMoreFloor
             // right-click a rider while docked: let them off here (deliberate, so it can't happen by accident)
             if (mouse.rightButton.wasPressedThisFrame && hitP != null && hitP.P.State == PState.Riding && Sim.Car.IsOpen)
             {
-                Sim.DropHere(hitP.P.Id);
+                PlayerDrop(hitP.P.Id);
                 return;
             }
             if (!mouse.leftButton.wasPressedThisFrame) return;
             if (hitP != null)
             {
                 var p = hitP.P;
-                if (p.State == PState.Waiting && Sim.Car.IsOpen && p.At == Sim.DockedFloor) Sim.Board(p.Id);
+                if (p.State == PState.Waiting && Sim.Car.IsOpen && p.At == Sim.DockedFloor) PlayerBoard(p.Id);
                 else if (p.State == PState.Waiting) RequestSend(Sim.B.SlotOf(p.At), false);
                 else if (p.State == PState.Riding && Sim.B.Has(p.Dest)) RequestSend(Sim.B.SlotOf(p.Dest), false);
             }
@@ -199,6 +222,107 @@ namespace OneMoreFloor
                 int slot = Sim.B.SlotOf(hitF.Id);
                 if (slot >= 0) RequestSend(slot, false);
             }
+        }
+
+        /// <summary>Scroll wheel, Z (toggle) and -/= on the keyboard, triggers or the right stick on a pad.</summary>
+        void HandleZoom(Keyboard kb, Gamepad gp)
+        {
+            float z = Rig.Zoom;
+            var mouse = Mouse.current;
+            bool overUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            if (mouse != null && !overUi)
+            {
+                float wheel = mouse.scroll.ReadValue().y;
+                if (Mathf.Abs(wheel) > 0.01f) z += Mathf.Sign(wheel) * Mathf.Clamp(Mathf.Abs(wheel) / 120f, 0.08f, 0.34f);
+            }
+            if (kb != null)
+            {
+                if (kb.zKey.wasPressedThisFrame) z = z < 0.5f ? 1f : 0f;
+                if (kb.equalsKey.wasPressedThisFrame || kb.numpadPlusKey.wasPressedThisFrame) z += 0.34f;
+                if (kb.minusKey.wasPressedThisFrame || kb.numpadMinusKey.wasPressedThisFrame) z -= 0.34f;
+            }
+            if (gp != null)
+            {
+                float axis = gp.rightTrigger.ReadValue() - gp.leftTrigger.ReadValue() + gp.rightStick.ReadValue().y;
+                if (Mathf.Abs(axis) > 0.15f) z += axis * Time.unscaledDeltaTime * 1.6f;
+            }
+            Rig.Zoom = z;
+        }
+
+        /// <summary>The close-up follows the car, but keeps the gamepad's floor cursor in view too.</summary>
+        void UpdateFollow()
+        {
+            float y = Car.transform.position.y + Layout.CarHeight * 0.5f;
+            if (CursorMode && CursorSlot >= 0 && CursorSlot < Sim.B.Count)
+            {
+                float cy = Building[Sim.B.At(CursorSlot)].transform.position.y + Layout.SlotHeight * 0.5f;
+                float reach = CameraRig.CloseHeight * 0.5f - Layout.SlotHeight;
+                y = Mathf.Clamp(y, cy - reach, cy + reach);
+            }
+            Rig.FollowY = y;
+        }
+
+        /// <summary>The guests the guest cursor can pick: waiting on the cursor's floor, then riders.</summary>
+        readonly List<Passenger> cursorGuests = new List<Passenger>();
+
+        void CollectCursorGuests()
+        {
+            cursorGuests.Clear();
+            if (CursorSlot >= 0 && CursorSlot < Sim.B.Count) cursorGuests.AddRange(Sim.Waiting[(int)Sim.B.At(CursorSlot)]);
+            cursorGuests.AddRange(Sim.Car.Riders);
+        }
+
+        /// <summary>
+        /// Gamepad / arrow keys: up/down picks a floor, left/right (or LB/RB, Q/E) picks a guest there or in the car.
+        /// A / Enter: with a guest picked, let them in (or go and get them); otherwise send the car (or let everyone in
+        /// when it's already open there). X / F: let the picked rider off here. Y / Space: let everyone in. B: unpick.
+        /// </summary>
+        void HandleCursor(Keyboard kb, Gamepad gp)
+        {
+            int count = Sim.B.Count;
+            if (CursorSlot < 0 || CursorSlot >= count) CursorSlot = Mathf.Clamp(Mathf.RoundToInt(Sim.Car.Pos), 0, count - 1);
+            if (Controls.NavY != 0)
+            {
+                CursorSlot = Mathf.Clamp(CursorSlot + Controls.NavY, 0, count - 1);
+                CursorPid = -1;
+                Audio?.Sfx("ui_hover", 0.35f, 0.9f + CursorSlot * 0.04f, 0f, 0.02f, 0.03f);
+            }
+            CollectCursorGuests();
+            int idx = cursorGuests.FindIndex(g => g.Id == CursorPid);
+            if (idx < 0) CursorPid = -1;
+            int step = Controls.NavX;
+            if (gp != null) { if (gp.rightShoulder.wasPressedThisFrame) step = 1; if (gp.leftShoulder.wasPressedThisFrame) step = -1; }
+            if (kb != null) { if (kb.eKey.wasPressedThisFrame) step = 1; if (kb.qKey.wasPressedThisFrame) step = -1; }
+            if (step != 0 && cursorGuests.Count > 0)
+            {
+                idx = idx < 0 ? (step > 0 ? 0 : cursorGuests.Count - 1) : (idx + step + cursorGuests.Count) % cursorGuests.Count;
+                CursorPid = cursorGuests[idx].Id;
+                Audio?.Sfx("ui_hover", 0.4f, 1.15f, 0f, 0.02f, 0.03f);
+            }
+            if ((gp != null && gp.buttonEast.wasPressedThisFrame) || (kb != null && kb.backspaceKey.wasPressedThisFrame)) CursorPid = -1;
+
+            var guest = CursorPid >= 0 ? Sim.Find(CursorPid) : null;
+            HoverFloor = guest == null ? Sim.B.At(CursorSlot) : (FloorId?)null;
+            SetHover(CursorPid);
+
+            bool confirm = Controls.Submit;
+            bool letOff = (gp != null && gp.buttonWest.wasPressedThisFrame) || (kb != null && kb.fKey.wasPressedThisFrame);
+            if (letOff && guest != null && guest.State == PState.Riding && Sim.Car.IsOpen)
+            {
+                PlayerDrop(guest.Id);
+                return;
+            }
+            if (!confirm) return;
+            if (guest != null)
+            {
+                if (guest.State == PState.Waiting && Sim.Car.IsOpen && guest.At == Sim.DockedFloor) PlayerBoard(guest.Id);
+                else if (guest.State == PState.Waiting) RequestSend(Sim.B.SlotOf(guest.At), false);
+                else if (guest.State == PState.Riding && Sim.B.Has(guest.Dest)) RequestSend(Sim.B.SlotOf(guest.Dest), false);
+                return;
+            }
+            var floor = Sim.B.At(CursorSlot);
+            if (Sim.Car.IsOpen && floor == Sim.DockedFloor) PlayerBoardAll();
+            else RequestSend(CursorSlot, false);
         }
 
         /// <summary>Scripted hover for recordings (pid -1 clears). Only meaningful with InputEnabled off.</summary>
@@ -370,7 +494,7 @@ namespace OneMoreFloor
                     a.Sfx("door_close", 0.55f);
                     a.SfxLater("car_start", 0.18f, 0.5f);
                     break;
-                case Ev.Retarget: a.Sfx("btn_press", 0.5f, 1.1f); break;
+                case Ev.Retarget: a.Sfx("btn_press", 0.7f, 1.1f); break;
                 case Ev.QuickStop:
                     a.Sfx("ding_quick", 0.45f, DingPitch(e.Slot));
                     a.Sfx("door_open", 0.3f, 1.25f);
@@ -404,7 +528,7 @@ namespace OneMoreFloor
                     float pan = PanOfPassenger(e.Pid);
                     a.Sfx("coin", 0.7f, 1f + 0.12f * e.Aux, pan);
                     a.SfxLater("exit_cheer", 0.08f, 0.45f, 1f + 0.05f * e.Aux, pan);
-                    a.Sfx("streak_" + Mathf.Clamp(Sim.Streak - 1, 0, 11), 0.35f, 1f, 0f, 0f, 0f);
+                    a.Sfx("streak_" + Mathf.Clamp(Sim.Streak - 1, 0, 11), 0.5f, 1f, 0f, 0f, 0f);
                     if (p != null) a.SfxLater("voice_" + p.Kind.ToString().ToLowerInvariant() + "_" + Random.Range(0, 5), 0.15f, 0.45f, 1.08f, pan);
                     if (e.Aux >= 1 && e.Aux <= 3) a.SfxLater("fanfare_" + (e.Aux + 1), 0.1f, 0.6f);
                     var flags = (DeliveryFlags)int.Parse(e.Text ?? "0");
@@ -450,7 +574,7 @@ namespace OneMoreFloor
         void Handle(SimEvent e)
         {
             OnEvent?.Invoke(e);
-            if (!Attract) PlaySound(e);
+            if (!Attract) { PlaySound(e); Log.SimEvent(e); }
             PlayFx(e);
             switch (e.Type)
             {

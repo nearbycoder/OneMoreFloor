@@ -320,7 +320,9 @@ namespace OneMoreFloor
                 kindDisc.sprite = bell ?? UiKit.Circle;
                 kindDisc.color = bell != null ? Color.white : Palette.Bad;
             }
-            newRule.text = def.NewText;
+            newRule.text = def.Id == "monday" && Controls.Pad ? "Press A to let a guest in, then pick their floor with up/down and press A."
+                         : def.Id == "monday" && Controls.KeyNav ? "Press Enter to let a guest in, then pick their floor with Up/Down and press Enter."
+                         : def.NewText;
             foreach (Transform c in goalsRoot) Destroy(c.gameObject);
             if (def.Endless)
             {

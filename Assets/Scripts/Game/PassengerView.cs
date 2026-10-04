@@ -14,10 +14,9 @@ namespace OneMoreFloor
         public Transform Head;
         Transform[] leaves;
         Transform cape, balloons, mirror, propeller;
-        Transform legL, legR, armL, armR;
-        float walk, stride;
+        CharacterRig rig;
+        float walk, stride, tapW, spin;
         Vector3[] leafAxes;
-        Quaternion[] leafBase;
         float anchorY = 2.3f;
         Renderer[] tintables;
         BoxCollider click;
@@ -62,32 +61,30 @@ namespace OneMoreFloor
             if (model != null)
             {
                 model.transform.SetParent(Visual, false);
-                Head = model.transform.Find("Head") ?? model.transform;
-                cape = model.transform.Find("Cape");
-                balloons = model.transform.Find("Balloons");
-                mirror = model.transform.Find("Mirror");
-                propeller = model.transform.Find("Propeller");
-                legL = model.transform.Find("LegL");
-                legR = model.transform.Find("LegR");
-                armL = model.transform.Find("ArmL");
-                armR = model.transform.Find("ArmR");
-                var leafRoot = model.transform.Find("Leaves");
-                if (leafRoot)
+                rig = CharacterRig.Attach(model, "Char_" + P.Kind, seed / 10f);
+                if (rig != null)
                 {
-                    leaves = new Transform[leafRoot.childCount];
-                    leafAxes = new Vector3[leaves.Length];
-                    leafBase = new Quaternion[leaves.Length];
-                    for (int i = 0; i < leaves.Length; i++)
+                    Head = rig.Bone("Head") ?? model.transform;
+                    cape = rig.Bone("Cape");
+                    balloons = rig.Bone("Balloons");
+                    mirror = rig.Bone("Mirror");
+                    propeller = rig.Bone("Propeller");
+                    var list = new System.Collections.Generic.List<Transform>();
+                    for (int i = 0; rig.Bone("Leaf" + i) is Transform leaf; i++) list.Add(leaf);
+                    if (list.Count > 0)
                     {
-                        leaves[i] = leafRoot.GetChild(i);
-                        leafBase[i] = leaves[i].localRotation;
-                        // droop axis: horizontal and perpendicular to the leaf's direction
-                        var r = leaves[i].GetComponent<Renderer>();
-                        var dir = r ? leafRoot.InverseTransformPoint(r.bounds.center) : Vector3.forward;
-                        dir.y = 0f;
-                        leafAxes[i] = Vector3.Cross(Vector3.up, dir.sqrMagnitude > 1e-4f ? dir.normalized : Vector3.forward);
+                        leaves = list.ToArray();
+                        leafAxes = new Vector3[leaves.Length];
+                        for (int i = 0; i < leaves.Length; i++)
+                        {
+                            // droop axis: horizontal and perpendicular to the leaf's direction (model space)
+                            var dir = rig.ModelDir(leaves[i]);
+                            dir.y = 0f;
+                            leafAxes[i] = Vector3.Cross(Vector3.up, dir.sqrMagnitude > 1e-4f ? dir.normalized : Vector3.forward);
+                        }
                     }
                 }
+                else Head = model.transform;
                 ApplyVariant(model);
             }
             else BuildGreybox();
@@ -436,15 +433,53 @@ namespace OneMoreFloor
             var look = faceDir.sqrMagnitude > 0.001f ? Quaternion.LookRotation(faceDir) : Quaternion.identity;
             float headShake = Mathf.Sin(time * 38f) * 25f * shake;
             transform.localRotation = Quaternion.Slerp(transform.localRotation, look, Ease.Damp(9f, dt));
-            if (Head) Head.localRotation = Quaternion.Euler(0, headShake, 0);
 
             float stretch = 1f + sq + perk * 0.12f * Mathf.Sin(perk * Mathf.PI * 3f);
             Visual.localScale = new Vector3(pop * breathe / Mathf.Sqrt(Mathf.Max(0.2f, stretch)), pop * stretch, pop * breathe / Mathf.Sqrt(Mathf.Max(0.2f, stretch)));
             Visual.localPosition = new Vector3(Mathf.Sin(time * 31f) * 0.02f * angry, bob, 0f);
 
-            AnimateLimbs(dt, time, walkTarget, cadence, tuck, impatient && mode == Mode.Home);
+            Animate(dt, walkTarget, cadence, tuck, impatient && mode == Mode.Home);
+            this.headShake = headShake;
+            this.patience = patience;
+        }
 
-            // kind-specific secondary motion
+        float headShake, patience = 1f;
+
+        /// <summary>Blend the rig's clips from what the guest is doing, in priority order.</summary>
+        void Animate(float dt, float walkTarget, float cadence, float tuck, bool tapping)
+        {
+            walk = Mathf.MoveTowards(walk, walkTarget, dt * 6f);
+            stride += dt * cadence * Mathf.Max(walk, 0.0001f);
+            tapW = Mathf.MoveTowards(tapW, tapping ? 1f : 0f, dt * 3f);
+            if (rig == null) return;
+            float cheer = Ease.OutCubic(Mathf.Clamp01(perk * 1.6f));
+            float mad = mode == Mode.StormOff ? 0f : Mathf.Clamp01(angry * 1.5f);
+            float left = 1f;
+            float Take(float w) { float x = left * Mathf.Clamp01(w); left -= x; return x; }
+            rig.Set("Tuck", Take(tuck));
+            rig.Set("Cheer", Take(cheer));
+            rig.Set("Fume", Take(mad));
+            string gait = mode == Mode.StormOff ? "Stomp" : "Walk";
+            rig.Set(gait, Take(walk));
+            rig.Speed(gait, cadence / (mode == Mode.StormOff ? 17.5f : 12.6f));
+            rig.Set("Tap", Take(tapW));
+            rig.Set("Idle", left);
+            rig.Apply();
+        }
+
+        /// <summary>Secondary motion on top of the animated pose: head shakes, leaves, cape, balloons, propeller.</summary>
+        void LateUpdate()
+        {
+            float time = Time.time + seed;
+            float dt = Time.deltaTime;
+            bool impatient = P != null && P.State != PState.Done && patience < 0.35f;
+            spin += (impatient ? 1400f : 520f) * dt;
+            if (rig == null)
+            {
+                if (Head) Head.localRotation = Quaternion.Euler(0, headShake, 0);
+                return;
+            }
+            rig.Turn(Head, Quaternion.Euler(0, headShake, 0));
             if (leaves != null)
             {
                 float droop = P != null && P.Kind == Kind.Houseplant ? Mathf.Lerp(40f, -4f, patience) : 0f;
@@ -452,39 +487,13 @@ namespace OneMoreFloor
                 for (int i = 0; i < leaves.Length; i++)
                 {
                     float sway = Mathf.Sin(time * 2.3f + i) * 4f + perk * 16f * Mathf.Sin(time * 20f + i);
-                    if (leafAxes != null)
-                        leaves[i].localRotation = Quaternion.AngleAxis(droop + sway, leafAxes[i]) * leafBase[i];
-                    else
-                        leaves[i].localRotation = Quaternion.Euler(-28f - 10f * (i % 2) + droop + sway, i * 60f, 0);
+                    rig.Turn(leaves[i], Quaternion.AngleAxis(droop + sway, leafAxes[i]));
                 }
             }
-            if (propeller) propeller.localRotation *= Quaternion.Euler(0, (impatient ? 1400f : 520f) * dt, 0);
-            if (mirror) mirror.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(time * 1.4f) * 1.5f + (mode == Mode.Hop ? 8f : 0f));
-            if (cape) cape.localRotation = Quaternion.Euler(Mathf.Sin(time * 2f) * 4f + (mode == Mode.Hop ? 25f : 0f) + angry * 20f, 0, 0);
-            if (balloons) balloons.localRotation = Quaternion.Euler(Mathf.Sin(time * 1.7f) * 7f, 0, Mathf.Sin(time * 1.3f) * 9f);
-        }
-
-        /// <summary>
-        /// Legs and arms are separate pivoted parts (hip / shoulder). Positive X tips a hanging limb backward,
-        /// positive Z swings the left arm (+x side) outward.
-        /// </summary>
-        void AnimateLimbs(float dt, float time, float walkTarget, float cadence, float tuck, bool tapping)
-        {
-            if (!legL && !armL && !armR) return;
-            walk = Mathf.MoveTowards(walk, walkTarget, dt * 6f);
-            stride += dt * cadence * Mathf.Max(walk, 0.0001f);
-            float swing = Mathf.Sin(stride) * 34f * walk;
-            float tap = tapping ? Mathf.Max(0f, Mathf.Sin(time * 11f)) * 16f : 0f;
-            if (legL) legL.localRotation = Quaternion.Euler(swing - 34f * tuck, 0, 0);
-            if (legR) legR.localRotation = Quaternion.Euler(-swing - 30f * tuck - tap, 0, 0);
-
-            float cheer = Ease.OutCubic(Mathf.Clamp01(perk * 1.6f));
-            float mad = Mathf.Clamp01(angry * 1.5f);
-            float idle = 4f + Mathf.Sin(time * 2.1f) * 2f + (tapping ? 14f : 0f);
-            float outward = idle + 60f * tuck + 150f * cheer;
-            float fist = -75f * mad + Mathf.Sin(time * 30f) * 18f * mad;
-            if (armL) armL.localRotation = Quaternion.Euler(-swing * 0.8f + fist, 0, outward);
-            if (armR) armR.localRotation = Quaternion.Euler(swing * 0.8f + fist, 0, -outward);
+            if (propeller) rig.Turn(propeller, Quaternion.Euler(0, spin, 0));
+            if (mirror) rig.Turn(mirror, Quaternion.Euler(0, 0, Mathf.Sin(time * 1.4f) * 1.5f + (mode == Mode.Hop ? 8f : 0f)));
+            if (cape) rig.Turn(cape, Quaternion.Euler(Mathf.Sin(time * 2f) * 4f + (mode == Mode.Hop ? 25f : 0f) + angry * 20f, 0, 0));
+            if (balloons) rig.Turn(balloons, Quaternion.Euler(Mathf.Sin(time * 1.7f) * 7f, 0, Mathf.Sin(time * 1.3f) * 9f));
         }
     }
 }

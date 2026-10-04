@@ -56,21 +56,21 @@ namespace OneMoreFloor.Core
 
         static readonly KindDef[] kinds =
         {
-            new KindDef { Kind = Kind.Commuter,   Name = "Commuter",     Size = 1, Fare = 100, PatienceMul = 1.00f, RideDrain = 0.5f,
+            new KindDef { Kind = Kind.Commuter,   Name = "Commuter",     Size = 1, Fare = 100, PatienceMul = 1.00f, RideDrain = 0.4f,
                           Rule = "Just wants their floor." },
-            new KindDef { Kind = Kind.Houseplant, Name = "Houseplant",   Size = 1, Fare = 150, PatienceMul = 1.10f, RideDrain = 1.4f,
+            new KindDef { Kind = Kind.Houseplant, Name = "Houseplant",   Size = 1, Fare = 150, PatienceMul = 1.10f, RideDrain = 1.2f,
                           Rule = "Won't get off until the doors have opened on a sunny floor." },
-            new KindDef { Kind = Kind.Mirror,     Name = "Mirror Mover", Size = 2, Fare = 220, PatienceMul = 1.10f, RideDrain = 0.5f,
+            new KindDef { Kind = Kind.Mirror,     Name = "Mirror Mover", Size = 2, Fare = 220, PatienceMul = 1.10f, RideDrain = 0.4f,
                           Rule = "Takes two spaces. Won't ride with a vampire." },
-            new KindDef { Kind = Kind.Vampire,    Name = "Vampire",      Size = 1, Fare = 180, PatienceMul = 1.00f, RideDrain = 0.5f,
+            new KindDef { Kind = Kind.Vampire,    Name = "Vampire",      Size = 1, Fare = 180, PatienceMul = 1.00f, RideDrain = 0.4f,
                           Rule = "Won't ride with a mirror. Open the doors on sunlight and it's bats." },
             new KindDef { Kind = Kind.Courier,    Name = "Courier",      Size = 1, Fare = 260, PatienceMul = 1.40f, RideDrain = 0.4f,
                           Rule = "The floor on the label is leaving. Get there first." },
-            new KindDef { Kind = Kind.Swimmer,    Name = "Swimmer",      Size = 1, Fare = 160, PatienceMul = 1.25f, RideDrain = 0.5f,
+            new KindDef { Kind = Kind.Swimmer,    Name = "Swimmer",      Size = 1, Fare = 160, PatienceMul = 1.25f, RideDrain = 0.4f,
                           Rule = "Rescue them before the tide goes out. \"Lobby, please.\"" },
-            new KindDef { Kind = Kind.Kid,        Name = "Kid",          Size = 1, Fare = 120, PatienceMul = 0.95f, RideDrain = 0.6f,
+            new KindDef { Kind = Kind.Kid,        Name = "Kid",          Size = 1, Fare = 120, PatienceMul = 0.95f, RideDrain = 0.5f,
                           Rule = "Pressed every button: you'll stop at every floor on the way." },
-            new KindDef { Kind = Kind.Tycoon,     Name = "Tycoon",       Size = 1, Fare = 380, PatienceMul = 0.85f, RideDrain = 1.0f,
+            new KindDef { Kind = Kind.Tycoon,     Name = "Tycoon",       Size = 1, Fare = 380, PatienceMul = 0.85f, RideDrain = 0.85f,
                           Rule = "Express only. Any other stop first and you lose the tip." },
         };
 

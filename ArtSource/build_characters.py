@@ -18,6 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from omf_lib import *  # noqa: E402,F401,F403
+import char_rig  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 OUT = os.path.join(ROOT, "Assets", "Resources", "Models")
@@ -52,6 +53,11 @@ class Rig:
 
 
 ADULT = Rig()
+
+# filled in while a character is built, read by char_rig: limb part -> (root, mid, end joint) in Unity space,
+# and the arms that carry a prop (they stay down in poses like hands-on-hips)
+JOINTS = {}
+HELD = set()
 
 
 # ----------------------------------------------------------------------------- body parts
@@ -94,6 +100,7 @@ def leg(root, rig, side, trouser, shoe_mat, name=None, bare_below=None, skin=SKI
                     (x - 0.08, 0.07, -0.08), (x + 0.08, 0.07, -0.08), (x - 0.14, 0.03, 0.42), (x + 0.14, 0.03, 0.42)], 0.02), shoe_mat)
         m.add(box((x - 0.09, 0.0, -0.1), (x + 0.09, 0.15, 0.1), 0.05, seg=3), shoe_mat)
     m.build(origin=hip, parent=root)
+    JOINTS[m.name] = (hip, knee, ankle)
     return m
 
 
@@ -123,6 +130,9 @@ def arm(root, rig, side, sleeve, hand, swing=(0.0, 0.0), cuff=None, extra=None):
         extra(m, hc)
     m.add(sphere(sh, rig.arm_r * 1.25, seg=16, rings=10), sleeve)
     m.build(origin=sh, parent=root)
+    JOINTS[m.name] = (sh, el, wr)
+    if extra:
+        HELD.add(m.name)
     return m
 
 
@@ -666,19 +676,40 @@ def main():
     only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else list(BUILDERS)
     preview = argv[argv.index("--preview") + 1] if "--preview" in argv else None
     export = "--no-export" not in argv
+    poses = argv[argv.index("--pose-preview") + 1] if "--pose-preview" in argv else None
     for name in only:
         reset_scene()
+        JOINTS.clear()
+        HELD.clear()
         root = empty(f"Char_{name}")
         BUILDERS[name](root)
         tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in root.children_recursive if o.type == "MESH")
         print(f"built {name}: {tris} tris")
-        if export:
-            export_fbx(os.path.join(OUT, f"Char_{name}.fbx"), [root])
-            bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, "ArtSource", "blend", f"Char_{name}.blend"))
-            print("exported", name)
         if preview:
             setup_preview()
             render_views(os.path.join(preview, f"Char_{name}.png"), [root], size=(420, 560), views=((8, 200), (4, 140)), lens=60, margin=1.2)
+        arm, info = char_rig.rig(root, JOINTS, HELD, name)
+        acts = char_rig.clips(arm, info, name)
+        print(f"rigged {name}: {len(info['bones'])} bones, clips {[a.name for a in acts]}")
+        if poses:
+            pose_sheet(poses, name, root, arm, acts)
+        if export:
+            export_fbx(os.path.join(OUT, f"Char_{name}.fbx"), [root], anim=True)
+            bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, "ArtSource", "blend", f"Char_{name}.blend"))
+            print("exported", name)
+
+
+def pose_sheet(out_dir, name, root, arm, acts):
+    """Render each clip at a few moments (front three-quarter view) for checking the animation."""
+    setup_preview()
+    os.makedirs(out_dir, exist_ok=True)
+    for act in acts:
+        arm.animation_data.action = act
+        f0, f1 = act.frame_range
+        for k, u in enumerate((0.0, 0.25, 0.5, 0.75)):
+            bpy.context.scene.frame_set(int(round(f0 + (f1 - f0) * u)))
+            render_views(os.path.join(out_dir, f"{name}_{act.name}_{k}.png"), [root], size=(260, 340), views=((6, 200),), lens=60, margin=1.35)
+    arm.animation_data.action = None
 
 
 if __name__ == "__main__":

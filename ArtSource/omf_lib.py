@@ -471,18 +471,29 @@ def reset_scene():
             coll.remove(block)
 
 
-def export_fbx(path, objects):
+def export_fbx(path, objects, anim=False):
+    """anim=True also writes armatures and every action as an FBX take (skinned, animated characters)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
     for o in objects:
         o.select_set(True)
         for c in o.children_recursive:
             c.select_set(True)
+    extra = {}
+    if anim:
+        extra = dict(bake_anim=True, bake_anim_use_all_bones=True, bake_anim_use_nla_strips=False,
+                     bake_anim_use_all_actions=True, bake_anim_force_startend_keying=True, bake_anim_step=1.0,
+                     bake_anim_simplify_factor=0.0, use_armature_deform_only=False, primary_bone_axis="Y",
+                     secondary_bone_axis="X", armature_nodetype="NULL")
     bpy.ops.export_scene.fbx(
         filepath=path, use_selection=True, apply_scale_options="FBX_SCALE_UNITS",
-        axis_forward="-Z", axis_up="Y", bake_space_transform=True, object_types={"MESH", "EMPTY"},
-        mesh_smooth_type="OFF", use_mesh_modifiers=True, add_leaf_bones=False, bake_anim=False,
-        path_mode="STRIP")
+        axis_forward="-Z", axis_up="Y", bake_space_transform=not anim or ANIM_BAKE_SPACE,
+        object_types={"MESH", "EMPTY", "ARMATURE"} if anim else {"MESH", "EMPTY"},
+        mesh_smooth_type="OFF", use_mesh_modifiers=not anim, add_leaf_bones=False,
+        path_mode="STRIP", **({"bake_anim": False} if not anim else extra))
+
+
+ANIM_BAKE_SPACE = True
 
 
 # ----------------------------------------------------------------------------- preview renders

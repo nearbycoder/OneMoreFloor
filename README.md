@@ -34,8 +34,25 @@ The build lives in `Builds/Linux/`. Copy that whole folder to move the game else
 | **Click a guest in the car** | Send the car to their floor |
 | **Click a guest on another floor** | Send the car to them |
 | **Hover** a guest or floor | Highlights where they're going. Hovering a destination previews the trip: every stop on the way (with a kid aboard), sunlight danger for vampires, sun for plants, and how many get off |
+| **Scroll wheel**, **Z** (toggle), **− / =** | Zoom between the whole tower and a close-up that follows the car. Floors out of view with guests waiting show at the screen edge; click one to send the car there |
 | **Esc / P** | Pause (Resume, Restart, Settings, Quit to roster) |
-| **Enter / Esc** in menus | Confirm / back |
+| **Enter / Esc** in menus | Confirm / back (arrow keys move a focus ring) |
+
+**Gamepad** (or arrow keys, no mouse needed):
+
+| Pad | Keys | Action |
+| --- | --- | --- |
+| **D-pad / left stick** up/down | **Up / Down** | Pick a floor (gold brackets). Shows the route preview |
+| **D-pad** left/right, **LB / RB** | **Left / Right**, **Q / E** | Pick a guest on that floor or in the car (shows their card) |
+| **A** | **Enter** | Send the car to the floor, let the picked guest in, or go and get them. When the car is already open there, everyone fitting gets in |
+| **X** | **F** | Let the picked rider off here |
+| **Y** | **Space** | Let everyone in |
+| **B** | **Backspace** | Unpick the guest |
+| **RT / LT**, right stick | | Zoom in / out |
+| **Start** | **Esc** | Pause / resume |
+
+A strip at the bottom shows what each button will do right now. In menus the d-pad moves a focus ring, A
+confirms, B goes back, and left/right adjusts sliders and switches.
 
 ## Rules
 
@@ -51,7 +68,9 @@ The build lives in `Builds/Linux/`. Copy that whole folder to move the game else
 - **Tips** are fare + patience left × your **streak** (+5% per delivery, up to ×2.5; any complaint
   resets it) × **group drops** (+25% for each extra guest delivered at the same stop). The last 30
   seconds are **Rush Hour**, worth ×1.5.
-- Stars come from your tips. **One star unlocks the next shift.**
+- Stars come from your tips. **One star unlocks the next shift.** The thresholds are tuned so that about
+  half of first attempts earn the star, so most players unlock the next shift in a try or two (see
+  [Balance](#balance)).
 
 ### The guests
 
@@ -99,14 +118,19 @@ Assets/
   Scripts/Core/          pure C# game rules (no UnityEngine): building + shuffle cards, car motion,
                          passengers, scoring, spawn director, scripted beats, the bot player
   Scripts/Game/          Unity presentation: GameRoot (bootstrap/flow), ShiftRunner (sim -> views,
-                         input), BuildingView/FloorView/CarView/PassengerView, CameraRig, Sky, Fx,
-                         ModelLibrary (rebuilds materials from names), Shots (headless captures)
+                         input), BuildingView/FloorView/CarView/PassengerView, CharacterRig (blends
+                         the Blender clips with Playables), CameraRig (framing, zoom, follow), Controls
+                         (mouse/pad/keys), Telemetry (local playtest log), Sky, Fx, ModelLibrary
+                         (rebuilds materials from names), Shots (headless captures)
   Scripts/Game/UI/       HUD, operator panel, bubbles, coach, menus (title, roster, intro, pause,
-                         settings, results, ending), widgets, Deco (the Art Deco look: enamel
-                         panels, brass frames, gold/enamel buttons and gilded type, painted at startup)
+                         settings, results, ending), widgets, UiNav (gamepad/arrow focus ring),
+                         HudCursor (pad cursor, button prompts, off-screen floor indicators), Deco (the
+                         Art Deco look: enamel panels, brass frames, gold/enamel buttons and gilded
+                         type, painted at startup)
   Scripts/Game/Audio/    AudioDirector: synced music stems, reactive mix, pooled SFX
   Scripts/Game/Automation/AutoPilot.cs   self-test for the built game
   Scripts/Game/Automation/DemoReel.cs    scripted, self-recording gameplay demo
+  Scripts/Game/Automation/PadSim.cs      virtual gamepad for the autopilot
   Shaders/OmfSky.shader  gradient skybox
   Tests/EditMode/        rule tests, determinism, "every shift is beatable", random-input fuzz
   Editor/                ProjectSetup, BuildScript, import settings
@@ -114,13 +138,17 @@ Assets/
 ArtSource/               Blender generators (+ saved .blend files)
   omf_lib.py             primitives authored in Unity space, material-name convention, FBX export
   build_floors.py        the ten floor modules        build_characters.py  the nine characters
+  char_rig.py            armatures, skin weights and the animation clips (Idle, Walk, Stomp, Tap, Cheer, Tuck,
+                         Fume; Salute and Worry for the bellhop)
   build_props.py         car, shaft, roof, street, skyline, FX meshes
   build_icons.py         floor icons, rule badges, character portraits
 Tools/
   unity.sh               editor launcher (+ build-linux, test, batch)
   play.sh / autopilot.sh run / self-test the build
   sim.sh + simharness/   the rules on .NET outside Unity: balance tables, star suggestions, traces, fuzz
-  synth/                 audio generator (numpy): dsp.py, make_sfx.py, make_music.py
+  synth/                 audio generator (numpy): dsp.py, make_sfx.py, make_music.py; audit.py (objective
+                         audio checks)
+  playtest_report.py     summarises real playtest logs, suggests star thresholds
   shot.sh, sheet.py      headless editor screenshots and contact sheets
   gallery.sh             every menu screen in one play session (throwaway save)
   uicheck.sh             hit-tests every visible button, slider and toggle on each menu
@@ -137,12 +165,13 @@ the balance harness all drive that same object.
 ```sh
 # Models (writes Assets/Resources/Models/*.fbx and ArtSource/blend/*.blend)
 blender -b -P ArtSource/build_floors.py   [-- --only Lobby,Ocean --preview /tmp/prev]
-blender -b -P ArtSource/build_characters.py
+blender -b -P ArtSource/build_characters.py   [-- --only Kid --pose-preview /tmp/poses]   # rigged + animated
 blender -b -P ArtSource/build_props.py
 blender -b -P ArtSource/build_icons.py
 
 # Audio (writes Assets/Resources/Audio/{Sfx,Music}; Blender's Python ships numpy)
 blender -b --python-exit-code 1 -P Tools/synth/make_audio.py -- [sfx] [music]
+blender -b --python-exit-code 1 -P Tools/synth/audit.py [-- --mix capture.wav]   # objective audio checks
 
 # Unity
 Tools/unity.sh batch OneMoreFloor.EditorTools.ProjectSetup.Apply   # player/URP/fonts/scene setup
@@ -165,12 +194,28 @@ import is asynchronous in batch mode).
   **every shift is beatable** (a decent bot reaches ≥1★ on every seed, and a strong bot reaches 3★).
 - `Tools/autopilot.sh` launches the **built game**, walks the menus, plays all ten shifts with the
   bot through the full presentation, saves screenshots, and fails on any logged error or exception.
-  It also logs average fps.
+  It also logs average fps. It then drives the menus and a shift with a **virtual gamepad**: focus
+  ring, back, floor cursor, send, zoom, and pause/resume. `Tools/autopilot.sh <dir> pad` runs only
+  that part.
+- `Unity: OneMoreFloor.EditorTools.RigCheck.Sheet("Kid", "/tmp/kid.png")` renders every imported clip of
+  a character at four moments, to check the rigs after a Blender re-export.
+- `Tools/synth/audit.py` checks every sound objectively:
+  - per file: BS.1770 loudness, 4× oversampled true peak, DC, clicks at either end, loop seams,
+    leading silence (which reads as lag), spectral balance and stereo correlation;
+  - every `Sfx`/`Voice` call in the code at the volume it's played, against its category;
+  - with `--mix`, a recording of the final in-game mix.
+
+  It found and fixed: clicks at the start of nine sounds, music that clipped between samples, a DC
+  offset, a rumble small speakers couldn't play, voice variants 6 LU apart, and a countdown tick too
+  quiet for its job.
 - `-omfPerf <shift> [-omfNoVsync]` plays a shift for 30 s and logs frame-time percentiles. Graveyard
-  Shift, nine floors, 1600×900: about 195 fps uncapped (p95 10 ms) on this machine, while it was
-  heavily loaded. Normally it's capped to the display refresh rate.
-- `-omfRecordAudio <file.wav>` records the final mix the player hears. That's how I found the mix was
-  clipping, and confirmed the fix (master limiter + gain staging: 0 clipped samples, about -18 dBFS).
+  Shift (nine floors, rigged guests, 1600×900) measured 293 fps uncapped (p95 5 ms) on this machine.
+  The machine was shared with other heavy jobs (load average 20–50), so repeat runs vary a lot.
+  `-omfNoRig` leaves characters unanimated for A/B runs; it showed no measurable cost from the rigs.
+  Normally the game is capped to the display refresh rate.
+- `-omfRecordAudio <file.wav>` records the final mix the player hears. `audit.py --mix` measures it:
+  a recorded Saturday came out at -15.4 LUFS integrated, -1.3 dBTP true peak and a 10.5 LU loudness
+  range. A lookahead limiter holds the peak at its ceiling without clipping.
 
 ### Demo video
 
@@ -181,21 +226,46 @@ game records itself twice from a fixed seed: once rendering frames offline at a 
 once capturing the audio in real time. `ffmpeg` then joins the two. Both runs play out identically,
 and the picture and sound line up to within about 20 ms. It uses a throwaway save.
 
+### Balance
+
+`Tools/sim.sh human` plays every shift with a **model of a person**: decision time, Fitts'-law pointer
+travel for each click, a beat to take in each stop, and Space to board a whole queue. It does this at
+three skill levels. The first balance pass, against bots that click instantly, was much too hard for
+that model: an average player was fired on most runs from Thursday on. `Tools/sim.sh causes` showed
+why (waiting storm-offs, plus swimmers and parcels lost to departing floors). `Tools/sim.sh pace`
+found the gentlest pacing that keeps modelled average players employed. The current thresholds come
+from the model's score percentiles:
+
+| | New player | Average | Practised |
+| --- | --- | --- | --- |
+| 1★ (unlocks the next shift) | ~50% of first runs | 83–100% | 100% |
+| 2★ | rare | ~40% | 79–96% |
+| 3★ | — | rare | 25–50% |
+
+Every shift a person plays is appended to a **local** log (`playtests.jsonl` next to the save; nothing
+leaves the machine). `Tools/playtest_report.py` summarises the logs from any number of testers and
+suggests new thresholds from real scores. It also compares measured reaction times with the model's
+assumptions, so the next tuning pass can use people instead of the model.
+
 ## Honest notes and limitations
 
-- **I couldn't listen to the audio.** The music and effects were designed with standard synthesis
-  recipes and checked numerically (levels, clipping, spectral balance, seamless loop points,
-  spectrograms), but nobody has auditioned the mix by ear. It may need level or tone tweaks.
-- **Feel was tuned without hands-on play.** I had no way to play in real time with a mouse, so the
-  timings, difficulty and star thresholds come from frame-by-frame reviews and bot simulations
-  calibrated to plausible human reaction times. The first real playtests will probably move the
-  numbers.
-- **Characters aren't rigged.** All animation is procedural (hops, squash and stretch, head shakes,
-  drooping leaves, flapping capes, bobbing balloons), which suits the peg-doll style but there's no
-  walk cycle.
-- Gamepad input isn't supported (mouse and keyboard only).
-- The game shows the whole tower at once. At nine floors the guests are small (about 50–60 px tall
-  at 1080p), and bubbles can crowd when a queue is long.
+- **Nobody has listened to the audio.** The sound was designed with standard synthesis recipes and is
+  checked objectively by `audit.py`: loudness, true peak, clicks, seams, latency, balance against its
+  category, and the recorded in-game mix. That catches technical faults, but not whether something
+  sounds good or gets annoying on the hundredth play. The first listening session will probably
+  change some sounds.
+- **Feel is modelled, not playtested.** The difficulty and thresholds are fitted to a human model, not
+  to real people, and I couldn't play in real time myself. The model is grounded in standard
+  human-factors numbers, but it plays smarter than a first-timer and has no learning curve. The
+  playtest log and report are there so the first real sessions can correct it quickly.
+- **The rigs are simple.** Characters have real armatures with skinned elbows and knees, and their
+  clips are keyframed in Blender. There are no facial rigs, fingers or physics. Couriers, mirror
+  movers and the kid's balloon arm hold their props, so those arms don't animate.
+- **Gamepad support is tested with a virtual pad.** The autopilot drives every gamepad path through
+  the Input System, but no physical controller has been tried. Glyphs are generic (A/B/X/Y) rather
+  than per-brand.
+- The whole tower at nine floors still makes guests small (about 50–60 px tall at 1080p). The
+  close-up zoom roughly doubles that.
 
 ## Credits
 
