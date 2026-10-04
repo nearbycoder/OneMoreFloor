@@ -19,6 +19,7 @@ namespace OneMoreFloor
         Image boardAll;
         public int HoverSlot = -1;
         public RectTransform ForecastAnchor => cards[0].Root;
+        public RectTransform SlotRect(int slot) => slot >= 0 && slot < buttons.Length ? buttons[slot]?.Root : null;
 
         sealed class SlotButton
         {
@@ -26,6 +27,7 @@ namespace OneMoreFloor
             public Image Cap, Plate, Glow, Ring, Icon;
             public TextMeshProUGUI Number, Name;
             public TextMeshProUGUI Waiting;
+            public Image WaitBadge;
             public Image[] Pips = new Image[4];
             public float Press, Lit;
             public int Slot;
@@ -68,8 +70,8 @@ namespace OneMoreFloor
             for (int i = 0; i < 9; i++)
             {
                 float a = Mathf.Lerp(150f, 30f, i / 8f) * Mathf.Deg2Rad;
-                UiKit.Text("Tick" + i, dial.transform, (i + 1).ToString(), 19, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center,
-                    new Vector2(30, 30), new Vector2(Mathf.Cos(a) * 62f, Mathf.Sin(a) * 62f - 14f));
+                UiKit.Text("Tick" + i, dial.transform, (i + 1).ToString(), 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center,
+                    new Vector2(24, 24), new Vector2(Mathf.Cos(a) * 66f, Mathf.Sin(a) * 66f - 18f));
             }
             needle = UiKit.Rect("Needle", dial.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0f), new Vector2(0, -18), new Vector2(7, 92));
             needle.gameObject.AddComponent<Image>().color = Palette.Hex(0xC0262D);
@@ -82,9 +84,11 @@ namespace OneMoreFloor
             for (int i = 0; i < 2; i++)
             {
                 var c = new ForecastCard();
-                c.Back = UiKit.Image("Card" + i, root, UiKit.Rounded, i == 0 ? Palette.Hex(0xF3E6C8) : Palette.Hex(0xC9BBA0), new Vector2(320, 54), new Vector2(0, 2 - i * 60));
+                c.Back = UiKit.Image("Card" + i, root, Deco.Paper, i == 0 ? Color.white : new Color(0.84f, 0.8f, 0.74f), new Vector2(320, 54), new Vector2(0, 2 - i * 60));
+                c.Back.pixelsPerUnitMultiplier = 2f;
                 c.Root = c.Back.rectTransform;
-                c.Title = UiKit.Text("T", c.Root, "", 15, Palette.Oxblood, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(292, 20), new Vector2(0, 13));
+                c.Title = UiKit.Text("T", c.Root, "", 14, Palette.Oxblood, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(292, 20), new Vector2(0, 13));
+                c.Title.characterSpacing = 4f;
                 c.Body = UiKit.Text("B", c.Root, "", 19, Palette.Ink, UiKit.Body, TextAlignmentOptions.Left, new Vector2(292, 26), new Vector2(0, -9));
                 c.Body.richText = true;
                 cards[i] = c;
@@ -102,11 +106,14 @@ namespace OneMoreFloor
                 if (btnArt == null) b.Ring = UiKit.Image("Bezel", b.Root, UiKit.Circle, Palette.Brass, new Vector2(78, 78), new Vector2(0, 18));
                 b.Cap = UiKit.Image("Cap", b.Root, btnArt ?? UiKit.Circle, btnArt != null ? Color.white : Palette.Hex(0xF3E6C8), new Vector2(btnArt != null ? 82 : 64, btnArt != null ? 82 : 64), new Vector2(0, 18), true);
                 b.Number = UiKit.Text("N", b.Cap.transform, (s + 1).ToString(), 30, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(64, 64));
-                b.Plate = UiKit.Image("Plate", b.Root, UiKit.Pill, Palette.Floor(FloorId.Lobby), new Vector2(98, 30), new Vector2(0, -38));
-                b.Name = UiKit.Text("Name", b.Plate.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(70, 30), new Vector2(14, 0));
-                b.Icon = UiKit.Image("Icon", b.Plate.transform, null, Color.white, new Vector2(34, 34), new Vector2(-34, 2));
+                b.Plate = UiKit.Image("Plate", b.Root, UiKit.Pill, Palette.Floor(FloorId.Lobby), new Vector2(100, 30), new Vector2(0, -38));
+                b.Name = UiKit.Text("Name", b.Plate.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(60, 30), new Vector2(16, 0));
+                Deco.Shadowed(b.Name, 0.55f, 0.6f, 0.2f);
+                b.Icon = UiKit.Image("Icon", b.Plate.transform, null, Color.white, new Vector2(30, 30), new Vector2(-28, 1));
                 b.Icon.preserveAspect = true;
-                b.Waiting = UiKit.Text("W", b.Root, "", 16, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(40, 22), new Vector2(42, 52));
+                b.WaitBadge = UiKit.Image("WaitBadge", b.Root, UiKit.Circle, Palette.Hex(0xD8383E), new Vector2(26, 26), new Vector2(36, 50));
+                UiKit.Image("Rim", b.WaitBadge.transform, UiKit.Ring, Palette.Hex(0xFFE3A8), new Vector2(26, 26));
+                b.Waiting = UiKit.Text("W", b.WaitBadge.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(26, 26), new Vector2(0.5f, 1f));
                 for (int k = 0; k < 4; k++)
                     b.Pips[k] = UiKit.Image("Pip" + k, b.Root, UiKit.Circle, Palette.Good, new Vector2(12, 12), new Vector2(-42, 50 - k * 14));
                 int slot = s;
@@ -145,7 +152,7 @@ namespace OneMoreFloor
 
         string Describe(Card c, Building pred)
         {
-            string F(FloorId f) => $"<color=#{ColorUtility.ToHtmlStringRGB(Palette.Floor(f))}>{Defs.Floor(f).Name}</color>";
+            string F(FloorId f) => $"<b><color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(Palette.Floor(f), Palette.Ink, 0.4f))}>{Defs.Floor(f).Name}</color></b>";
             switch (c.Type)
             {
                 case CardType.Swap: return $"{F(c.A)} and {F(c.B)}";
@@ -224,7 +231,8 @@ namespace OneMoreFloor
                 btn.Glow.color = new Color(1f, 0.72f, 0.28f, 0.55f * btn.Lit);
                 btn.Cap.rectTransform.localScale = Vector3.one * (1f - 0.12f * Ease.OutCubic(btn.Press) + (hover ? 0.05f : 0f));
                 int waiting = sim.Waiting[(int)f].Count;
-                btn.Waiting.text = waiting > 0 ? waiting.ToString() : "";
+                btn.Waiting.text = waiting.ToString();
+                btn.WaitBadge.gameObject.SetActive(waiting > 0);
                 int pip = 0;
                 foreach (var r in sim.Car.Riders)
                 {

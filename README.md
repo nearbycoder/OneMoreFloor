@@ -30,7 +30,8 @@ The build lives in `Builds/Linux/`. Copy that whole folder to move the game else
 | **Click a waiting guest** (at the floor the car is docked at) | Let them in |
 | **Space** | Let in everyone who fits |
 | **Click a floor** in the tower, **click a panel button**, or press **1–9** | Send the car there (you can redirect mid-trip) |
-| **Click a guest in the car** (while docked) | Let them off here to wait. Useful for capacity and conflicts. |
+| **Right-click a guest in the car** (while docked) | Let them off here to wait. Useful for capacity and conflicts. |
+| **Click a guest in the car** | Send the car to their floor |
 | **Click a guest on another floor** | Send the car to them |
 | **Hover** a guest or floor | Highlights where they're going. Hovering a destination previews the trip: every stop on the way (with a kid aboard), sunlight danger for vampires, sun for plants, and how many get off |
 | **Esc / P** | Pause (Resume, Restart, Settings, Quit to roster) |
@@ -101,9 +102,11 @@ Assets/
                          input), BuildingView/FloorView/CarView/PassengerView, CameraRig, Sky, Fx,
                          ModelLibrary (rebuilds materials from names), Shots (headless captures)
   Scripts/Game/UI/       HUD, operator panel, bubbles, coach, menus (title, roster, intro, pause,
-                         settings, results, ending), widgets
+                         settings, results, ending), widgets, Deco (the Art Deco look: enamel
+                         panels, brass frames, gold/enamel buttons and gilded type, painted at startup)
   Scripts/Game/Audio/    AudioDirector: synced music stems, reactive mix, pooled SFX
   Scripts/Game/Automation/AutoPilot.cs   self-test for the built game
+  Scripts/Game/Automation/DemoReel.cs    scripted, self-recording gameplay demo
   Shaders/OmfSky.shader  gradient skybox
   Tests/EditMode/        rule tests, determinism, "every shift is beatable", random-input fuzz
   Editor/                ProjectSetup, BuildScript, import settings
@@ -119,6 +122,9 @@ Tools/
   sim.sh + simharness/   the rules on .NET outside Unity: balance tables, star suggestions, traces, fuzz
   synth/                 audio generator (numpy): dsp.py, make_sfx.py, make_music.py
   shot.sh, sheet.py      headless editor screenshots and contact sheets
+  gallery.sh             every menu screen in one play session (throwaway save)
+  uicheck.sh             hit-tests every visible button, slider and toggle on each menu
+  demo.sh                records the demo video from the build (see below)
 docs/PLAN.md             the design and technical plan
 ```
 
@@ -165,6 +171,15 @@ import is asynchronous in batch mode).
   heavily loaded. Normally it's capped to the display refresh rate.
 - `-omfRecordAudio <file.wav>` records the final mix the player hears. That's how I found the mix was
   clipping, and confirmed the fix (master limiter + gain staging: 0 clipped samples, about -18 dBFS).
+
+### Demo video
+
+`Tools/demo.sh [out.mp4]` records a 1½-minute demo video from the built game (defaults to
+`Builds/Demo/OneMoreFloor-demo.mp4`; it takes about 4 minutes). It covers the menus, about a minute
+of Saturday played by the strong bot with a visible cursor and short captions, then the results. The
+game records itself twice from a fixed seed: once rendering frames offline at a steady 30 fps, and
+once capturing the audio in real time. `ffmpeg` then joins the two. Both runs play out identically,
+and the picture and sound line up to within about 20 ms. It uses a throwaway save.
 
 ## Honest notes and limitations
 

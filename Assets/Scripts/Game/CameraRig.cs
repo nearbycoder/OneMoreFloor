@@ -69,7 +69,7 @@ namespace OneMoreFloor
         void LateUpdate()
         {
             if (framed && (Mathf.Abs(Cam.aspect - framedAspect) > 0.01f || ScreenX != lastScreenX)) { lastScreenX = ScreenX; Frame(framed); }
-            float dt = Time.unscaledDeltaTime;
+            float dt = UiTime.Dt;
             // glide between framings (menus <-> play)
             framedPos = Vector3.Lerp(framedPos, targetPos, Ease.Damp(3.5f, dt));
             framedRot = Quaternion.Slerp(framedRot, targetRot, Ease.Damp(3.5f, dt));
@@ -78,7 +78,7 @@ namespace OneMoreFloor
             shake = Mathf.Max(0f, shake - dt * 2.2f);
             pushHold -= dt;
             pushK = Mathf.Lerp(pushK, pushHold > 0f ? pushAmount : 0f, Ease.Damp(pushHold > 0f ? 3f : 2f, dt));
-            float t = Time.unscaledTime;
+            float t = UiTime.Now;
             float s = shake * shake;
             var offset = new Vector3((Mathf.PerlinNoise(t * 23f, 1.3f) - 0.5f) * 1.1f, (Mathf.PerlinNoise(2.7f, t * 23f) - 0.5f) * 1.1f, 0f) * s;
             var drift = new Vector3(Mathf.Sin(t * 0.21f) * 0.25f, Mathf.Sin(t * 0.17f) * 0.18f, 0f);

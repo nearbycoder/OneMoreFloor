@@ -13,8 +13,19 @@ namespace OneMoreFloor
     {
         public static string Capture(string path, int width = 1920, int height = 1080, bool withUi = true)
         {
+            if (GameRoot.Instance == null) return "no GameRoot";
+            var world = CaptureTexture(width, height, withUi);
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllBytes(path, world.EncodeToPNG());
+            Object.Destroy(world);
+            return path;
+        }
+
+        /// <summary>The composited frame (bottom row first). Caller destroys it.</summary>
+        public static Texture2D CaptureTexture(int width, int height, bool withUi = true)
+        {
             var root = GameRoot.Instance;
-            if (root == null) return "no GameRoot";
             var world = Render(root.WorldCam, width, height, null);
             if (withUi && root.UiCam != null)
             {
@@ -34,11 +45,7 @@ namespace OneMoreFloor
                 world.Apply();
                 Object.Destroy(ui);
             }
-            var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            File.WriteAllBytes(path, world.EncodeToPNG());
-            Object.Destroy(world);
-            return path;
+            return world;
         }
 
         /// <summary>Capture <paramref name="count"/> frames every <paramref name="interval"/> seconds (runs as a coroutine).</summary>

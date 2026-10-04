@@ -17,7 +17,7 @@ r=$(unity recompile --project-path "$PP" --format json 2>&1 || true)
 if echo "$r" | grep -q '"failed": true'; then echo "$r" | python3 -c "import json,sys; d=json.load(sys.stdin)['data']; [print(e.get('file'),e.get('line'),e.get('message')) for e in d['errors']]"; exit 1; fi
 ready
 u eval 'UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/Main.unity"); return "ok";' >/dev/null
-u eval 'UnityEditor.PlayModeWindow.SetCustomRenderingResolution(1920, 1080, "OMF"); return "ok";' >/dev/null
+u eval "UnityEditor.PlayModeWindow.SetCustomRenderingResolution(${OMF_W:-1920}, ${OMF_H:-1080}, \"OMF\"); return \"ok\";" >/dev/null
 u clear_console >/dev/null 2>&1 || true
 u editor_play >/dev/null
 sleep 2; ready

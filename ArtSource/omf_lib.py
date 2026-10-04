@@ -173,6 +173,97 @@ def sphere(center, radius, scale=(1, 1, 1), seg=24, rings=14):
     return bm, True
 
 
+def skin(points, radii, edges=None, subdiv=2):
+    """Organic tubes and branches: Blender's Skin modifier over a little skeleton, then Subdivision.
+    `points` in Unity space; `radii` one per point (float). Good for limbs, mitten hands, tails."""
+    mesh = bpy.data.meshes.new("_skin")
+    if edges is None:
+        edges = [(i, i + 1) for i in range(len(points) - 1)]
+    mesh.from_pydata([tuple(V(p)) for p in points], edges, [])
+    obj = bpy.data.objects.new("_skin", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.modifiers.new("skin", "SKIN")
+    layer = mesh.skin_vertices[0] if len(mesh.skin_vertices) else mesh.skin_vertices.new()
+    for i, r in enumerate(radii):
+        layer.data[i].radius = (r, r)
+        layer.data[i].use_root = i == 0
+    sub = obj.modifiers.new("sub", "SUBSURF")
+    sub.levels = sub.render_levels = subdiv
+    ev = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    baked = bpy.data.meshes.new_from_object(ev)
+    bm = bmesh.new()
+    bm.from_mesh(baked)
+    bpy.data.objects.remove(obj)
+    bpy.data.meshes.remove(mesh)
+    bpy.data.meshes.remove(baked)
+    bm.normal_update()
+    return bm, True
+
+
+def limb(p0, p1, p2, r0, r1, r2, subdiv=1):
+    """Two-segment limb (shoulder/elbow/wrist or hip/knee/ankle) with a soft joint."""
+    return skin([p0, p1, p2], [r0, r1, r2], subdiv=subdiv)
+
+
+def cut_sphere(center, radius, scale=(1, 1, 1), plane_co=(0, 0, 0), plane_no=(0, 1, 0), seg=28, rings=18, fill=True):
+    """A sphere with everything behind a plane removed (keeps the side the normal points to).
+    Hair, caps, helmets: the cut edge sits on the head."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=rings, radius=radius)
+    bm.transform(Matrix.Translation(V(center)) @ Matrix.Diagonal(V(*scale, 1.0)))
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=V(plane_co), plane_no=V(plane_no).normalized(), clear_inner=True)
+    if fill:
+        cut = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        if cut:
+            bmesh.ops.holes_fill(bm, edges=cut, sides=0)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.normal_update()
+    _flat_caps(bm, V(plane_no).normalized())
+    return bm, None
+
+
+def leaf_blade(base, direction, length, width, bend=0.25, notches=3, thick=0.02, seg=14, roll=0.0):
+    """A monstera-ish leaf: a heart-shaped outline with side notches, gently arched, given a little thickness.
+    `roll` (degrees) turns the blade about its midrib so it can face the viewer instead of lying flat."""
+    d = V(direction).normalized()
+    side = d.cross(V(0, 1, 0))
+    side = side.normalized() if side.length > 1e-3 else V(1, 0, 0)
+    if roll:
+        side = (Matrix.Rotation(math.radians(roll), 3, d) @ side).normalized()
+    up = side.cross(d).normalized()
+    outline = []
+    for i in range(seg + 1):
+        t = i / seg
+        w = math.sin(math.pi * min(1.0, t * 1.08)) ** 0.8 * width * (1.0 - 0.15 * t)
+        outline.append((t, w))
+    bm = bmesh.new()
+    rows = []
+    for t, w in outline:
+        arch = -bend * (2 * t - 1) ** 2 + bend
+        c = V(base) + d * (t * length) + up * (arch * length * 0.5)
+        row = []
+        for k, s in enumerate((-1.0, -0.5, 0.0, 0.5, 1.0)):
+            ww = w * abs(s)
+            notch = notches and 0.2 < t < 0.85 and abs(s) == 1.0 and int(t * (notches * 2 + 1)) % 2 == 1
+            if notch:
+                ww *= 0.55
+            droop = -abs(s) * w * 0.25
+            row.append(bm.verts.new(c + side * (ww * (1 if s >= 0 else -1)) + up * droop))
+        rows.append(row)
+    for r in range(len(rows) - 1):
+        for k in range(4):
+            bm.faces.new((rows[r][k], rows[r][k + 1], rows[r + 1][k + 1], rows[r + 1][k]))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.normal_update()
+    ext = bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=thick)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.normal_update()
+    for f in bm.faces:
+        f.smooth = True
+    return bm, None
+
+
 def torus(center, major, minor, axis="y", seg=28, ring_seg=10, arc=1.0, scale=(1, 1, 1)):
     bm = bmesh.new()
     rings = []

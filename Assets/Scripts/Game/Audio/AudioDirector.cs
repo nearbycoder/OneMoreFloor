@@ -144,7 +144,7 @@ namespace OneMoreFloor
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = UiTime.Dt;
             gameplayMix = Mathf.MoveTowards(gameplayMix, gameplay ? 1f : 0f, dt * 0.8f);
             titleMix = Mathf.MoveTowards(titleMix, gameplay ? 0f : 1f, dt * 0.6f);
             duck = Mathf.MoveTowards(duck, duckTarget, dt * (duckTarget < duck ? 6f : 1.2f));
@@ -157,7 +157,7 @@ namespace OneMoreFloor
             stemVol[(int)Stem.Rush] = 0.8f * rush;
             stemVol[(int)Stem.Night] = 0.8f * night;
             // tape warble when things go wrong; every stem shares the pitch so they stay locked
-            float wobble = 1f + Mathf.Sin(Time.unscaledTime * 2f * Mathf.PI * 0.55f) * 0.011f * Mathf.Max(0f, trouble - 0.45f) * 2f;
+            float wobble = 1f + Mathf.Sin(UiTime.Now * 2f * Mathf.PI * 0.55f) * 0.011f * Mathf.Max(0f, trouble - 0.45f) * 2f;
             float cutoff = Mathf.Lerp(22000f, 900f, Mathf.Max(muffle, Mathf.Max(0f, trouble - 0.85f) * 3f));
             for (int i = 0; i < stems.Length; i++)
             {
@@ -196,8 +196,8 @@ namespace OneMoreFloor
         /// <summary>Plays an effect. pan: -1 left .. 1 right (use ScreenPan for world positions).</summary>
         public void Sfx(string name, float volume = 1f, float pitch = 1f, float pan = 0f, float pitchJitter = 0.04f, float minGap = 0.03f)
         {
-            if (lastPlayed.TryGetValue(name, out var last) && Time.unscaledTime - last < minGap) return;
-            lastPlayed[name] = Time.unscaledTime;
+            if (lastPlayed.TryGetValue(name, out var last) && UiTime.Now - last < minGap) return;
+            lastPlayed[name] = UiTime.Now;
             var c = Clip("Sfx/" + name);
             if (c == null) return;
             AudioSource src = null;
@@ -214,13 +214,13 @@ namespace OneMoreFloor
         readonly List<Pending> pending = new List<Pending>();
 
         public void SfxLater(string name, float delay, float volume = 1f, float pitch = 1f, float pan = 0f)
-            => pending.Add(new Pending { At = Time.unscaledTime + delay, Name = name, Vol = volume, Pitch = pitch, Pan = pan });
+            => pending.Add(new Pending { At = UiTime.Now + delay, Name = name, Vol = volume, Pitch = pitch, Pan = pan });
 
         void LateUpdate()
         {
             for (int i = pending.Count - 1; i >= 0; i--)
             {
-                if (pending[i].At > Time.unscaledTime) continue;
+                if (pending[i].At > UiTime.Now) continue;
                 var p = pending[i];
                 pending.RemoveAt(i);
                 Sfx(p.Name, p.Vol, p.Pitch, p.Pan, 0.03f, 0f);

@@ -14,6 +14,8 @@ namespace OneMoreFloor
         public Transform Head;
         Transform[] leaves;
         Transform cape, balloons, mirror, propeller;
+        Transform legL, legR, armL, armR;
+        float walk, stride;
         Vector3[] leafAxes;
         Quaternion[] leafBase;
         float anchorY = 2.3f;
@@ -65,6 +67,10 @@ namespace OneMoreFloor
                 balloons = model.transform.Find("Balloons");
                 mirror = model.transform.Find("Mirror");
                 propeller = model.transform.Find("Propeller");
+                legL = model.transform.Find("LegL");
+                legR = model.transform.Find("LegR");
+                armL = model.transform.Find("ArmL");
+                armR = model.transform.Find("ArmR");
                 var leafRoot = model.transform.Find("Leaves");
                 if (leafRoot)
                 {
@@ -355,6 +361,7 @@ namespace OneMoreFloor
             float pop = Ease.OutBack(spawnPop, 2.5f);
 
             Vector3 pos = transform.localPosition;
+            float walkTarget = 0f, cadence = 13f, tuck = 0f;
             switch (mode)
             {
                 case Mode.Home:
@@ -364,7 +371,7 @@ namespace OneMoreFloor
                     pos = Vector3.MoveTowards(pos, target, dt * 3.4f);
                     pos = Vector3.Lerp(pos, target, Ease.Damp(10f, dt));
                     transform.localPosition = pos;
-                    if (dist > 0.05f) bob += Mathf.Abs(Mathf.Sin(time * 16f)) * 0.06f;
+                    if (dist > 0.05f) { bob += Mathf.Abs(Mathf.Sin(time * 16f)) * 0.06f; walkTarget = 1f; }
                     break;
                 }
                 case Mode.Hop:
@@ -375,6 +382,7 @@ namespace OneMoreFloor
                     var p = Vector3.Lerp(hopFrom, to, k) + Vector3.up * Mathf.Sin(Mathf.Clamp01(t) * Mathf.PI) * 0.75f;
                     transform.position = p;
                     sq = -0.12f * Mathf.Sin(Mathf.Clamp01(t) * Mathf.PI);
+                    tuck = Mathf.Sin(Mathf.Clamp01(t) * Mathf.PI);
                     if (t >= 1f) { mode = Mode.Home; transform.localPosition = homeLocal; Land(); }
                     break;
                 }
@@ -386,11 +394,13 @@ namespace OneMoreFloor
                     {
                         float k = t / 0.18f;
                         transform.localPosition = Vector3.Lerp(hopFrom, exitTarget, Ease.OutCubic(k)) + Vector3.up * Mathf.Sin(k * Mathf.PI) * 0.55f;
+                        tuck = Mathf.Sin(k * Mathf.PI);
                     }
                     else
                     {
                         float k = (t - 0.18f) / 0.82f;
-                        transform.localPosition = exitTarget + new Vector3(-k * 5.2f, Mathf.Abs(Mathf.Sin(time * 14f)) * 0.07f, k * 0.8f);
+                        transform.localPosition = exitTarget + new Vector3(-k * 5.2f, Mathf.Abs(Mathf.Sin(stride)) * 0.07f, k * 0.8f);
+                        walkTarget = 1f;
                     }
                     if (t > 0.8f) pop *= 1f - Ease.InCubic((t - 0.8f) / 0.2f);
                     if (t >= 1f) Destroy(gameObject);
@@ -399,7 +409,9 @@ namespace OneMoreFloor
                 case Mode.StormOff:
                 {
                     t += dt / dur;
-                    transform.localPosition = hopFrom + new Vector3(t * 6f, Mathf.Abs(Mathf.Sin(time * 20f)) * 0.12f, 0);
+                    transform.localPosition = hopFrom + new Vector3(t * 6f, Mathf.Abs(Mathf.Sin(stride)) * 0.12f, 0);
+                    walkTarget = 1f;
+                    cadence = 20f;
                     if (t > 0.7f) pop *= 1f - Ease.InCubic((t - 0.7f) / 0.3f);
                     if (t >= 1f) Destroy(gameObject);
                     break;
@@ -430,6 +442,8 @@ namespace OneMoreFloor
             Visual.localScale = new Vector3(pop * breathe / Mathf.Sqrt(Mathf.Max(0.2f, stretch)), pop * stretch, pop * breathe / Mathf.Sqrt(Mathf.Max(0.2f, stretch)));
             Visual.localPosition = new Vector3(Mathf.Sin(time * 31f) * 0.02f * angry, bob, 0f);
 
+            AnimateLimbs(dt, time, walkTarget, cadence, tuck, impatient && mode == Mode.Home);
+
             // kind-specific secondary motion
             if (leaves != null)
             {
@@ -448,6 +462,29 @@ namespace OneMoreFloor
             if (mirror) mirror.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(time * 1.4f) * 1.5f + (mode == Mode.Hop ? 8f : 0f));
             if (cape) cape.localRotation = Quaternion.Euler(Mathf.Sin(time * 2f) * 4f + (mode == Mode.Hop ? 25f : 0f) + angry * 20f, 0, 0);
             if (balloons) balloons.localRotation = Quaternion.Euler(Mathf.Sin(time * 1.7f) * 7f, 0, Mathf.Sin(time * 1.3f) * 9f);
+        }
+
+        /// <summary>
+        /// Legs and arms are separate pivoted parts (hip / shoulder). Positive X tips a hanging limb backward,
+        /// positive Z swings the left arm (+x side) outward.
+        /// </summary>
+        void AnimateLimbs(float dt, float time, float walkTarget, float cadence, float tuck, bool tapping)
+        {
+            if (!legL && !armL && !armR) return;
+            walk = Mathf.MoveTowards(walk, walkTarget, dt * 6f);
+            stride += dt * cadence * Mathf.Max(walk, 0.0001f);
+            float swing = Mathf.Sin(stride) * 34f * walk;
+            float tap = tapping ? Mathf.Max(0f, Mathf.Sin(time * 11f)) * 16f : 0f;
+            if (legL) legL.localRotation = Quaternion.Euler(swing - 34f * tuck, 0, 0);
+            if (legR) legR.localRotation = Quaternion.Euler(-swing - 30f * tuck - tap, 0, 0);
+
+            float cheer = Ease.OutCubic(Mathf.Clamp01(perk * 1.6f));
+            float mad = Mathf.Clamp01(angry * 1.5f);
+            float idle = 4f + Mathf.Sin(time * 2.1f) * 2f + (tapping ? 14f : 0f);
+            float outward = idle + 60f * tuck + 150f * cheer;
+            float fist = -75f * mad + Mathf.Sin(time * 30f) * 18f * mad;
+            if (armL) armL.localRotation = Quaternion.Euler(-swing * 0.8f + fist, 0, outward);
+            if (armR) armR.localRotation = Quaternion.Euler(swing * 0.8f + fist, 0, -outward);
         }
     }
 }

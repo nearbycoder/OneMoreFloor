@@ -44,20 +44,26 @@ namespace OneMoreFloor
             c.group = rt.gameObject.AddComponent<CanvasGroup>();
             c.group.blocksRaycasts = false;
             c.group.interactable = false;
-            c.box = UiKit.Rect("Box", rt, Vector2.zero, Vector2.zero, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(384, 190));
-            var bg = c.box.gameObject.AddComponent<Image>();
-            bg.sprite = UiKit.Rounded;
-            bg.type = Image.Type.Sliced;
-            bg.color = new Color(0.98f, 0.93f, 0.8f, 0.97f);
-            var rim = UiKit.Image("Rim", c.box, UiKit.Rounded, Palette.Brass, new Vector2(390, 196));
-            rim.transform.SetAsFirstSibling();
-            rim.rectTransform.anchorMin = Vector2.zero; rim.rectTransform.anchorMax = Vector2.one; rim.rectTransform.sizeDelta = new Vector2(8, 8);
-            c.text = UiKit.Text("Text", c.box, "", 27, Palette.Ink, UiKit.Body, TextAlignmentOptions.Center, new Vector2(360, 170));
+            c.box = Deco.Panel("Box", rt, new Vector2(360, 196), Vector2.zero, true);
+            c.box.anchorMin = c.box.anchorMax = Vector2.zero;
+            c.box.pivot = new Vector2(0.5f, 1f);
+            var lbl = Deco.Label("Lbl", c.box, "TIP", 16, new Vector2(300, 22), Vector2.zero, TextAlignmentOptions.Center);
+            lbl.characterSpacing = 14f;
+            lbl.rectTransform.anchorMin = lbl.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+            lbl.rectTransform.anchoredPosition = new Vector2(0, -26);
+            var rule = Deco.Divider(c.box, 140, Vector2.zero, 0.7f);
+            rule.anchorMin = rule.anchorMax = new Vector2(0.5f, 1f);
+            rule.anchoredPosition = new Vector2(0, -44);
+            c.text = UiKit.Text("Text", c.box, "", 25, Palette.Cream, UiKit.Body, TextAlignmentOptions.Center, new Vector2(300, 130));
             c.text.textWrappingMode = TextWrappingModes.Normal;
-            c.text.rectTransform.anchorMin = Vector2.zero; c.text.rectTransform.anchorMax = Vector2.one; c.text.rectTransform.sizeDelta = new Vector2(-40, -16);
+            c.text.richText = true;
+            c.text.rectTransform.anchorMin = Vector2.zero; c.text.rectTransform.anchorMax = Vector2.one;
+            c.text.rectTransform.sizeDelta = new Vector2(-48, -70);
+            c.text.rectTransform.anchoredPosition = new Vector2(0, -22);
             c.arrow = UiKit.Image("Marker", rt, UiKit.Ring, Palette.Hex(0xFFC857), new Vector2(64, 64)).rectTransform;
-            UiKit.Image("Dot", c.arrow, UiKit.Circle, Palette.Hex(0xFFC857), new Vector2(18, 18));
-            var tri = UiKit.Text("Tri", c.arrow, "V", 40, Palette.Hex(0xFFC857), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(40, 40), new Vector2(0, 58));
+            UiKit.Image("Halo", c.arrow, UiKit.SoftCircle, new Color(1f, 0.8f, 0.4f, 0.35f), new Vector2(110, 110)).transform.SetAsFirstSibling();
+            UiKit.Image("Dot", c.arrow, UiKit.Circle, Palette.Hex(0xFFC857), new Vector2(16, 16));
+            UiKit.Image("Pointer", c.arrow, Deco.Diamond, Color.white, new Vector2(26, 34), new Vector2(0, 56));
             c.arrow.anchorMin = c.arrow.anchorMax = Vector2.zero;
             c.group.alpha = 0f;
             runner.OnEvent += c.OnSimEvent;
@@ -148,7 +154,7 @@ namespace OneMoreFloor
                     if (p != null && p.Kind == Kind.Tycoon)
                         Push(Simple("tycoon", "Tycoons go <b>express</b>. Take them straight to their floor for a huge tip.", () => PassengerTarget(e.Pid)));
                     if (sim.Car.Has(Kind.Kid) && sim.Car.Has(Kind.Vampire))
-                        Push(Simple("vampkid", "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included."));
+                        Push(Simple("vampkid", "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Hover a floor to preview the trip."));
                     break;
                 case Ev.Arrived:
                     if (monday && step == "send") step = "shuffle-wait";
@@ -167,7 +173,7 @@ namespace OneMoreFloor
                     break;
                 case Ev.BoardRefused:
                     if (e.Aux == (int)BoardResult.Full)
-                        Push(Simple("full", "The car is full. Drop someone off first, or <b>click a rider</b> to let them off here.", () => PassengerTarget(e.Pid)));
+                        Push(Simple("full", "The car is full. Drop someone off first, or <b>right-click a rider</b> to let them off here.", () => PassengerTarget(e.Pid)));
                     else
                         Push(Simple("conflict", "Vampires and mirrors <b>won't ride together</b>.", () => PassengerTarget(e.Pid)));
                     break;
@@ -198,8 +204,8 @@ namespace OneMoreFloor
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
-            if (runner == null || runner.Sim == null || runner.Attract || runner.Paused)
+            float dt = UiTime.Dt;
+            if (runner == null || runner.Sim == null || runner.Attract || runner.Paused || runner.Sim.Ended)
             {
                 alpha = Mathf.MoveTowards(alpha, 0f, dt * 4f);
                 group.alpha = alpha;
@@ -247,13 +253,13 @@ namespace OneMoreFloor
             }
             else anchorPos = new Vector2(size.x * 0.5f, size.y * 0.78f);
 
-            float bob = Mathf.Sin(Time.unscaledTime * 5f) * 8f;
+            float bob = Mathf.Sin(UiTime.Now * 5f) * 8f;
             // the tip lives in the free space of the left column; only the marker goes on the target
             var boxPos = new Vector2(218f, size.y * 0.43f);
             box.anchoredPosition = boxPos + new Vector2(0, bob * 0.15f);
             arrow.gameObject.SetActive(hasArrow);
             arrow.anchoredPosition = anchorPos + new Vector2(0, bob * 0.6f);
-            arrow.localScale = Vector3.one * (1f + 0.12f * Mathf.Sin(Time.unscaledTime * 6f));
+            arrow.localScale = Vector3.one * (1f + 0.12f * Mathf.Sin(UiTime.Now * 6f));
             box.localScale = Vector3.one * (0.9f + 0.1f * Ease.OutBack(Mathf.Clamp01(shown * 4f), 2f));
         }
     }

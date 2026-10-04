@@ -32,6 +32,8 @@ namespace OneMoreFloor
 
         public FloorId? HoverFloor { get; private set; }
         public int HoverPid { get; private set; } = -1;
+        /// <summary>Fired for each command the AutoBot issues (action, pid or slot).</summary>
+        public event System.Action<Bot.Action, int> BotActed;
 
         readonly Dictionary<int, PassengerView> views = new Dictionary<int, PassengerView>();
         float acc;
@@ -75,6 +77,7 @@ namespace OneMoreFloor
                     {
                         var a = AutoBot.Tick(Sim, Step, out int arg);
                         if (a == Bot.Action.Send) Hud.Panel.Press(arg);
+                        if (a != Bot.Action.None) BotActed?.Invoke(a, arg);
                     }
                     Sim.Tick(Step);
                     acc -= Step;
@@ -177,20 +180,35 @@ namespace OneMoreFloor
             else if (hitF != null) HoverFloor = hitF.Id;
             SetHover(hoverPid);
 
+            // right-click a rider while docked: let them off here (deliberate, so it can't happen by accident)
+            if (mouse.rightButton.wasPressedThisFrame && hitP != null && hitP.P.State == PState.Riding && Sim.Car.IsOpen)
+            {
+                Sim.DropHere(hitP.P.Id);
+                return;
+            }
             if (!mouse.leftButton.wasPressedThisFrame) return;
             if (hitP != null)
             {
                 var p = hitP.P;
                 if (p.State == PState.Waiting && Sim.Car.IsOpen && p.At == Sim.DockedFloor) Sim.Board(p.Id);
-                else if (p.State == PState.Riding && Sim.Car.IsOpen) Sim.DropHere(p.Id);
                 else if (p.State == PState.Waiting) RequestSend(Sim.B.SlotOf(p.At), false);
-                else if (p.State == PState.Riding) RequestSend(Sim.B.SlotOf(p.Dest), false);
+                else if (p.State == PState.Riding && Sim.B.Has(p.Dest)) RequestSend(Sim.B.SlotOf(p.Dest), false);
             }
             else if (hitF != null)
             {
                 int slot = Sim.B.SlotOf(hitF.Id);
                 if (slot >= 0) RequestSend(slot, false);
             }
+        }
+
+        /// <summary>Scripted hover for recordings (pid -1 clears). Only meaningful with InputEnabled off.</summary>
+        public void ShowHover(int pid) { HoverFloor = null; SetHover(pid); }
+
+        /// <summary>Where a guest's body is in the world right now (null if they have no view).</summary>
+        public Vector3? GuestPoint(int pid)
+        {
+            var v = ViewOf(pid);
+            return v ? Vector3.Lerp(v.transform.position, v.BubbleAnchor, 0.45f) : (Vector3?)null;
         }
 
         void SetHover(int pid)
@@ -417,7 +435,7 @@ namespace OneMoreFloor
             TimeScale = 0.55f;
             Audio?.SfxLater("gull", 0.4f, 0.8f);
             Audio?.SfxLater("splash", 0.2f, 0.7f);
-            yield return new WaitForSecondsRealtime(1.1f);
+            yield return UiTime.Wait(1.1f);
             foreach (var p in Sim.All)
                 if (p.Kind == Kind.Swimmer && p.State == PState.Waiting)
                 {
@@ -425,7 +443,7 @@ namespace OneMoreFloor
                     Audio?.Voice(Kind.Swimmer, 0f, 0.7f);
                     break;
                 }
-            yield return new WaitForSecondsRealtime(1.6f);
+            yield return UiTime.Wait(1.6f);
             TimeScale = 1f;
         }
 

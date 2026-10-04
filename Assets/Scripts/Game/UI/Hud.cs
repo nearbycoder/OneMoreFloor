@@ -58,28 +58,47 @@ namespace OneMoreFloor
             popupLayer = UiKit.Stretch("Popups", transform);
             top = UiKit.Stretch("Top", transform);
 
-            // Left column: shift name, clock, tips + streak, complaints.
-            var col = UiKit.Rect("LeftColumn", top, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -26), new Vector2(380, 1000));
+            // Left column: one framed card with the shift name, clock, tips + streak, and complaints.
+            const float H = 470f, W = 360f;
+            float Y(float fromTop) => H * 0.5f - fromTop;
+            var col = Deco.Panel("LeftColumn", top, new Vector2(W, H), Vector2.zero);
+            col.anchorMin = col.anchorMax = new Vector2(0, 1);
+            col.pivot = new Vector2(0, 1);
+            col.anchoredPosition = new Vector2(28, -24);
+            const float X = -W * 0.5f + 28f;
 
-            var namePlate = Plate(col, "NamePlate", new Vector2(0, 0), new Vector2(380, 104));
-            shiftDay = UiKit.Text("Day", namePlate, "MONDAY", 22, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 28), new Vector2(0, 26));
-            shiftName = UiKit.Text("ShiftName", namePlate, "First Day", 40, Palette.Cream, UiKit.Display, TextAlignmentOptions.Left, new Vector2(340, 50), new Vector2(0, -14));
+            shiftDay = Deco.Label("Day", col, "MONDAY", 18, new Vector2(300, 24), new Vector2(0, Y(36)));
+            shiftDay.characterSpacing = 10f;
+            shiftName = Deco.Shadowed(UiKit.Text("ShiftName", col, "First Day", 38, Palette.Cream, UiKit.Display, TextAlignmentOptions.Left, new Vector2(300, 48), new Vector2(0, Y(72))));
+            shiftName.enableAutoSizing = true;
+            shiftName.fontSizeMin = 24;
+            shiftName.fontSizeMax = 38;
+            Deco.Divider(col, W - 56f, new Vector2(0, Y(110)), 0.7f);
 
-            var clockPlate = Plate(col, "ClockPlate", new Vector2(0, -118), new Vector2(380, 128));
-            clockLabel = UiKit.Text("ClockLbl", clockPlate, "SHIFT ENDS IN", 18, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 24), new Vector2(0, 40));
-            clock = UiKit.Text("Clock", clockPlate, "2:00", 74, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 84), new Vector2(0, -12));
+            clockLabel = Deco.Label("ClockLbl", col, "SHIFT ENDS IN", 15, new Vector2(300, 22), new Vector2(0, Y(136)), TextAlignmentOptions.Left, Deco.Muted);
+            clockLabel.enableAutoSizing = true;
+            clockLabel.fontSizeMin = 11;
+            clockLabel.fontSizeMax = 15;
+            clock = Deco.Shadowed(UiKit.Text("Clock", col, "2:00", 72, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(300, 80), new Vector2(X, Y(186))));
+            clock.rectTransform.pivot = new Vector2(0, 0.5f);
+            Deco.Divider(col, W - 56f, new Vector2(0, Y(236)), 0.7f);
 
-            var tips = Plate(col, "TipsPlate", new Vector2(0, -260), new Vector2(380, 128));
-            TipsAnchor = tips;
-            UiKit.Text("TipsLabel", tips, "TIPS", 18, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 24), new Vector2(0, 40));
-            score = UiKit.Text("Score", tips, "$0", 62, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 76), new Vector2(0, -12));
-            streakBadge = UiKit.Image("StreakBadge", tips, UiKit.Pill, Palette.Brass, new Vector2(116, 44), new Vector2(110, 40));
-            streak = UiKit.Text("Streak", streakBadge.transform, "x1.00", 24, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(116, 44));
+            TipsAnchor = UiKit.Rect("Tips", col, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, Y(292)), new Vector2(W - 40f, 100));
+            Deco.Label("TipsLabel", col, "TIPS", 15, new Vector2(300, 22), new Vector2(0, Y(262)), TextAlignmentOptions.Left, Deco.Muted);
+            score = Deco.Shadowed(UiKit.Text("Score", col, "$0", 60, Deco.GoldLight, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(300, 72), new Vector2(X, Y(310))));
+            score.rectTransform.pivot = new Vector2(0, 0.5f);
+            streakBadge = UiKit.Image("StreakBadge", col, Deco.GoldPill, Color.white, new Vector2(104, 38), new Vector2(W * 0.5f - 28f - 52f, Y(262)));
+            streak = UiKit.Text("Streak", streakBadge.transform, "x1.00", 20, Palette.Hex(0x3A230C), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(104, 38));
+            Deco.Divider(col, W - 56f, new Vector2(0, Y(360)), 0.7f);
 
-            var cplate = Plate(col, "Complaints", new Vector2(0, -402), new Vector2(380, 104));
-            UiKit.Text("CLabel", cplate, "COMPLAINTS", 18, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 24), new Vector2(0, 30));
+            Deco.Label("CLabel", col, "COMPLAINTS", 15, new Vector2(300, 22), new Vector2(0, Y(386)), TextAlignmentOptions.Left, Deco.Muted);
             for (int i = 0; i < complaintSlots.Length; i++)
-                complaintSlots[i] = UiKit.Image("Slot" + i, cplate, UiKit.Circle, new Color(1, 1, 1, 0.15f), new Vector2(46, 46), new Vector2(-136 + i * 62, -14));
+            {
+                var slot = UiKit.Image("Slot" + i, col, Deco.Recess, Color.white, new Vector2(42, 42), new Vector2(X + 21f + i * 58f, Y(428)));
+                complaintSlots[i] = UiKit.Image("Bead", slot.transform, UiKit.Circle, Palette.Bad, new Vector2(30, 30));
+                complaintSlots[i].rectTransform.localScale = Vector3.zero;
+                UiKit.Image("Shine", complaintSlots[i].transform, UiKit.SoftCircle, new Color(1, 1, 1, 0.55f), new Vector2(14, 10), new Vector2(-5, 7));
+            }
 
             Panel = PanelUi.Create(transform, runner);
         }
@@ -109,17 +128,6 @@ namespace OneMoreFloor
         {
             shiftDay.text = day.ToUpperInvariant();
             shiftName.text = title;
-        }
-
-        static RectTransform Plate(Transform parent, string name, Vector2 pos, Vector2 size)
-        {
-            var rt = UiKit.Rect(name, parent, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), pos, size);
-            var bg = rt.gameObject.AddComponent<Image>();
-            bg.sprite = UiKit.Rounded;
-            bg.type = Image.Type.Sliced;
-            bg.color = new Color(0.12f, 0.08f, 0.13f, 0.86f);
-            var inner = UiKit.Rect("Content", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size - new Vector2(40, 0));
-            return inner;
         }
 
         // ---------------------------------------------------------------- bubbles
@@ -369,7 +377,7 @@ namespace OneMoreFloor
                         m.Text.rectTransform.anchoredPosition = m.Icon.enabled ? new Vector2(34, -14) : Vector2.zero;
                         float size = dest ? 46f : 30f;
                         m.Rt.sizeDelta = new Vector2(size, size);
-                        float pulse = danger ? 1f + 0.15f * Mathf.Sin(Time.unscaledTime * 12f) : 1f;
+                        float pulse = danger ? 1f + 0.15f * Mathf.Sin(UiTime.Now * 12f) : 1f;
                         m.Rt.localScale = Vector3.one * pulse;
                         var world = runner.Building[f].transform.position + new Vector3(Layout.ShaftHalf + 0.55f, 1.25f, -1.4f);
                         var screen = worldCam.WorldToScreenPoint(world);
@@ -380,6 +388,62 @@ namespace OneMoreFloor
             for (int i = used; i < marks.Count; i++) marks[i].Rt.gameObject.SetActive(false);
         }
 
+        // ---------------------------------------------------------------- guest tooltip
+
+        RectTransform tip;
+        TextMeshProUGUI tipTitle, tipBody;
+        Image tipIcon;
+
+        void UpdateTooltip()
+        {
+            var sim = runner.Sim;
+            Passenger p = runner.HoverPid >= 0 ? sim.Find(runner.HoverPid) : null;
+            var v = p != null ? runner.ViewOf(p.Id) : null;
+            if (tip == null)
+            {
+                tip = Deco.Panel("Tooltip", transform, new Vector2(TipW, 120), Vector2.zero, true);
+                tip.anchorMin = tip.anchorMax = Vector2.zero;
+                tip.pivot = new Vector2(0f, 0f);
+                tipWell = UiKit.Image("Well", tip, Deco.Well, Color.white, new Vector2(78, 78)).rectTransform;
+                tipIcon = UiKit.Image("Icon", tipWell, null, Color.white, new Vector2(70, 70));
+                tipIcon.preserveAspect = true;
+                tipTitle = Deco.Label("T", tip, "", 20, new Vector2(TipW - 124, 28), Vector2.zero);
+                tipBody = UiKit.Text("B", tip, "", 19, Palette.Cream, UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(TipW - 124, 80), Vector2.zero);
+                tipBody.textWrappingMode = TextWrappingModes.Normal;
+                tipBody.lineSpacing = 4;
+            }
+            bool show = p != null && v != null && p.State != PState.Done && !runner.Attract;
+            tip.gameObject.SetActive(show);
+            if (!show) return;
+            var kd = Defs.Of(p.Kind);
+            tipTitle.text = kd.Name.ToUpperInvariant();
+            tipIcon.sprite = Icons.Kind(p.Kind);
+            tipIcon.enabled = tipIcon.sprite != null;
+            string where = p.State == PState.Riding ? "Riding to" : "Waiting for";
+            string extra = p.Kind == Kind.Houseplant && !p.Sunned ? " ·\u00A0needs\u00A0sun" : p.Kind == Kind.Tycoon && p.ExpressBroken ? " ·\u00A0express\u00A0ruined" : "";
+            tipBody.text = $"{kd.Rule}\n<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(Palette.Floor(p.Dest), Color.white, 0.35f))}>{where} {Defs.Floor(p.Dest).Name}</color>{extra}" +
+                           (p.State == PState.Riding && sim.Car.IsOpen ? "\n<size=80%><color=#C9BBA0>Right-click to let them off here</color></size>" : "");
+            tipBody.richText = true;
+            var screen = worldCam.WorldToScreenPoint(v.BubbleAnchor);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);
+            var pos = local + canvasRt.rect.size * 0.5f + new Vector2(46, -20);
+            pos.x = Mathf.Min(pos.x, canvasRt.rect.width - 420f - TipW);
+            float colW = TipW - 124f, colX = -TipW * 0.5f + 104f + colW * 0.5f;
+            tipBody.rectTransform.sizeDelta = new Vector2(colW, 80f);
+            float bodyH = tipBody.GetPreferredValues(tipBody.text, colW, 0f).y;
+            float h = Mathf.Max(112f, 66f + bodyH);
+            tip.sizeDelta = new Vector2(TipW, h);
+            pos.y = Mathf.Clamp(pos.y, 16f, canvasRt.rect.height - h - 16f);
+            tip.anchoredPosition = pos;
+            tipWell.anchoredPosition = new Vector2(-TipW * 0.5f + 57f, h * 0.5f - 56f);
+            tipTitle.rectTransform.anchoredPosition = new Vector2(colX, h * 0.5f - 32f);
+            tipBody.rectTransform.sizeDelta = new Vector2(colW, bodyH + 4f);
+            tipBody.rectTransform.anchoredPosition = new Vector2(colX, h * 0.5f - 50f - bodyH * 0.5f);
+        }
+
+        const float TipW = 420f;
+        RectTransform tipWell;
+
         TextMeshProUGUI banner;
         float bannerT = 1f;
 
@@ -389,6 +453,7 @@ namespace OneMoreFloor
             if (banner == null)
             {
                 banner = UiKit.Text("Banner", transform, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 180), new Vector2(-180, 120));
+                Deco.Shadowed(banner, 0.75f, 1f, 0.45f);
                 banner.outlineWidth = 0.18f;
                 banner.outlineColor = new Color32(30, 20, 34, 255);
             }
@@ -443,10 +508,10 @@ namespace OneMoreFloor
             streakPunch = Mathf.Max(0f, streakPunch - dt * 3f);
             streak.text = "x" + sim.Multiplier.ToString("0.00");
             float m = sim.Multiplier;
-            streakBadge.color = m >= 2.5f ? Palette.Hex(0xFF5DA2) : m >= 2f ? Palette.Hex(0xFF8A3D) : m >= 1.5f ? Palette.Hex(0xFFC857) : Palette.Brass;
+            streakBadge.color = m >= 2.5f ? Palette.Hex(0xFF9CC8) : m >= 2f ? Palette.Hex(0xFFB27A) : m > 1.001f ? Color.white : new Color(0.7f, 0.66f, 0.62f);
             streakBadge.rectTransform.localScale = Vector3.one * (1f + 0.25f * streakPunch);
 
-            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? "CLOCK STARTS AFTER YOUR FIRST DROP" : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
+            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? "CLOCK STARTS ON YOUR FIRST DROP" : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
             if (sim.Def.Endless)
             {
                 int secs = Mathf.FloorToInt(sim.Time);
@@ -458,7 +523,8 @@ namespace OneMoreFloor
                 int secs = Mathf.CeilToInt(sim.TimeLeft);
                 clock.text = $"{secs / 60}:{secs % 60:00}";
                 bool hurry = sim.TimeLeft <= 10f && sim.ClockRunning;
-                clock.color = hurry ? Palette.Bad : sim.RushHour ? Palette.Warn : Palette.Cream;
+                clock.color = hurry ? Palette.Hex(0xFF5A5F) : sim.RushHour ? Palette.Warn : Palette.Cream;
+                clockLabel.color = sim.RushHour ? Palette.Warn : Deco.Muted;
                 if (hurry && Mathf.Repeat(sim.TimeLeft, 1f) > 0.85f) clockPunch = 1f;
             }
             clockPunch = Mathf.Max(0f, clockPunch - dt * 4f);
@@ -468,14 +534,14 @@ namespace OneMoreFloor
             {
                 bool on = i < sim.Complaints;
                 var c = complaintSlots[i];
-                c.color = on ? Palette.Bad : new Color(1, 1, 1, 0.15f);
-                c.rectTransform.localScale = Vector3.Lerp(c.rectTransform.localScale, Vector3.one * (on ? 1.05f : 0.85f), Ease.Damp(10f, dt));
+                c.rectTransform.localScale = Vector3.Lerp(c.rectTransform.localScale, Vector3.one * (on ? 1f : 0f), Ease.Damp(12f, dt));
             }
 
             UpdatePopups(dt);
             UpdateBanner(dt);
             UpdateCoins(dt);
             UpdateRoutePreview();
+            UpdateTooltip();
             Panel.Tick(dt);
         }
     }

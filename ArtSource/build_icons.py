@@ -184,12 +184,19 @@ def setup_icon_scene(size):
     scene.collection.objects.link(rim)
 
 
-def render_icon(objects, path, size=256, front_z=-1, tilt=12, yaw=-18, fill=0.86):
-    """front_z = -1: look at the object's -z face (Unity camera side). +1 for characters (they face +z)."""
+def render_icon(objects, path, size=256, front_z=-1, tilt=12, yaw=-18, fill=0.86, bust=False):
+    """front_z = -1: look at the object's -z face (Unity camera side). +1 for characters (they face +z).
+    bust: frame a character's head and shoulders (hats included) instead of the whole body."""
     scene = bpy.context.scene
     mins, maxs = bounds(objects)
     center = (mins + maxs) / 2
     ext = max(maxs - mins)
+    head = next((o for r in objects for o in r.children_recursive if o.name == "Head" and o.type == "MESH"), None)
+    if bust and head:
+        hmins, hmaxs = bounds([head])
+        top, bottom = hmaxs.z + 0.12, hmins.z - 0.4
+        center = Vector((0.0, (hmins.y + hmaxs.y) / 2, (top + bottom) / 2))
+        ext = max(top - bottom, (hmaxs.x - hmins.x) + 0.45)
     cam_data = bpy.data.cameras.new("icon_cam")
     cam_data.type = "ORTHO"
     cam_data.ortho_scale = ext / fill
@@ -255,7 +262,7 @@ def main():
         setup_icon_scene(320)
         root = empty(name)
         chars.BUILDERS[kind](root)
-        render_icon([root], os.path.join(OUT, name + ".png"), size=320, front_z=1, tilt=6, yaw=-20, fill=0.92)
+        render_icon([root], os.path.join(OUT, name + ".png"), size=320, front_z=1, tilt=6, yaw=-20, fill=0.92, bust=True)
         print("icon", name)
 
 

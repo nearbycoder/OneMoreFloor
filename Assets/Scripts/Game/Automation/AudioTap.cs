@@ -15,6 +15,12 @@ namespace OneMoreFloor
         string path;
         bool done;
 
+        public static AudioTap Instance { get; private set; }
+        /// <summary>Seconds of audio captured so far (read from the main thread; approximate to one DSP buffer).</summary>
+        public double SecondsWritten => written / (double)channels / rate;
+        /// <summary>Stop recording and write the file now.</summary>
+        public void Finish() { if (path != null) { Write(); path = null; } }
+
         public static void TryStart(GameObject listener)
         {
             var args = Environment.GetCommandLineArgs();
@@ -24,6 +30,7 @@ namespace OneMoreFloor
             int s = Array.IndexOf(args, "-omfRecordSeconds");
             if (s >= 0 && s + 1 < args.Length) float.TryParse(args[s + 1], out seconds);
             var tap = listener.AddComponent<AudioTap>();
+            Instance = tap;
             tap.path = args[i + 1];
             tap.rate = AudioSettings.outputSampleRate;
             tap.buffer = new float[(int)(seconds * tap.rate * 2)];

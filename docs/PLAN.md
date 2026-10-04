@@ -212,7 +212,8 @@ short credits crawl, and Overtime unlocks.
 | **Left click a floor** in the building / a **panel button** | Send the car there |
 | **1–9** | Send the car to slot 1–9 |
 | **Space** | Board everyone who fits (in queue order, skipping conflicts) |
-| **Left click a passenger in the car** (docked) | Let them off here to wait |
+| **Right click a passenger in the car** (docked) | Let them off here to wait |
+| **Left click a passenger in the car** | Send the car to their floor |
 | **Esc / P** | Pause |
 | **Hover** a passenger | Highlights their destination floor and button |
 | **Hover** a floor/button | Highlights everyone who wants to go there |

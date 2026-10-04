@@ -47,13 +47,17 @@ namespace OneMoreFloor
             return c;
         }
 
+        public static readonly Color Lit = Palette.Hex(0xFFC857);
+        public static Color Unlit(bool onPaper) => onPaper ? new Color(0.35f, 0.25f, 0.18f, 0.2f) : new Color(1, 1, 1, 0.14f);
+
         public static Image[] Row(Transform parent, int count, int lit, Vector2 pos, float size, float gap, bool onPaper = false)
         {
             var imgs = new Image[count];
             for (int i = 0; i < count; i++)
             {
-                imgs[i] = UiKit.Image("Star" + i, parent, Sprite, i < lit ? Palette.Hex(0xFFC857) : onPaper ? new Color(0.16f, 0.12f, 0.18f, 0.18f) : new Color(1, 1, 1, 0.18f), new Vector2(size, size),
-                    pos + new Vector2((i - (count - 1) / 2f) * (size + gap), 0));
+                var p = pos + new Vector2((i - (count - 1) / 2f) * (size + gap), 0);
+                if (i < lit) UiKit.Image("StarGlow" + i, parent, UiKit.SoftCircle, new Color(1f, 0.75f, 0.3f, onPaper ? 0f : 0.25f), new Vector2(size * 1.8f, size * 1.8f), p);
+                imgs[i] = UiKit.Image("Star" + i, parent, Sprite, i < lit ? Lit : Unlit(onPaper), new Vector2(size, size), p);
             }
             return imgs;
         }
@@ -79,28 +83,41 @@ namespace OneMoreFloor
 
         void Build(GameRoot game)
         {
-            var left = UiKit.Rect("Left", Root, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(90, 0), new Vector2(760, 1000));
-            var glow = UiKit.Image("Glow", left, UiKit.SoftCircle, new Color(0.08f, 0.05f, 0.1f, 0.55f), new Vector2(1500, 1300), new Vector2(150, 0));
-            logo = UiKit.Text("Logo", left, "One More\nFloor", 132, Palette.Cream, UiKit.Display, TextAlignmentOptions.BottomLeft, new Vector2(760, 330), new Vector2(0, 290));
-            logo.lineSpacing = -38;
-            logo.outlineWidth = 0.12f;
-            logo.outlineColor = new Color32(140, 90, 30, 255);
-            logo.textWrappingMode = TextWrappingModes.Normal;
-            var tag = UiKit.Text("Tag", left, "Run the elevator in a hotel that rearranges itself between stops.", 30, Palette.Hex(0xF3E6C8), UiKit.Body,
-                TextAlignmentOptions.TopLeft, new Vector2(700, 90), new Vector2(-30, 70));
-            tag.textWrappingMode = TextWrappingModes.Normal;
+            var scrim = UiKit.Image("Scrim", Root, Deco.Scrim, new Color(0.07f, 0.03f, 0.09f, 0.88f), new Vector2(1250, 10));
+            scrim.rectTransform.anchorMin = new Vector2(0, 0);
+            scrim.rectTransform.anchorMax = new Vector2(0, 1);
+            scrim.rectTransform.pivot = new Vector2(0, 0.5f);
+            scrim.rectTransform.anchoredPosition = Vector2.zero;
+            scrim.rectTransform.sizeDelta = new Vector2(1250, 0);
 
-            start = UiButton.Create(left, "START SHIFT", new Vector2(-130, -80), new Vector2(460, 92), () => game.ShowIntro(SaveData.Current.NextShift()), true, 40);
-            startSub = UiKit.Text("Sub", left, "", 24, Palette.Brass, UiKit.Body, TextAlignmentOptions.Left, new Vector2(460, 30), new Vector2(-130, -142));
-            UiButton.Create(left, "DUTY ROSTER", new Vector2(-130, -210), new Vector2(460, 76), () => game.ShowRoster(), false, 32);
-            UiButton.Create(left, "SETTINGS", new Vector2(-130, -300), new Vector2(460, 76), () => game.ShowSettings(this), false, 32);
-            UiButton.Create(left, "QUIT", new Vector2(-130, -390), new Vector2(460, 76), () => game.Quit(), false, 32);
-            totals = UiKit.Text("Totals", left, "", 24, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(600, 30), new Vector2(-50, -470));
-            var foot = UiKit.Text("Foot", Root, "Models in Blender · music & sound synthesized from scratch", 20, new Color(1, 1, 1, 0.55f), UiKit.Body,
-                TextAlignmentOptions.Right, new Vector2(900, 30), Vector2.zero);
-            UiKit.SetAnchorsPoint(foot.rectTransform, new Vector2(1, 0));
-            foot.rectTransform.pivot = new Vector2(1, 0);
-            foot.rectTransform.anchoredPosition = new Vector2(-30, 20);
+            const float W = 760f;
+            float L(float w) => -W * 0.5f + w * 0.5f;
+            var left = UiKit.Rect("Left", Root, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(120, 0), new Vector2(W, 1000));
+
+            var eyebrow = Deco.Label("Eyebrow", left, "THE SHUFFLETON  ·  EST. 1929", 20, new Vector2(600, 30), new Vector2(L(600), 380));
+            eyebrow.characterSpacing = 12f;
+            logo = UiKit.Text("Logo", left, "One More\nFloor", 136, Color.white, UiKit.Display, TextAlignmentOptions.BottomLeft, new Vector2(W + 100, 300), new Vector2(50, 216));
+            logo.lineSpacing = -30;
+            Deco.Gilded(logo, 0.14f);
+            Deco.Divider(left, 520, new Vector2(L(520), 44));
+            var tag = UiKit.Text("Tag", left, "Run the elevator in a hotel that rearranges itself between stops.", 29, Palette.Hex(0xEADFC8), UiKit.Body,
+                TextAlignmentOptions.TopLeft, new Vector2(600, 80), new Vector2(L(600), -12));
+            tag.textWrappingMode = TextWrappingModes.Normal;
+            Deco.Shadowed(tag, 0.7f, 0.6f, 0.4f);
+
+            start = UiButton.Create(left, "START SHIFT", new Vector2(L(480), -120), new Vector2(480, 96), () => game.ShowIntro(SaveData.Current.NextShift()), true, 40);
+            startSub = UiKit.Text("Sub", left, "", 22, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(480, 30), new Vector2(L(480), -190));
+            UiButton.Create(left, "DUTY ROSTER", new Vector2(L(480), -260), new Vector2(480, 70), () => game.ShowRoster(), false, 28);
+            UiButton.Create(left, "SETTINGS", new Vector2(L(480), -345), new Vector2(480, 70), () => game.ShowSettings(this), false, 28);
+            UiButton.Create(left, "QUIT", new Vector2(L(480), -430), new Vector2(480, 70), () => game.Quit(), false, 28);
+
+            // bottom right: star total over the credit line
+            var foot = UiKit.Rect("Foot", Root, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-40, 24), new Vector2(900, 80));
+            UiKit.Image("Star", foot, Stars.Sprite, Stars.Lit, new Vector2(30, 30), new Vector2(432, 18));
+            totals = UiKit.Text("Totals", foot, "", 26, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(300, 40), new Vector2(262, 18));
+            Deco.Shadowed(totals);
+            UiKit.Text("Credit", foot, "Models built in Blender  ·  music and sound synthesized from scratch", 18, new Color(1, 1, 1, 0.5f), UiKit.Body,
+                TextAlignmentOptions.Right, new Vector2(900, 30), new Vector2(0, -22));
             Primary = () => start.Click();
         }
 
@@ -109,16 +126,16 @@ namespace OneMoreFloor
             base.Show();
             var save = SaveData.Current;
             var next = ShiftCatalog.Get(save.NextShift());
-            startSub.text = $"Next up: {next.Day} · {next.Title}";
-            totals.text = $"STARS {save.TotalStars()} / {ShiftCatalog.All.Count * 3}";
+            startSub.text = $"Next up:  <color=#F2C66B>{next.Day}</color>  ·  {next.Title}";
+            totals.text = $"{save.TotalStars()} / {ShiftCatalog.All.Count * 3}";
             start.Focused = true;
         }
 
         protected override void Update()
         {
             base.Update();
-            t += Time.unscaledDeltaTime;
-            if (logo) logo.rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 0.8f) * 0.6f);
+            t += UiTime.Dt;
+            if (logo) logo.rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 0.8f) * 0.5f);
         }
     }
 
@@ -136,11 +153,14 @@ namespace OneMoreFloor
             var s = rt.gameObject.AddComponent<RosterScreen>();
             s.Init("Roster");
             s.game = game;
-            Dim(rt, 0.82f);
-            UiKit.Text("Title", rt, "Duty Roster", 92, Palette.Cream, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1200, 120), new Vector2(0, 420));
-            UiKit.Text("Sub", rt, "A week at The Shuffleton. Earn a star to unlock the next shift.", 28, Palette.Brass, UiKit.Body, TextAlignmentOptions.Center, new Vector2(1400, 40), new Vector2(0, 345));
-            s.grid = UiKit.Rect("Grid", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -20), new Vector2(1700, 640));
-            UiButton.Create(rt, "BACK", new Vector2(0, -440), new Vector2(300, 70), () => game.ShowTitle(), false, 30);
+            Dim(rt, 0.88f);
+            var eb = Deco.Label("Eyebrow", rt, "THE SHUFFLETON  ·  STAFF ONLY", 20, new Vector2(800, 30), new Vector2(0, 470), TextAlignmentOptions.Center);
+            eb.characterSpacing = 12f;
+            Deco.Gilded(UiKit.Text("Title", rt, "Duty Roster", 96, Color.white, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1200, 120), new Vector2(0, 400)));
+            Deco.Divider(rt, 560, new Vector2(0, 336));
+            UiKit.Text("Sub", rt, "A week at The Shuffleton. Earn a star to unlock the next shift.", 24, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(1400, 36), new Vector2(0, 302));
+            s.grid = UiKit.Rect("Grid", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(1700, 680));
+            UiButton.Create(rt, "BACK", new Vector2(0, -474), new Vector2(280, 66), () => game.ShowTitle(), false, 26);
             s.Back = () => game.ShowTitle();
             return s;
         }
@@ -157,37 +177,52 @@ namespace OneMoreFloor
             cards.Clear();
             var save = SaveData.Current;
             var all = ShiftCatalog.All;
+            int nextUp = save.NextShift();
             for (int i = 0; i < all.Count; i++)
             {
                 var def = all[i];
                 int row = i / 5, colI = i % 5;
-                var pos = new Vector2(-680 + colI * 340, 155 - row * 330);
+                var pos = new Vector2(-680 + colI * 340, 172 - row * 350);
                 bool unlocked = save.Unlocked(i);
-                var rim = UiKit.Image("Card" + i, grid, UiKit.Rounded, unlocked ? Palette.Brass : new Color(0.4f, 0.35f, 0.3f), new Vector2(316, 306), pos, true);
-                cards.Add(rim.gameObject);
-                var paper = UiKit.Image("Paper", rim.transform, UiKit.Rounded, unlocked ? Palette.Hex(0xF6EBD3) : Palette.Hex(0x7A7068), new Vector2(300, 290));
-                var stripe = UiKit.Image("Stripe", paper.transform, UiKit.Rounded, def.NewKind.HasValue ? Palette.KindColor(def.NewKind.Value) : Palette.Oxblood, new Vector2(300, 50), new Vector2(0, 120));
-                UiKit.Text("Day", stripe.transform, def.Day.ToUpperInvariant(), 22, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(290, 40));
-                var title = UiKit.Text("T", paper.transform, def.Title, 36, Palette.Ink, UiKit.Display, TextAlignmentOptions.Center, new Vector2(290, 90), new Vector2(0, 50));
+                var card = Deco.Panel("Card" + i, grid, new Vector2(304, 326), pos, out var face, true);
+                cards.Add(card.gameObject);
+                var accent = def.NewKind.HasValue ? Palette.KindColor(def.NewKind.Value) : Palette.Hex(0xC8323F);
+                var muted = new Color(1, 1, 1, 0.38f);
+
+                Deco.Label("Day", card, def.Day.ToUpperInvariant(), 19, new Vector2(280, 28), new Vector2(0, 134), TextAlignmentOptions.Center,
+                    unlocked ? Deco.Gold : muted);
+                UiKit.Image("Accent", card, UiKit.Pill, unlocked ? Color.Lerp(accent, Color.white, 0.15f) : new Color(1, 1, 1, 0.15f), new Vector2(64, 5), new Vector2(0, 114));
+
+                UiKit.Image("DiscBg", card, Deco.Well, unlocked ? Color.white : new Color(1, 1, 1, 0.5f), new Vector2(92, 92), new Vector2(0, 58));
+                var icon = def.NewKind.HasValue ? Icons.Kind(def.NewKind.Value) : Icons.Get("kind_bellhop");
+                var disc = UiKit.Image("Icon", card, icon ?? UiKit.Circle, icon != null ? (unlocked ? Color.white : new Color(0.1f, 0.07f, 0.12f, 0.85f)) : accent, new Vector2(80, 80), new Vector2(0, 60));
+                disc.preserveAspect = true;
+
+                var title = UiKit.Text("T", card, def.Title, 34, unlocked ? Palette.Cream : muted, UiKit.Display, TextAlignmentOptions.Center, new Vector2(272, 74), new Vector2(0, -16));
                 title.textWrappingMode = TextWrappingModes.Normal;
-                string what = def.NewKind.HasValue ? "New: " + Defs.Of(def.NewKind.Value).Name : def.Endless ? "Endless" : "Everyone";
-                UiKit.Text("New", paper.transform, what, 22, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(290, 30), new Vector2(0, -12));
+                title.enableAutoSizing = true;
+                title.fontSizeMin = 24;
+                title.fontSizeMax = 34;
+                title.lineSpacing = -18;
+                if (unlocked) Deco.Shadowed(title);
+                string what = def.NewKind.HasValue ? "NEW: " + Defs.Of(def.NewKind.Value).Name.ToUpperInvariant() : def.Endless ? "ENDLESS" : "EVERYONE";
+                Deco.Label("New", card, what, 15, new Vector2(272, 24), new Vector2(0, -64), TextAlignmentOptions.Center, unlocked ? Color.Lerp(accent, Color.white, 0.45f) : muted);
+
                 if (unlocked)
                 {
-                    Stars.Row(paper.transform, 3, save.Stars[i], new Vector2(0, -62), 46, 8, true);
-                    UiKit.Text("Best", paper.transform, save.Best[i] > 0 ? "Best $" + save.Best[i].ToString("N0") : "Not played yet", 22, Palette.Ink, UiKit.Signage,
-                        TextAlignmentOptions.Center, new Vector2(290, 30), new Vector2(0, -112));
-                    var btn = rim.gameObject.AddComponent<UiButton>();
-                    btn.Bg = rim;
-                    btn.Label = title;
+                    Stars.Row(card, 3, save.Stars[i], new Vector2(0, -102), 34, 6);
+                    var best = UiKit.Text("Best", card, save.Best[i] > 0 ? "BEST  $" + save.Best[i].ToString("N0") : i == nextUp ? "UP NEXT" : "NOT PLAYED", 17,
+                        save.Best[i] > 0 ? Palette.Cream : i == nextUp ? Deco.Gold : Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -136));
+                    best.characterSpacing = 4f;
                     int idx = i;
-                    btn.OnClick = () => game.ShowIntro(idx);
-                    btn.SetColors(rim.color, Palette.Hex(0xFFE08A));
+                    var btn = UiButton.Attach(card, face, () => game.ShowIntro(idx));
+                    btn.Focused = i == nextUp;
                 }
                 else
                 {
-                    UiKit.Text("Lock", paper.transform, "LOCKED", 34, Palette.Hex(0x3A322E), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(290, 40), new Vector2(0, -70));
-                    UiKit.Text("How", paper.transform, $"Earn a star on {all[i - 1].Day}", 20, Palette.Hex(0x3A322E), UiKit.Body, TextAlignmentOptions.Center, new Vector2(290, 30), new Vector2(0, -110));
+                    face.color = new Color(0.62f, 0.58f, 0.62f, 0.92f);
+                    Deco.Label("Lock", card, "LOCKED", 20, new Vector2(272, 30), new Vector2(0, -104), TextAlignmentOptions.Center, new Color(1, 1, 1, 0.5f));
+                    UiKit.Text("How", card, $"Earn a star on {all[i - 1].Day}", 17, new Color(1, 1, 1, 0.38f), UiKit.Body, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -134));
                 }
             }
             GameRoot.SetLayerRecursive(gameObject, GameRoot.UiLayer);
@@ -199,7 +234,7 @@ namespace OneMoreFloor
     public sealed class IntroScreen : UiScreen
     {
         GameRoot game;
-        TextMeshProUGUI day, title, note, newTitle, newRule;
+        TextMeshProUGUI day, title, note, newLabel, newTitle, newRule;
         RectTransform goalsRoot;
         Image kindDisc;
         RectTransform noteRt;
@@ -218,33 +253,45 @@ namespace OneMoreFloor
 
         void Build()
         {
-            Dim(Root, 0.6f);
-            day = UiKit.Text("Day", Root, "", 36, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(1200, 50), new Vector2(0, 400));
-            title = UiKit.Text("Title", Root, "", 110, Palette.Cream, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 140), new Vector2(0, 310));
-            title.outlineWidth = 0.1f;
-            title.outlineColor = new Color32(140, 90, 30, 255);
+            Dim(Root, 0.72f);
+            day = Deco.Label("Day", Root, "", 30, new Vector2(1200, 44), new Vector2(0, 440), TextAlignmentOptions.Center);
+            day.characterSpacing = 16f;
+            title = Deco.Gilded(UiKit.Text("Title", Root, "", 112, Color.white, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 140), new Vector2(0, 350)));
+            Deco.Divider(Root, 640, new Vector2(0, 272));
 
             // sticky note from The Management
-            var paper = UiKit.Image("Note", Root, null, Palette.Hex(0xFFE987), new Vector2(560, 380), new Vector2(-380, 0));
-            noteRt = paper.rectTransform;
-            var tape = UiKit.Image("Tape", paper.transform, null, new Color(1, 1, 1, 0.45f), new Vector2(160, 40), new Vector2(0, 180));
+            var noteHolder = UiKit.Rect("NoteHolder", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-380, 10), new Vector2(560, 390));
+            noteRt = noteHolder;
+            UiKit.Image("Shadow", noteHolder, Deco.Shadow, new Color(1, 1, 1, 0.9f), new Vector2(620, 450), new Vector2(8, -16));
+            var paper = UiKit.Image("Note", noteHolder, null, Palette.Hex(0xFFE987), new Vector2(560, 390));
+            UiKit.Image("Fold", paper.transform, null, new Color(0.85f, 0.7f, 0.2f, 0.25f), new Vector2(560, 60), new Vector2(0, -165));
+            var tape = UiKit.Image("Tape", paper.transform, null, new Color(1, 1, 0.95f, 0.5f), new Vector2(170, 42), new Vector2(0, 190));
             tape.rectTransform.localRotation = Quaternion.Euler(0, 0, 4);
-            note = UiKit.Text("NoteText", paper.transform, "", 40, Palette.Hex(0x3A2A1A), UiKit.Hand, TextAlignmentOptions.TopLeft, new Vector2(480, 260), new Vector2(0, 20));
+            note = UiKit.Text("NoteText", paper.transform, "", 40, Palette.Hex(0x3A2A1A), UiKit.Hand, TextAlignmentOptions.TopLeft, new Vector2(480, 260), new Vector2(0, 30));
             note.textWrappingMode = TextWrappingModes.Normal;
-            UiKit.Text("Sign", paper.transform, "— The Management", 34, Palette.Hex(0x7A2F38), UiKit.Hand, TextAlignmentOptions.Right, new Vector2(480, 50), new Vector2(0, -145));
+            note.enableAutoSizing = true;
+            note.fontSizeMin = 28;
+            note.fontSizeMax = 40;
+            UiKit.Text("Sign", paper.transform, "— The Management", 34, Palette.Hex(0x7A2F38), UiKit.Hand, TextAlignmentOptions.Right, new Vector2(480, 50), new Vector2(0, -150));
 
             // new today
-            var card = Card(Root, new Vector2(620, 380), new Vector2(380, 0));
-            UiKit.Text("NewLbl", card, "NEW TODAY", 28, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(560, 40), new Vector2(0, 150));
-            kindDisc = UiKit.Image("Disc", card, UiKit.Circle, Palette.Floor(FloorId.Lobby), new Vector2(170, 170), new Vector2(-195, 20));
+            var card = Card(Root, new Vector2(640, 390), new Vector2(380, 10));
+            newLabel = Deco.Label("NewLbl", card, "NEW TODAY", 22, new Vector2(560, 32), new Vector2(0, 150), TextAlignmentOptions.Center);
+            newLabel.characterSpacing = 12f;
+            Deco.Divider(card, 360, new Vector2(0, 122), 0.8f);
+            UiKit.Image("DiscBg", card, Deco.Well, Color.white, new Vector2(188, 188), new Vector2(-196, -20));
+            kindDisc = UiKit.Image("Disc", card, UiKit.Circle, Palette.Floor(FloorId.Lobby), new Vector2(160, 160), new Vector2(-196, -16));
             kindDisc.preserveAspect = true;
-            newTitle = UiKit.Text("NewTitle", card, "", 48, Palette.Cream, UiKit.Display, TextAlignmentOptions.Left, new Vector2(380, 70), new Vector2(110, 80));
-            newRule = UiKit.Text("Rule", card, "", 29, Palette.Cream, UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(370, 220), new Vector2(110, -40));
+            newTitle = UiKit.Text("NewTitle", card, "", 46, Palette.Cream, UiKit.Display, TextAlignmentOptions.Left, new Vector2(370, 64), new Vector2(110, 60));
+            Deco.Shadowed(newTitle);
+            newRule = UiKit.Text("Rule", card, "", 26, Palette.Hex(0xE6DAC2), UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(370, 200), new Vector2(110, -64));
             newRule.textWrappingMode = TextWrappingModes.Normal;
+            newRule.lineSpacing = 6;
 
-            goalsRoot = UiKit.Rect("Goals", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -250), new Vector2(1400, 60));
-            var go = UiButton.Create(Root, "CLOCK IN", new Vector2(110, -360), new Vector2(380, 96), () => game.BeginShift(shift), true, 44);
-            UiButton.Create(Root, "BACK", new Vector2(-230, -360), new Vector2(240, 80), () => game.ShowRoster(), false, 30);
+            goalsRoot = UiKit.Rect("Goals", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -268), new Vector2(1400, 80));
+            var go = UiButton.Create(Root, "CLOCK IN", new Vector2(120, -400), new Vector2(400, 96), () => game.BeginShift(shift), true, 42);
+            UiButton.Create(Root, "BACK", new Vector2(-220, -400), new Vector2(220, 72), () => game.ShowRoster(), false, 26);
+            go.Focused = true;
             Primary = () => go.Click();
             Back = () => game.ShowRoster();
         }
@@ -259,6 +306,7 @@ namespace OneMoreFloor
             if (def.NewKind.HasValue)
             {
                 var k = def.NewKind.Value;
+                newLabel.text = "NEW TODAY";
                 newTitle.text = Defs.Of(k).Name;
                 kindDisc.color = Palette.KindColor(k);
                 kindDisc.sprite = Icons.Kind(k) ?? UiKit.Circle;
@@ -266,22 +314,26 @@ namespace OneMoreFloor
             }
             else
             {
+                newLabel.text = def.Endless ? "NO END IN SIGHT" : "ALL HANDS";
                 newTitle.text = def.Endless ? "Overtime" : "Everyone";
-                var bell = Icons.Kind(Kind.Commuter) != null ? Icons.Get("kind_bellhop") : null;
+                var bell = Icons.Get("kind_bellhop");
                 kindDisc.sprite = bell ?? UiKit.Circle;
                 kindDisc.color = bell != null ? Color.white : Palette.Bad;
             }
             newRule.text = def.NewText;
             foreach (Transform c in goalsRoot) Destroy(c.gameObject);
             if (def.Endless)
-                UiKit.Text("G", goalsRoot, $"Last as long as you can.   Best: ${SaveData.Current.Best[index]:N0}", 32, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(1400, 50));
+            {
+                var p = Deco.Panel("Goal", goalsRoot, new Vector2(760, 76), Vector2.zero, true);
+                UiKit.Text("G", p, $"Last as long as you can.    <color=#F2C66B>Best ${SaveData.Current.Best[index]:N0}</color>", 28, Palette.Cream, UiKit.Signage,
+                    TextAlignmentOptions.Center, new Vector2(720, 50));
+            }
             else
                 for (int i = 0; i < 3; i++)
                 {
-                    float x = -420 + i * 420;
-                    Stars.Row(goalsRoot, i + 1, i + 1, new Vector2(x - 70, 0), 40, 4);
-                    UiKit.Text("G" + i, goalsRoot, "$" + def.Stars[i].ToString("N0"), 34, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left,
-                        new Vector2(220, 50), new Vector2(x + 110, 0));
+                    var p = Deco.Panel("Goal" + i, goalsRoot, new Vector2(300, 76), new Vector2(-330 + i * 330, 0), true);
+                    Stars.Row(p, i + 1, i + 1, new Vector2(-64, 0), 30, 2);
+                    UiKit.Text("Amt", p, "$" + def.Stars[i].ToString("N0"), 30, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(150, 50), new Vector2(60, 0));
                 }
             GameRoot.SetLayerRecursive(gameObject, GameRoot.UiLayer);
         }
@@ -289,7 +341,7 @@ namespace OneMoreFloor
         protected override void Update()
         {
             base.Update();
-            t += Time.unscaledDeltaTime;
+            t += UiTime.Dt;
             if (noteRt) noteRt.localRotation = Quaternion.Euler(0, 0, -3f + Mathf.Sin(t * 1.3f) * 0.4f);
         }
     }
@@ -303,13 +355,15 @@ namespace OneMoreFloor
             var rt = UiKit.Stretch("Pause", parent);
             var s = rt.gameObject.AddComponent<PauseScreen>();
             s.Init("Pause");
-            Dim(rt, 0.6f);
-            var card = Card(rt, new Vector2(560, 560), Vector2.zero);
-            UiKit.Text("T", card, "Paused", 80, Palette.Cream, UiKit.Display, TextAlignmentOptions.Center, new Vector2(500, 100), new Vector2(0, 190));
-            var resume = UiButton.Create(card, "RESUME", new Vector2(0, 70), new Vector2(400, 80), () => game.Resume(), true, 34);
-            UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -25), new Vector2(400, 70), () => game.RestartShift(), false, 28);
-            UiButton.Create(card, "SETTINGS", new Vector2(0, -110), new Vector2(400, 70), () => game.ShowSettings(s), false, 28);
-            UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -195), new Vector2(400, 70), () => game.QuitShift(), false, 28);
+            Dim(rt, 0.7f);
+            var card = Card(rt, new Vector2(560, 600), Vector2.zero);
+            Heading(card, "Paused", 214, 460, 80);
+            var resume = UiButton.Create(card, "RESUME", new Vector2(0, 86), new Vector2(420, 86), () => game.Resume(), true, 34);
+            UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -12), new Vector2(420, 68), () => game.RestartShift(), false, 25);
+            UiButton.Create(card, "SETTINGS", new Vector2(0, -94), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);
+            UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -176), new Vector2(420, 68), () => game.QuitShift(), false, 25);
+            UiKit.Text("Hint", card, "ESC TO RESUME", 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(400, 24), new Vector2(0, -250)).characterSpacing = 8f;
+            resume.Focused = true;
             s.Primary = () => resume.Click();
             s.Back = () => game.Resume();
             return s;
@@ -331,17 +385,20 @@ namespace OneMoreFloor
             var s = rt.gameObject.AddComponent<SettingsScreen>();
             s.Init("Settings");
             s.game = game;
-            Dim(rt, 0.65f);
-            var card = Card(rt, new Vector2(860, 720), Vector2.zero);
-            UiKit.Text("T", card, "Settings", 80, Palette.Cream, UiKit.Display, TextAlignmentOptions.Center, new Vector2(700, 100), new Vector2(0, 280));
+            Dim(rt, 0.75f);
+            var card = Card(rt, new Vector2(900, 780), Vector2.zero);
+            Heading(card, "Settings", 296, 600, 80);
             var save = SaveData.Current;
-            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 170), save.Master, v => { save.Master = v; game.ApplySettings(); });
-            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 90), save.Music, v => { save.Music = v; game.ApplySettings(); });
-            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 10), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
-            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -80), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -150), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
-            s.forecast = UiToggle.Create(card, "SHOW SHUFFLE FORECAST", new Vector2(0, -220), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
-            UiButton.Create(card, "DONE", new Vector2(0, -305), new Vector2(300, 74), () => s.Close(), true, 32);
+            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 202), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 150), save.Master, v => { save.Master = v; game.ApplySettings(); });
+            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 84), save.Music, v => { save.Music = v; game.ApplySettings(); });
+            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 18), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
+            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, -50), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -98), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
+            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -160), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
+            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -222), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
+            var done = UiButton.Create(card, "DONE", new Vector2(0, -318), new Vector2(300, 74), () => s.Close(), true, 30);
+            done.Focused = true;
             s.Primary = () => s.Close();
             s.Back = () => s.Close();
             return s;
@@ -367,10 +424,11 @@ namespace OneMoreFloor
     public sealed class ResultsScreen : UiScreen
     {
         GameRoot game;
-        TextMeshProUGUI stamp, tips, lines, hint, bestStamp;
+        TextMeshProUGUI stamp, tips, hint, bestStamp, bestLine;
+        readonly TextMeshProUGUI[] statLabel = new TextMeshProUGUI[4], statValue = new TextMeshProUGUI[4];
         Image[] stars;
         UiButton retry, next;
-        RectTransform paper;
+        RectTransform paper, bestBox;
         int targetScore, shownScore, starCount, shift;
         float t;
         bool newBest;
@@ -387,22 +445,40 @@ namespace OneMoreFloor
 
         void Build()
         {
-            Dim(Root, 0.55f);
-            var p = UiKit.Image("TimeCard", Root, UiKit.Rounded, Palette.Hex(0xF6EBD3), new Vector2(760, 740), new Vector2(0, 40));
-            paper = p.rectTransform;
-            var band = UiKit.Image("Band", p.transform, UiKit.Rounded, Palette.Oxblood, new Vector2(760, 90), new Vector2(0, 325));
-            UiKit.Text("Hdr", band.transform, "THE SHUFFLETON · TIME CARD", 28, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(740, 60));
-            stamp = UiKit.Text("Stamp", p.transform, "CLOCKED OUT", 70, Palette.Hex(0x2F6F6A), UiKit.Display, TextAlignmentOptions.Center, new Vector2(740, 100), new Vector2(0, 220));
-            tips = UiKit.Text("Tips", p.transform, "$0", 96, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(740, 110), new Vector2(0, 110));
-            stars = Stars.Row(p.transform, 3, 0, new Vector2(0, 10), 96, 20, true);
-            lines = UiKit.Text("Lines", p.transform, "", 30, Palette.Ink, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 140), new Vector2(0, -115));
-            lines.textWrappingMode = TextWrappingModes.Normal;
-            hint = UiKit.Text("Hint", p.transform, "", 26, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 40), new Vector2(0, -205));
-            bestStamp = UiKit.Text("Best", p.transform, "NEW BEST!", 56, Palette.Bad, UiKit.Display, TextAlignmentOptions.Center, new Vector2(400, 80), new Vector2(205, -265));
-            bestStamp.rectTransform.localRotation = Quaternion.Euler(0, 0, 14);
-            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -400), new Vector2(460, 96), () => game.RestartShift(), true, 38);
-            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(370, -400), new Vector2(260, 80), () => game.ShowIntro(shift + 1), false, 28);
-            UiButton.Create(Root, "ROSTER", new Vector2(-370, -400), new Vector2(260, 80), () => game.ShowRoster(), false, 28);
+            Dim(Root, 0.65f);
+            paper = Deco.Panel("TimeCard", Root, new Vector2(760, 740), new Vector2(0, 60), false, Deco.Paper);
+            var ink = Palette.Hex(0x2A1E2E);
+            var band = UiKit.Image("Band", paper, UiKit.Rounded, Palette.Oxblood, new Vector2(720, 70), new Vector2(0, 316));
+            var hdr = Deco.Label("Hdr", band.transform, "THE SHUFFLETON  ·  TIME CARD", 22, new Vector2(700, 40), Vector2.zero, TextAlignmentOptions.Center, Palette.Cream);
+            hdr.characterSpacing = 10f;
+            stamp = UiKit.Text("Stamp", paper, "CLOCKED OUT", 64, Palette.Hex(0x2F6F6A), UiKit.Display, TextAlignmentOptions.Center, new Vector2(700, 90), new Vector2(0, 224));
+            stamp.rectTransform.localRotation = Quaternion.Euler(0, 0, 2f);
+            tips = UiKit.Text("Tips", paper, "$0", 104, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(700, 120), new Vector2(0, 122));
+            stars = Stars.Row(paper, 3, 0, new Vector2(0, 18), 88, 18, true);
+            UiKit.Image("Rule", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -48));
+            for (int i = 0; i < 4; i++)
+            {
+                float x = -255 + i * 170;
+                statLabel[i] = UiKit.Text("L" + i, paper, "", 15, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 24), new Vector2(x, -74));
+                statLabel[i].characterSpacing = 6f;
+                statValue[i] = UiKit.Text("V" + i, paper, "", 40, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 50), new Vector2(x, -112));
+                if (i > 0) UiKit.Image("Sep" + i, paper, null, new Color(0.5f, 0.35f, 0.2f, 0.25f), new Vector2(2, 60), new Vector2(x - 85, -94));
+            }
+            UiKit.Image("Rule2", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -154));
+            hint = UiKit.Text("Hint", paper, "", 24, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 40), new Vector2(0, -192));
+            var stampInk = Palette.Hex(0xC8303A);
+            stampInk.a = 0.88f;
+            bestBox = UiKit.Rect("BestStamp", paper, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -262), new Vector2(330, 84));
+            bestBox.localRotation = Quaternion.Euler(0, 0, -5f);
+            var ring = UiKit.Image("Ring", bestBox, Deco.StampRing, stampInk, new Vector2(330, 84));
+            Deco.Fill(ring.rectTransform);
+            bestStamp = UiKit.Text("Best", bestBox, "NEW BEST!", 46, Palette.Hex(0xC8303A), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(310, 70), new Vector2(0, -2));
+            bestStamp.characterSpacing = 8f;
+            bestLine = UiKit.Text("BestLine", paper, "", 18, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(600, 30), new Vector2(0, -258));
+            bestLine.characterSpacing = 6f;
+            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -410), new Vector2(460, 96), () => game.RestartShift(), true, 36);
+            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(380, -410), new Vector2(260, 74), () => game.ShowIntro(shift + 1), false, 26);
+            UiButton.Create(Root, "ROSTER", new Vector2(-380, -410), new Vector2(260, 74), () => game.ShowRoster(), false, 26);
             Primary = () => retry.Click();
             Back = () => game.ShowRoster();
         }
@@ -417,26 +493,41 @@ namespace OneMoreFloor
             t = 0f;
             stamp.text = sim.Fired ? "YOU'RE FIRED!" : sim.Def.Endless ? "OFF THE CLOCK" : "CLOCKED OUT";
             stamp.color = sim.Fired ? Palette.Bad : Palette.Hex(0x2F6F6A);
-            string time = sim.Def.Endless ? $" · Lasted {Mathf.FloorToInt(sim.Time) / 60}:{Mathf.FloorToInt(sim.Time) % 60:00}" : "";
-            lines.text = $"Guests delivered: <b>{sim.DeliveredCount}</b>    Best streak: <b>{sim.BestStreak}</b>\nComplaints: <b>{sim.Complaints}</b>    Stops: <b>{sim.Stops}</b>{time}";
-            if (starCount < 3)
-                hint.text = $"{starCount + 1} star{(starCount + 1 > 1 ? "s" : "")} at ${sim.Def.Stars[starCount]:N0}";
+            int secs = Mathf.FloorToInt(sim.Time);
+            SetStat(0, "DELIVERED", sim.DeliveredCount.ToString());
+            SetStat(1, "BEST STREAK", sim.BestStreak.ToString());
+            SetStat(2, "COMPLAINTS", sim.Complaints.ToString());
+            if (sim.Def.Endless) SetStat(3, "LASTED", $"{secs / 60}:{secs % 60:00}");
+            else SetStat(3, "STOPS", sim.Stops.ToString());
+            statValue[2].color = sim.Complaints > 0 ? Palette.Oxblood : Palette.Hex(0x2A1E2E);
+            if (sim.Def.Endless)
+                hint.text = "The building never sleeps.";
+            else if (starCount < 3)
+                hint.text = $"Next star at <b>${sim.Def.Stars[starCount]:N0}</b>";
             else
                 hint.text = "A perfect shift. The Management is speechless.";
-            foreach (var s in stars) { s.color = new Color(0.16f, 0.12f, 0.18f, 0.18f); s.rectTransform.localScale = Vector3.one; }
-            bestStamp.gameObject.SetActive(false);
+            foreach (var s in stars) { s.color = Stars.Unlit(true); s.rectTransform.localScale = Vector3.one; }
+            bestBox.gameObject.SetActive(false);
+            int prev = SaveData.Current.Best[shift];
+            bestLine.text = !best && prev > 0 ? $"PERSONAL BEST  ${prev:N0}" : "";
             bool hasNext = shift + 1 < ShiftCatalog.All.Count && SaveData.Current.Unlocked(shift + 1);
             next.gameObject.SetActive(hasNext);
             tips.text = "$0";
+        }
+
+        void SetStat(int i, string label, string value)
+        {
+            statLabel[i].text = label;
+            statValue[i].text = value;
         }
 
         protected override void Update()
         {
             base.Update();
             if (!Visible) return;
-            float dt = Time.unscaledDeltaTime;
+            float dt = UiTime.Dt;
             t += dt;
-            paper.localRotation = Quaternion.Euler(0, 0, -1.5f);
+            paper.localRotation = Quaternion.Euler(0, 0, -0.4f);
             if (t > 0.4f && shownScore < targetScore)
             {
                 int step = Mathf.Max(1, Mathf.CeilToInt(targetScore * dt / 1.6f));
@@ -449,20 +540,20 @@ namespace OneMoreFloor
                 float at = 2.1f + i * 0.45f;
                 if (i < starCount && t >= at && stars[i].color.a < 0.5f)
                 {
-                    stars[i].color = Palette.Hex(0xFFC857);
+                    stars[i].color = Stars.Lit;
                     AudioDirector.Instance?.Sfx("star_" + (i + 1), 0.8f, 1f, 0f, 0f, 0f);
                 }
                 float k = Mathf.Clamp01((t - at) / 0.35f);
                 if (i < starCount) stars[i].rectTransform.localScale = Vector3.one * (k <= 0f ? 1f : Mathf.Lerp(1.8f, 1f, Ease.OutBack(k, 3f)));
             }
             float bestAt = 2.2f + starCount * 0.45f;
-            if (newBest && t >= bestAt && !bestStamp.gameObject.activeSelf)
+            if (newBest && t >= bestAt && !bestBox.gameObject.activeSelf)
             {
-                bestStamp.gameObject.SetActive(true);
+                bestBox.gameObject.SetActive(true);
                 AudioDirector.Instance?.Sfx("new_record", 0.8f);
             }
-            if (bestStamp.gameObject.activeSelf)
-                bestStamp.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.2f, 1f, Ease.OutBack(Mathf.Clamp01((t - bestAt) / 0.3f), 2f));
+            if (bestBox.gameObject.activeSelf)
+                bestBox.localScale = Vector3.one * Mathf.Lerp(2.2f, 1f, Ease.OutBack(Mathf.Clamp01((t - bestAt) / 0.3f), 2f));
             retry.Focused = true;
         }
     }
@@ -476,9 +567,9 @@ namespace OneMoreFloor
         GameRoot game;
 
         static readonly string Credits =
-            "<size=120%><b>Stay.</b></size>\n<size=70%>— The Building</size>\n\n\n" +
+            "<size=140%><color=#F2C66B><b>Stay.</b></color></size>\n<size=70%>— The Building</size>\n\n\n" +
             "You made it through a whole week at The Shuffleton.\nThe floors have stopped arguing about who goes on top.\nMostly.\n\n\n" +
-            "<b>ONE MORE FLOOR</b>\n\n" +
+            "<color=#F2C66B><b>ONE MORE FLOOR</b></color>\n\n" +
             "Design, code, models, music and sound\n<i>made from scratch for this game</i>\n\n" +
             "Engine: Unity 6 (URP)\nModels: Blender 4.5, built by script\nMusic & effects: synthesized in Python with numpy\n\n" +
             "Fonts (SIL Open Font License):\nLimelight · Bungee · Varela Round · Patrick Hand\n\n\n" +
@@ -490,11 +581,13 @@ namespace OneMoreFloor
             var s = rt.gameObject.AddComponent<EndingScreen>();
             s.Init("Ending");
             s.game = game;
-            Dim(rt, 0.85f);
+            UiKit.Stretch("Backdrop", rt).gameObject.AddComponent<Image>().color = new Color(0.05f, 0.03f, 0.07f, 0.6f);
+            Dim(rt, 0.9f);
             s.crawl = UiKit.Rect("Crawl", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), Vector2.zero, new Vector2(1200, 2400));
             var txt = UiKit.Text("Text", s.crawl, Credits, 44, Palette.Cream, UiKit.Body, TextAlignmentOptions.Top, new Vector2(1200, 2400));
             txt.textWrappingMode = TextWrappingModes.Normal;
             txt.richText = true;
+            Deco.Shadowed(txt);
             UiButton.Create(rt, "CONTINUE", new Vector2(700, -460), new Vector2(300, 74), () => game.ShowRoster(), true, 30);
             s.Primary = () => game.ShowRoster();
             s.Back = () => game.ShowRoster();
@@ -510,7 +603,7 @@ namespace OneMoreFloor
         protected override void Update()
         {
             base.Update();
-            t += Time.unscaledDeltaTime;
+            t += UiTime.Dt;
             crawl.anchoredPosition = new Vector2(0, 440f + Mathf.Max(0f, t - 3f) * 55f);
         }
     }

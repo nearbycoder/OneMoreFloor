@@ -30,7 +30,8 @@ namespace OneMoreFloor
         {
             Instance = this;
             var args = System.Environment.GetCommandLineArgs();
-            SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0;
+            SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0
+                                 || System.Array.IndexOf(args, "-omfDemo") >= 0;
             // Pace frames ourselves: on Wayland a vsync'd swap blocks on compositor frame callbacks,
             // which some compositors throttle hard for unfocused windows. Compositors don't tear.
             QualitySettings.vSyncCount = 0;
@@ -51,12 +52,15 @@ namespace OneMoreFloor
         ulong runSeed = 1;
         bool endingPending;
         public bool InShift { get; private set; }
+        /// <summary>When set, every shift uses this seed instead of the clock (reproducible recordings).</summary>
+        public ulong FixedSeed { get; set; }
 
         void Start()
         {
             ApplySettings();
             AutoPilot.TryStart(this);
             PerfProbe.TryStart(this);
+            DemoReel.TryStart(this);
             int direct = StartIndexFromArgs();
             if (direct >= 0) BeginShift(direct);
             else ShowTitle();
@@ -99,17 +103,22 @@ namespace OneMoreFloor
             Audio.StopGameplayMusic();
         }
 
+        /// <summary>The first Graveyard clear plays the ending on the way out of the results, whichever
+        /// button the player picks next (its Continue leads to the roster).</summary>
+        bool PlayPendingEnding()
+        {
+            if (!endingPending) return false;
+            endingPending = false;
+            if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
+            HideAll();
+            ending.Show();
+            Audio.Sting("sting_finale", 0.2f, 0.9f);
+            return true;
+        }
+
         public void ShowRoster()
         {
-            if (endingPending)
-            {
-                endingPending = false;
-                if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
-                HideAll();
-                ending.Show();
-                Audio.Sting("sting_finale", 0.2f, 0.9f);
-                return;
-            }
+            if (PlayPendingEnding()) return;
             if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
             HideAll();
             roster.Show();
@@ -120,6 +129,7 @@ namespace OneMoreFloor
         {
             if (index < 0 || index >= ShiftCatalog.All.Count) { ShowRoster(); return; }
             if (!SaveData.Current.Unlocked(index)) { ShowRoster(); return; }
+            if (PlayPendingEnding()) return;
             if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
             HideAll();
             intro.Setup(index);
@@ -133,7 +143,7 @@ namespace OneMoreFloor
         {
             HideAll();
             currentShift = index;
-            runSeed = (ulong)System.DateTime.Now.Ticks;
+            runSeed = FixedSeed != 0 ? FixedSeed : (ulong)System.DateTime.Now.Ticks;
             InShift = true;
             var def = ShiftCatalog.Get(index);
             Sky.Apply(def.Lighting, Sun, WorldCam);
@@ -184,7 +194,7 @@ namespace OneMoreFloor
             }
             results.Setup(sim, best && sim.Score > 0);
             results.Show();
-            Audio.Sting(sim.Fired ? "sting_clockout" : "sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
+            Audio.Sting("sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
         }
 
         public void Quit()
@@ -334,7 +344,10 @@ namespace OneMoreFloor
         /// <summary>Developer/automation entry: start any shift directly.</summary>
         public void StartShift(int index, ulong seed)
         {
+            var prev = FixedSeed;
+            FixedSeed = seed;
             BeginShift(index);
+            FixedSeed = prev;
         }
 
         void Update()
