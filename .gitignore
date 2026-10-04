@@ -1,26 +1,29 @@
 # Unity
-/Library/
-/Temp/
-/Obj/
-/Logs/
-/Build/
-/Builds/
-/UserSettings/
-/MemoryCaptures/
-/Recordings/
-/Screenshots/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Bb]uild/
+/[Bb]uilds/
+/[Uu]ser[Ss]ettings/
+/[Mm]emory[Cc]aptures/
+/[Rr]ecordings/
+/[Ss]creenshots/
 *.csproj
 *.sln
 *.slnx
 *.pidb
 *.userprefs
 *.unityproj
+*.apk
+*.aab
+*.unitypackage
 .vs/
 .idea/
 .vscode/
+.consulo/
 sysinfo.txt
 crashlytics-build.properties
-.consulo/
 
 # Blender
 *.blend1
@@ -29,15 +32,36 @@ crashlytics-build.properties
 # Python
 __pycache__/
 *.pyc
+.venv/
+venv/
+env/
+
+# Other engines / web tooling (not used here, kept out just in case)
+.godot/
+node_modules/
+dist/
+
+# Raw captures and recordings (the curated media lives in docs/media/)
+/Captures/
+*.raw.mp4
+*.wav.tmp
 
 # Local tooling
 /Tools/.libs/
 /.scaffold/
 /ArtSource/preview/
 /ArtSource/out/
+*.log
+
+# OS junk
 .DS_Store
+Thumbs.db
+desktop.ini
+*~
 
 # keep the rules harness project (Unity csproj files are generated and ignored above)
 !/Tools/simharness/SimHarness.csproj
+/Tools/simharness/bin/
+/Tools/simharness/obj/
 /Assets/Screenshots/
 /Assets/Screenshots.meta
