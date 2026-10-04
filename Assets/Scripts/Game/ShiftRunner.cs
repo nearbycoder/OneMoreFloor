@@ -14,7 +14,7 @@ namespace OneMoreFloor
     {
         public const float Step = 1f / 60f;
 
-        public ShiftSim Sim;
+        [System.NonSerialized] public ShiftSim Sim;
         public BuildingView Building;
         public CarView Car;
         public Hud Hud;
@@ -26,7 +26,7 @@ namespace OneMoreFloor
         public System.Action<ShiftSim> Ended;
         public System.Action<SimEvent> OnEvent;
         /// <summary>When set, the bot plays (autopilot, attract mode, captures).</summary>
-        public Bot AutoBot;
+        [System.NonSerialized] public Bot AutoBot;
 
         public FloorId? HoverFloor { get; private set; }
         public int HoverPid { get; private set; } = -1;
@@ -81,6 +81,16 @@ namespace OneMoreFloor
             SyncViews(dt);
             Car.Sync(Sim, Paused ? 0f : dt);
             Hud.Tick(dt);
+            if (Mathf.Abs(Sim.Car.Vel) > 0.1f) lastCarDir = Mathf.Sign(Sim.Car.Vel);
+            if (Audio != null)
+            {
+                Audio.UpdateShift(Sim, dt, Paused);
+                if (!Sim.Def.Endless && Sim.ClockRunning && !Sim.Ended && Sim.TimeLeft <= 10.5f)
+                {
+                    int sec = Mathf.CeilToInt(Sim.TimeLeft);
+                    if (sec != lastTickSecond) { lastTickSecond = sec; Audio.Sfx("tick", 0.7f, sec <= 3 ? 1.25f : 1f); }
+                }
+            }
 
             if (Sim.Ended && endTimer < 0f) endTimer = 1.6f;
             if (endTimer > 0f)
@@ -109,8 +119,18 @@ namespace OneMoreFloor
             if (Sim == null || Sim.Ended || Paused) return false;
             if (!Sim.SendTo(slot)) return false;
             Hud.Panel.Press(slot);
+            Audio?.Sfx("btn_press", 0.8f, 1f + slot * 0.02f, 0.6f);
             return true;
         }
+
+        AudioDirector Audio => AudioDirector.Instance;
+        int lastTickSecond = -1;
+        static readonly int[] Scale = { 0, 2, 4, 5, 7, 9, 11, 12, 14, 16 };
+        float DingPitch(int slot) => 0.84f * Mathf.Pow(2f, Scale[Mathf.Clamp(slot, 0, 9)] / 12f);
+        float PanOf(Vector3 w) => AudioDirector.ScreenPan(w);
+        float PanOfFloor(FloorId f) => PanOf(Building[f].transform.position);
+        float PanOfPassenger(int pid) => PanOf(HeadOf(pid, Car.transform.position));
+        float lastCarDir;
 
         void HandleInput()
         {
@@ -226,9 +246,98 @@ namespace OneMoreFloor
             Sim.Events.Clear();
         }
 
+        void PlaySound(SimEvent e)
+        {
+            var a = Audio;
+            if (a == null) return;
+            switch (e.Type)
+            {
+                case Ev.Spawned:
+                    var sp = Sim.Find(e.Pid);
+                    if (sp != null && Time.timeSinceLevelLoad > 1f) a.Voice(sp.Kind, PanOfFloor(e.Floor), 0.25f);
+                    break;
+                case Ev.Boarded:
+                {
+                    var p = Sim.Find(e.Pid);
+                    a.Sfx("board_hop", 0.7f, 1f + 0.05f * Sim.Car.Riders.Count, 0f);
+                    if (p != null) a.Voice(p.Kind, 0f, 0.45f);
+                    if (p != null && p.Kind == Kind.Kid) { a.SfxLater("button_mash", 0.25f, 0.6f); a.SfxLater("kid_giggle", 0.5f, 0.6f); }
+                    if (p != null && p.Kind == Kind.Mirror) a.SfxLater("sparkle", 0.1f, 0.35f, 1.4f);
+                    break;
+                }
+                case Ev.BoardRefused:
+                {
+                    var p = Sim.Find(e.Pid);
+                    a.Sfx("refuse", 0.3f);
+                    if (p != null) a.Voice(p.Kind, 0f, 0.5f);
+                    break;
+                }
+                case Ev.Dropped: a.Sfx("board_hop", 0.6f, 0.8f); a.Bellhop(); break;
+                case Ev.Departing:
+                    a.Sfx("door_close", 0.55f);
+                    a.SfxLater("car_start", 0.18f, 0.5f);
+                    break;
+                case Ev.Retarget: a.Sfx("btn_press", 0.5f, 1.1f); break;
+                case Ev.QuickStop:
+                    a.Sfx("ding_quick", 0.45f, DingPitch(e.Slot));
+                    a.Sfx("door_open", 0.3f, 1.25f);
+                    if (Random.value < 0.4f) a.Sfx("kid_giggle", 0.45f);
+                    break;
+                case Ev.Arrived:
+                    a.Sfx("car_stop", 0.5f);
+                    a.Sfx(lastCarDir >= 0 ? "ding_up" : "ding_down", 0.6f, DingPitch(e.Slot));
+                    a.SfxLater("door_open", 0.06f, 0.5f);
+                    break;
+                case Ev.Shuffled:
+                {
+                    bool big = e.Card.Type == CardType.Flip || e.Card.Type == CardType.Roll || e.Moves.Length > 3;
+                    a.Sfx("shuffle_lift", big ? 0.8f : 0.6f, big ? 0.85f : 1f);
+                    a.SfxLater("shuffle_land", 0.55f, big ? 0.9f : 0.7f, big ? 0.85f : 1f);
+                    if (big) a.Sfx("rumble", 0.6f);
+                    break;
+                }
+                case Ev.Jammed: a.Sfx("jam", 0.7f); a.Bellhop(); break;
+                case Ev.LeavingScheduled: a.Sfx("leaving_tick", 0.6f, 1f, PanOfFloor(e.Floor)); break;
+                case Ev.LeavingTick: a.Sfx("leaving_tick", e.Value <= 1 ? 0.6f : 0.3f, e.Value <= 1 ? 1.2f : 1f, PanOfFloor(e.Floor)); break;
+                case Ev.DepartureJammed: a.Sfx("jam", 0.4f, 1.2f); break;
+                case Ev.FloorDeparted:
+                    a.Sfx("floor_depart", 0.75f);
+                    a.SfxLater("floor_arrive", 0.4f, 0.75f);
+                    if (e.Floor2 == FloorId.Ocean) { a.SfxLater("splash", 0.9f, 0.8f); a.SfxLater("gull", 1.3f, 0.6f); }
+                    break;
+                case Ev.Delivered:
+                {
+                    var p = Sim.Find(e.Pid);
+                    float pan = PanOfPassenger(e.Pid);
+                    a.Sfx("coin", 0.7f, 1f + 0.12f * e.Aux, pan);
+                    a.SfxLater("exit_cheer", 0.08f, 0.45f, 1f + 0.05f * e.Aux, pan);
+                    a.Sfx("streak_" + Mathf.Clamp(Sim.Streak - 1, 0, 11), 0.35f, 1f, 0f, 0f, 0f);
+                    if (p != null) a.SfxLater("voice_" + p.Kind.ToString().ToLowerInvariant() + "_" + Random.Range(0, 5), 0.15f, 0.45f, 1.08f, pan);
+                    if (e.Aux >= 1 && e.Aux <= 3) a.SfxLater("fanfare_" + (e.Aux + 1), 0.1f, 0.6f);
+                    var flags = (DeliveryFlags)int.Parse(e.Text ?? "0");
+                    if ((flags & DeliveryFlags.Express) != 0 || e.Value >= 700) a.SfxLater("cash_register", 0.12f, 0.6f);
+                    break;
+                }
+                case Ev.NeedsSun: a.Sfx("wilt", 0.6f); a.Voice(Kind.Houseplant, 0f, 0.5f); break;
+                case Ev.Sunned: a.Sfx("sparkle", 0.6f); break;
+                case Ev.Poofed: a.Sfx("poof", 0.85f); a.Bellhop(); break;
+                case Ev.ExpressBroken: a.Sfx("harrumph", 0.7f); break;
+                case Ev.Complaint: a.SfxLater("complaint", 0.05f, 0.75f); break;
+                case Ev.StormedOff: a.Sfx("storm_off", 0.6f, 1f, PanOfFloor(e.Floor)); break;
+                case Ev.SweptAway: a.Sfx("splash", 0.6f); break;
+                case Ev.ChangedMind: { var p = Sim.Find(e.Pid); if (p != null) a.Voice(p.Kind, 0f, 0.4f); break; }
+                case Ev.StreakBroken: if (e.Value >= 3) a.Sfx("record_scratch", 0.6f); break;
+                case Ev.RushHour: a.Sting("sting_rush", 0.5f); a.Sfx("alarm_bell", 0.5f); break;
+                case Ev.ClockStarted: a.Sfx("punch_clock", 0.5f, 1.2f); break;
+                case Ev.Fired: a.Sfx("sad_trombone", 0.9f); break;
+                case Ev.ShiftEnded: if (e.Aux == 0) a.Sfx("punch_clock", 0.8f); break;
+            }
+        }
+
         void Handle(SimEvent e)
         {
             OnEvent?.Invoke(e);
+            PlaySound(e);
             switch (e.Type)
             {
                 case Ev.Spawned:

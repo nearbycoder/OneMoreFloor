@@ -24,6 +24,7 @@ namespace OneMoreFloor
         public Light Sun { get; private set; }
         public Sky Sky { get; private set; }
         public Volume Post { get; private set; }
+        public AudioDirector Audio { get; private set; }
 
         void Awake()
         {
@@ -49,6 +50,7 @@ namespace OneMoreFloor
 
         void BuildWorld()
         {
+            Audio = AudioDirector.Create(transform);
             var camGo = new GameObject("WorldCamera");
             camGo.tag = "MainCamera";
             WorldCam = camGo.AddComponent<Camera>();
@@ -153,6 +155,8 @@ namespace OneMoreFloor
             var def = ShiftCatalog.Get(index);
             Sky.Apply(def.Lighting, Sun, WorldCam);
             Runner.Begin(def, seed);
+            Audio.PlayGameplay(def);
+            Audio.Sting("sting_start", 0.5f, 0.8f);
             SetLayerRecursive(Canvas.gameObject, UiLayer);
         }
 

@@ -9,7 +9,7 @@ namespace OneMoreFloor
     /// </summary>
     public sealed class PassengerView : MonoBehaviour
     {
-        public Passenger P;
+        [System.NonSerialized] public Passenger P;
         public Transform Visual;     // squash/rotate this
         public Transform Head;
         Transform[] leaves;
