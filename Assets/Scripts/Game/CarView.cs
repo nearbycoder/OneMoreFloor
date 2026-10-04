@@ -132,7 +132,7 @@ namespace OneMoreFloor
             transform.localPosition = new Vector3(0f, y, Layout.CarZ);
 
             // squash on acceleration, stretch at speed, spring bounce on stopping
-            float accel = (car.Vel - lastVel) / Mathf.Max(dt, 1e-4f);
+            float accel = dt > 1e-4f ? (car.Vel - lastVel) / Mathf.Max(dt, 1f / 120f) : 0f;
             lastVel = car.Vel;
             squash.Step(Mathf.Clamp(-accel * 0.0016f, -0.08f, 0.08f) + Mathf.Abs(car.Vel) * 0.006f, 320f, 13f, dt);
             if (Mathf.Abs(accel) > 200f) squash.Velocity += -Mathf.Sign(accel) * 0.02f;

@@ -52,6 +52,7 @@ namespace OneMoreFloor
         void Start()
         {
             ApplySettings();
+            AutoPilot.TryStart(this);
             int direct = StartIndexFromArgs();
             if (direct >= 0) BeginShift(direct);
             else ShowTitle();
@@ -99,8 +100,10 @@ namespace OneMoreFloor
             if (endingPending)
             {
                 endingPending = false;
+                if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
                 HideAll();
                 ending.Show();
+                Audio.Sting("sting_finale", 0.2f, 0.9f);
                 return;
             }
             if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }

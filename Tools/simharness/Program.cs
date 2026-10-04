@@ -11,6 +11,7 @@ static class Program
         string mode = args.Length > 0 ? args[0] : "balance";
         if (mode == "trace") return Trace(int.Parse(args[1]), ulong.Parse(args.Length > 2 ? args[2] : "1"), args.Length > 3 ? args[3] : "decent");
         if (mode == "fuzz") return Fuzz();
+        if (mode == "stars") return SuggestStars(args.Length > 1 ? int.Parse(args[1]) : 12);
         return Balance(args.Length > 1 ? int.Parse(args[1]) : 8);
     }
 
@@ -26,6 +27,29 @@ static class Program
                 var sc = res.Select(r => r.Score).ToList();
                 Console.WriteLine($"{def.Id,-10} {name,-7} {sc.Average(),7:0} {sc.Min(),6} {sc.Max(),6} {res.Average(r => r.DeliveredCount),6:0.0} {res.Average(r => r.Complaints),6:0.0} {res.Count(r => r.Fired),5} {res.Average(r => r.Stops),6:0}  {string.Join(",", res.Select(r => r.StarCount))}  t={res.Average(r => r.Time):0}");
             }
+        }
+        return 0;
+    }
+
+    static int Round(double v) => (int)(System.Math.Round(v / 500.0) * 500);
+
+    // Suggests star thresholds from bot play: 1 star ~ half a sloppy run, 2 stars ~ a sloppy run,
+    // 3 stars ~ a decent (quick, accurate) run.
+    static int SuggestStars(int seeds)
+    {
+        foreach (var def in ShiftCatalog.All)
+        {
+            double Mean(Func<ulong, Bot> make)
+            {
+                double t = 0;
+                for (ulong s = 1; s <= (ulong)seeds; s++) t += Bot.PlayOut(def, s * 7919, make(s)).Score;
+                return t / seeds;
+            }
+            double novice = Mean(Bot.Novice), sloppy = Mean(Bot.Sloppy), decent = Mean(Bot.Decent);
+            int one = Round(def.Id == "monday" ? novice * 0.6 : sloppy * 0.5);
+            int two = Round(sloppy * 0.85);
+            int three = Round(decent * 0.9);
+            Console.WriteLine($"{def.Id,-10} novice {novice,7:0} sloppy {sloppy,7:0} decent {decent,7:0}  ->  Stars = {{ {one}, {two}, {three} }}");
         }
         return 0;
     }

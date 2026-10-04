@@ -49,15 +49,31 @@ namespace OneMoreFloor
         public static float Damp(float sharpness, float dt) => 1f - Mathf.Exp(-sharpness * dt);
     }
 
-    /// <summary>A critically-damped-ish spring for juicy secondary motion.</summary>
+    /// <summary>
+    /// A damped spring for juicy secondary motion. Sub-stepped (semi-implicit Euler at 1/120 s) so a
+    /// long frame (a hitch, a screenshot, fast-forward) can't make it blow up.
+    /// </summary>
     public struct Spring
     {
         public float Value, Velocity;
+        const float MaxStep = 1f / 120f;
+
         public void Step(float target, float stiffness, float damping, float dt)
         {
-            float a = (target - Value) * stiffness - Velocity * damping;
-            Velocity += a * dt;
-            Value += Velocity * dt;
+            dt = Mathf.Min(dt, 0.1f);
+            while (dt > 0f)
+            {
+                float h = Mathf.Min(dt, MaxStep);
+                float a = (target - Value) * stiffness - Velocity * damping;
+                Velocity += a * h;
+                Value += Velocity * h;
+                dt -= h;
+            }
+            if (float.IsNaN(Value) || float.IsInfinity(Value) || float.IsNaN(Velocity) || float.IsInfinity(Velocity))
+            {
+                Value = target;
+                Velocity = 0f;
+            }
         }
     }
 

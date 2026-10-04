@@ -36,6 +36,7 @@ namespace OneMoreFloor
         readonly Dictionary<int, PassengerView> views = new Dictionary<int, PassengerView>();
         float acc;
         float endTimer = -1f;
+        bool endFired;
         int lastGroupStop = -1, groupCount;
 
         public PassengerView ViewOf(int pid) => views.TryGetValue(pid, out var v) && v ? v : null;
@@ -53,6 +54,7 @@ namespace OneMoreFloor
             Rig.Frame(Building);
             acc = 0f;
             endTimer = -1f;
+            endFired = false;
             Paused = false;
             Drain();
             Car.Sync(Sim, 0.016f);
@@ -65,9 +67,9 @@ namespace OneMoreFloor
             float dt = Time.deltaTime;
             if (!Paused && !Sim.Ended)
             {
-                acc += dt * TimeScale;
+                acc += Mathf.Min(dt, 0.25f) * TimeScale;
                 int guard = 0;
-                while (acc >= Step && guard++ < 20)
+                while (acc >= Step && guard++ < 90)
                 {
                     if (AutoBot != null)
                     {
@@ -78,6 +80,7 @@ namespace OneMoreFloor
                     acc -= Step;
                     Drain();
                 }
+                if (acc > Step * 4f) acc = Step * 4f; // never spiral after a hitch
             }
             if (InputEnabled && !Paused && !Attract) HandleInput();
             SyncViews(dt);
@@ -95,11 +98,11 @@ namespace OneMoreFloor
             }
 
             if (Sim.Ended && Attract) { Begin(Sim.Def, (ulong)Random.Range(1, 99999)); AutoBot = Bot.Strong((ulong)Random.Range(1, 999)); return; }
-            if (Sim.Ended && endTimer < 0f) endTimer = 1.6f;
+            if (Sim.Ended && !endFired && endTimer < 0f) endTimer = 1.6f;
             if (endTimer > 0f)
             {
                 endTimer -= dt;
-                if (endTimer <= 0f) Ended?.Invoke(Sim);
+                if (endTimer <= 0f) { endFired = true; Ended?.Invoke(Sim); }
             }
         }
 
@@ -109,6 +112,7 @@ namespace OneMoreFloor
             float t = 0f;
             while (t < seconds && !Sim.Ended)
             {
+                AutoBot?.Tick(Sim, Step, out _);
                 Sim.Tick(Step);
                 Drain();
                 t += Step;

@@ -78,9 +78,10 @@ namespace OneMoreFloor.Core
                     Note = "Welcome aboard! The building moves around a bit. Don't take it personally.",
                     NewKind = Kind.Commuter, NewText = "Click someone to let them in, then send the car to their floor.",
                     Duration = 120f, Floors = new[] { L, O, Li, La, Bo },
-                    Mix = Mix(commuter: 1f), PatienceBase = 32f, SpawnStart = 4.2f, SpawnEnd = 2.5f,
-                    WaitCapStart = 4, WaitCapEnd = 7, Deck = Deck(0.32f, 0.68f),
+                    Mix = Mix(commuter: 1f), PatienceBase = 32f, SpawnStart = 4.0f, SpawnEnd = 2.1f,
+                    WaitCapStart = 4, WaitCapEnd = 8, Deck = Deck(0.32f, 0.68f),
                     Lighting = "morning", Beat = "monday", InitialSpawns = 0,
+                    Stars = new[] { 11500, 19000, 21000 },
                 },
                 new ShiftDef
                 {
@@ -89,9 +90,10 @@ namespace OneMoreFloor.Core
                     NewKind = Kind.Houseplant, NewFloor = G,
                     NewText = "Houseplants won't get off until the doors have opened on a sunny floor.",
                     Duration = 150f, Floors = new[] { L, La, O, G, Li, Bo },
-                    Mix = Mix(commuter: 0.7f, plant: 0.3f), PatienceBase = 30f, SpawnStart = 3.9f, SpawnEnd = 2.25f,
-                    WaitCapStart = 5, WaitCapEnd = 8, Deck = Deck(0.3f, 0.7f),
+                    Mix = Mix(commuter: 0.7f, plant: 0.3f), PatienceBase = 30f, SpawnStart = 3.4f, SpawnEnd = 1.75f,
+                    WaitCapStart = 5, WaitCapEnd = 10, Deck = Deck(0.3f, 0.7f),
                     Lighting = "noon", Beat = "tuesday",
+                    Stars = new[] { 18000, 30500, 34000 },
                 },
                 new ShiftDef
                 {
@@ -100,9 +102,10 @@ namespace OneMoreFloor.Core
                     NewKind = Kind.Mirror, NewFloor = P,
                     NewText = "Mirror Movers take two spaces. Floors can now Rise to the top or Sink to the bottom.",
                     Duration = 150f, Floors = new[] { L, O, Bo, Li, G, La, P },
-                    Mix = Mix(commuter: 0.56f, plant: 0.19f, mirror: 0.25f), PatienceBase = 29f, SpawnStart = 3.7f, SpawnEnd = 2.1f,
-                    WaitCapStart = 6, WaitCapEnd = 9, Deck = Deck(0.24f, 0.48f, 0.14f, 0.14f),
+                    Mix = Mix(commuter: 0.56f, plant: 0.19f, mirror: 0.25f), PatienceBase = 29f, SpawnStart = 3.2f, SpawnEnd = 1.6f,
+                    WaitCapStart = 6, WaitCapEnd = 11, Deck = Deck(0.24f, 0.48f, 0.14f, 0.14f),
                     Lighting = "afternoon", Beat = "wednesday",
+                    Stars = new[] { 22500, 38500, 45500 },
                 },
                 new ShiftDef
                 {
@@ -112,8 +115,9 @@ namespace OneMoreFloor.Core
                     NewText = "Vampires won't ride with a mirror, and they turn to bats if the doors open on sunlight.",
                     Duration = 150f, Floors = new[] { C, L, Li, O, La, G, Bo, P },
                     Mix = Mix(commuter: 0.4f, plant: 0.16f, mirror: 0.19f, vampire: 0.25f), PatienceBase = 28f,
-                    SpawnStart = 3.6f, SpawnEnd = 2.0f, WaitCapStart = 6, WaitCapEnd = 10,
+                    SpawnStart = 3.0f, SpawnEnd = 1.55f, WaitCapStart = 6, WaitCapEnd = 12,
                     Deck = Deck(0.22f, 0.44f, 0.1f, 0.1f, 0.14f), Lighting = "dusk", Music = "night", Beat = "thursday",
+                    Stars = new[] { 24000, 41000, 48000 },
                 },
                 new ShiftDef
                 {
@@ -123,10 +127,11 @@ namespace OneMoreFloor.Core
                     NewText = "Some floors leave the building. Couriers must reach them first. Docking at a floor holds it in place.",
                     Duration = 150f, Floors = new[] { L, Bo, O, C, Li, G, P }, Offsite = new[] { La },
                     Mix = Mix(commuter: 0.4f, plant: 0.17f, mirror: 0.2f, vampire: 0.23f), PatienceBase = 28f,
-                    SpawnStart = 3.7f, SpawnEnd = 2.1f, WaitCapStart = 6, WaitCapEnd = 10,
+                    SpawnStart = 3.0f, SpawnEnd = 1.7f, WaitCapStart = 6, WaitCapEnd = 12,
                     Deck = Deck(0.24f, 0.44f, 0.1f, 0.1f, 0.12f),
                     DepartPeriod = 20f, DepartStops = 5, CouriersPerDeparture = 1,
                     Lighting = "evening", Beat = "friday",
+                    Stars = new[] { 25000, 43000, 52500 },
                 },
                 new ShiftDef
                 {
@@ -136,10 +141,11 @@ namespace OneMoreFloor.Core
                     NewText = "The Ocean drops in for a few stops. Get the swimmers to the Lobby before the tide goes out.",
                     Duration = 150f, Floors = new[] { L, G, O, Li, La, P, C, Bo }, Offsite = new[] { Oc },
                     Mix = Mix(commuter: 0.38f, plant: 0.15f, mirror: 0.15f, vampire: 0.17f, swimmer: 0.15f), PatienceBase = 28f,
-                    SpawnStart = 3.6f, SpawnEnd = 2.0f, WaitCapStart = 6, WaitCapEnd = 10,
+                    SpawnStart = 3.0f, SpawnEnd = 1.75f, WaitCapStart = 6, WaitCapEnd = 12,
                     Deck = Deck(0.24f, 0.44f, 0.1f, 0.1f, 0.12f),
                     DepartPeriod = 24f, DepartStops = 5, CouriersPerDeparture = 1, OceanStay = 5, SwimmersOnArrival = 2,
                     Lighting = "beach", Beat = "saturday",
+                    Stars = new[] { 25500, 44000, 56000 },
                 },
                 new ShiftDef
                 {
@@ -148,11 +154,12 @@ namespace OneMoreFloor.Core
                     NewKind = Kind.Kid, NewFloor = D,
                     NewText = "Kids press every button: the car stops at each floor on the way, so watch for sunlight.",
                     Duration = 150f, Floors = new[] { L, D, O, G, Li, C, La, Bo, P }, Offsite = new[] { Oc },
-                    Mix = Mix(commuter: 0.3f, plant: 0.12f, mirror: 0.12f, vampire: 0.14f, swimmer: 0.1f, kid: 0.22f), PatienceBase = 27f,
-                    SpawnStart = 3.5f, SpawnEnd = 1.95f, WaitCapStart = 7, WaitCapEnd = 11,
+                    Mix = Mix(commuter: 0.3f, plant: 0.12f, mirror: 0.12f, vampire: 0.14f, swimmer: 0.1f, kid: 0.22f), PatienceBase = 29f,
+                    SpawnStart = 3.0f, SpawnEnd = 2.0f, WaitCapStart = 7, WaitCapEnd = 12,
                     Deck = Deck(0.22f, 0.44f, 0.1f, 0.1f, 0.14f),
                     DepartPeriod = 26f, DepartStops = 5, CouriersPerDeparture = 1, OceanStay = 4, SwimmersOnArrival = 2,
                     Lighting = "golden", Beat = "sunday",
+                    Stars = new[] { 20000, 34000, 47500 },
                 },
                 new ShiftDef
                 {
@@ -162,10 +169,11 @@ namespace OneMoreFloor.Core
                     NewText = "Tycoons go express: stop anywhere else first and you lose the tip. They pay very well.",
                     Duration = 150f, Floors = new[] { L, O, Li, G, D, La, C, Bo, P }, Offsite = new[] { Oc },
                     Mix = Mix(commuter: 0.28f, plant: 0.11f, mirror: 0.11f, vampire: 0.12f, swimmer: 0.08f, kid: 0.15f, tycoon: 0.15f),
-                    PatienceBase = 26f, SpawnStart = 3.4f, SpawnEnd = 1.9f, WaitCapStart = 7, WaitCapEnd = 11,
+                    PatienceBase = 28f, SpawnStart = 2.9f, SpawnEnd = 1.9f, WaitCapStart = 7, WaitCapEnd = 12,
                     Deck = Deck(0.22f, 0.42f, 0.1f, 0.1f, 0.16f),
                     DepartPeriod = 26f, DepartStops = 5, CouriersPerDeparture = 1, OceanStay = 4, SwimmersOnArrival = 2,
                     Lighting = "overcast", Beat = "monday2",
+                    Stars = new[] { 24000, 40500, 58500 },
                 },
                 new ShiftDef
                 {
@@ -174,10 +182,11 @@ namespace OneMoreFloor.Core
                     NewText = "Everything at once, and floors can now Flip.",
                     Duration = 180f, Floors = new[] { C, L, Li, O, G, D, La, Bo, P }, Offsite = new[] { Oc },
                     Mix = Mix(commuter: 0.22f, plant: 0.12f, mirror: 0.12f, vampire: 0.18f, swimmer: 0.08f, kid: 0.14f, tycoon: 0.14f),
-                    PatienceBase = 25f, SpawnStart = 3.2f, SpawnEnd = 1.8f, WaitCapStart = 8, WaitCapEnd = 12,
+                    PatienceBase = 29f, SpawnStart = 3.2f, SpawnEnd = 2.0f, WaitCapStart = 8, WaitCapEnd = 11,
                     Deck = Deck(0.2f, 0.38f, 0.1f, 0.1f, 0.14f, 0.08f),
                     DepartPeriod = 22f, DepartStops = 5, CouriersPerDeparture = 2, OceanStay = 4, SwimmersOnArrival = 2,
                     Lighting = "night", Music = "night", Beat = "graveyard",
+                    Stars = new[] { 16500, 28000, 72500 },
                 },
                 new ShiftDef
                 {
@@ -190,6 +199,7 @@ namespace OneMoreFloor.Core
                     Deck = Deck(0.2f, 0.38f, 0.1f, 0.1f, 0.14f, 0.08f),
                     DepartPeriod = 24f, DepartStops = 5, CouriersPerDeparture = 1, OceanStay = 4, SwimmersOnArrival = 2,
                     Lighting = "night", Music = "night", Beat = "overtime",
+                    Stars = new[] { 32500, 55000, 86000 },
                 },
             };
             for (int i = 0; i < list.Count; i++) list[i].Index = i;
