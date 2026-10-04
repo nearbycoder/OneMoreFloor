@@ -10,6 +10,7 @@ namespace OneMoreFloor
     /// </summary>
     public sealed class FloorView : MonoBehaviour
     {
+        public static float LampScale = 1f;
         public FloorId Id;
         public int Slot = -1;
         public Transform Content;
@@ -218,7 +219,7 @@ namespace OneMoreFloor
             float dt = Time.deltaTime;
             hover = Mathf.Lerp(hover, hoverTarget, Ease.Damp(14f, dt));
             flash = Mathf.Max(0f, flash - dt * 1.8f);
-            if (lamp) lamp.intensity = lampBase * (1f + 0.35f * hover + 0.6f * flash);
+            if (lamp) { lamp.intensity = lampBase * LampScale * (1f + 0.35f * hover + 0.6f * flash); lamp.range = 9f + 3f * (LampScale - 1f); }
             bounce.Step(0f, 260f, 14f, dt);
             AnimateProps(dt);
 

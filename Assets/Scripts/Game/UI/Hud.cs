@@ -18,6 +18,7 @@ namespace OneMoreFloor
         readonly Dictionary<int, Bubble> bubbles = new Dictionary<int, Bubble>();
         readonly List<Popup> popups = new List<Popup>();
         public PanelUi Panel;
+        public RectTransform TipsAnchor { get; private set; }
         int shownScore;
         float scorePunch, streakPunch, clockPunch;
         int lastStreak;
@@ -69,6 +70,7 @@ namespace OneMoreFloor
             clock = UiKit.Text("Clock", clockPlate, "2:00", 74, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 84), new Vector2(0, -12));
 
             var tips = Plate(col, "TipsPlate", new Vector2(0, -260), new Vector2(380, 128));
+            TipsAnchor = tips;
             UiKit.Text("TipsLabel", tips, "TIPS", 18, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 24), new Vector2(0, 40));
             score = UiKit.Text("Score", tips, "$0", 62, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(340, 76), new Vector2(0, -12));
             streakBadge = UiKit.Image("StreakBadge", tips, UiKit.Pill, Palette.Brass, new Vector2(116, 44), new Vector2(110, 40));
@@ -88,8 +90,19 @@ namespace OneMoreFloor
             bubbles.Clear();
             foreach (var p in popups) if (p.Text) Destroy(p.Text.gameObject);
             popups.Clear();
+            foreach (var c in flying) if (c.Rt) Destroy(c.Rt.gameObject);
+            flying.Clear();
             shownScore = 0;
             lastStreak = 0;
+        }
+
+        CanvasGroup group;
+
+        public void SetVisible(bool on)
+        {
+            if (group == null) group = gameObject.AddComponent<CanvasGroup>();
+            group.alpha = on ? 1f : 0f;
+            group.blocksRaycasts = on;
         }
 
         public void SetShiftName(string day, string title)
@@ -114,7 +127,7 @@ namespace OneMoreFloor
         sealed class Bubble
         {
             public RectTransform Root;
-            public Image Disc, Ring, Back, Badge;
+            public Image Disc, Ring, Back, Badge, Icon, BadgeIcon;
             public TextMeshProUGUI Code, BadgeText;
             public FloorId Dest;
             public float Pop, Wobble;
@@ -133,7 +146,13 @@ namespace OneMoreFloor
             b.Ring.fillClockwise = false;
             b.Disc = UiKit.Image("Disc", b.Root, UiKit.Circle, Palette.Floor(p.Dest), new Vector2(46, 46));
             b.Code = UiKit.Text("Code", b.Disc.transform, Code(p.Dest), 16, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(46, 46));
-            b.Badge = UiKit.Image("Badge", b.Root, UiKit.Circle, Palette.Ink, new Vector2(28, 28), new Vector2(26, 24));
+            b.Icon = UiKit.Image("Icon", b.Disc.transform, Icons.Floor(p.Dest), Color.white, new Vector2(40, 40));
+            b.Icon.preserveAspect = true;
+            b.Code.gameObject.SetActive(b.Icon.sprite == null);
+            b.Icon.gameObject.SetActive(b.Icon.sprite != null);
+            b.Badge = UiKit.Image("Badge", b.Root, UiKit.Circle, Palette.Ink, new Vector2(30, 30), new Vector2(27, 25));
+            b.BadgeIcon = UiKit.Image("BadgeIcon", b.Badge.transform, null, Color.white, new Vector2(26, 26));
+            b.BadgeIcon.preserveAspect = true;
             b.BadgeText = UiKit.Text("BadgeText", b.Badge.transform, "", 15, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(28, 28));
             b.Dest = p.Dest;
             return b;
@@ -146,6 +165,7 @@ namespace OneMoreFloor
                 b.Dest = p.Dest;
                 b.Disc.color = Palette.Floor(p.Dest);
                 b.Code.text = Code(p.Dest);
+                b.Icon.sprite = Icons.Floor(p.Dest);
                 b.Pop = 0f;
             }
             float frac = Mathf.Clamp01(p.PatienceFrac);
@@ -160,29 +180,35 @@ namespace OneMoreFloor
             b.Root.localScale = Vector3.one * scale;
             b.Root.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Time.time * 30f) * 12f * b.Wobble);
 
-            // rule badge
+            // rule badge: an icon for the rule, or a number (courier countdown)
             string badge = "";
-            Color badgeCol = Palette.Ink;
+            string icon = null;
+            Color badgeCol = new Color(0.98f, 0.94f, 0.84f);
             switch (p.Kind)
             {
-                case Kind.Houseplant: if (!p.Sunned) { badge = "SUN"; badgeCol = Palette.Hex(0xE8A317); } break;
-                case Kind.Mirror: badge = "x2"; badgeCol = Palette.Hex(0x3C7DD9); break;
-                case Kind.Vampire: badge = "V"; badgeCol = Palette.Hex(0xB3122E); break;
+                case Kind.Houseplant: if (!p.Sunned) icon = "sun"; break;
+                case Kind.Mirror: icon = "mirror"; break;
+                case Kind.Vampire: icon = "fangs"; break;
                 case Kind.Courier:
                 {
                     int left = runner.Sim.B.Leaving[(int)p.Dest];
-                    badge = left >= 0 ? left.ToString() : "!";
-                    badgeCol = Palette.Hex(0xA4662C);
+                    badge = left >= 0 ? left.ToString() : "";
+                    if (badge.Length == 0) icon = "parcel";
+                    badgeCol = left >= 0 && left <= 1 ? Palette.Bad : Palette.Hex(0xA4662C);
                     break;
                 }
-                case Kind.Swimmer: badge = "~"; badgeCol = Palette.Hex(0x1F86D0); break;
-                case Kind.Kid: badge = "K"; badgeCol = Palette.Hex(0xF07F3C); break;
-                case Kind.Tycoon: badge = p.ExpressBroken ? "$" : "$$"; badgeCol = p.ExpressBroken ? Palette.Hex(0x777777) : Palette.Hex(0x6B4E9B); break;
+                case Kind.Swimmer: icon = "wave"; break;
+                case Kind.Kid: icon = "balloon"; break;
+                case Kind.Tycoon: icon = p.ExpressBroken ? null : "tophat"; badge = p.ExpressBroken ? "$" : ""; badgeCol = p.ExpressBroken ? Palette.Hex(0x777777) : badgeCol; break;
             }
-            b.Badge.gameObject.SetActive(badge.Length > 0);
+            var iconSprite = icon != null ? Icons.Badge(icon) : null;
+            if (icon != null && iconSprite == null) badge = icon.Substring(0, 1).ToUpperInvariant();
+            b.Badge.gameObject.SetActive(badge.Length > 0 || iconSprite != null);
             b.Badge.color = badgeCol;
+            b.BadgeIcon.sprite = iconSprite;
+            b.BadgeIcon.gameObject.SetActive(iconSprite != null);
             b.BadgeText.text = badge;
-            b.BadgeText.fontSize = badge.Length > 2 ? 10 : 15;
+            b.BadgeText.fontSize = 17;
             if (p.Fuming) b.Disc.color = Palette.Bad;
 
             var anchor = v.BubbleAnchor;
@@ -212,6 +238,8 @@ namespace OneMoreFloor
 
         public void PopupAt(Vector3 world, string text, Color color, float size = 40f, float dur = 1.3f)
         {
+            foreach (var other in popups)
+                if (other.T < 0.35f && Vector3.Distance(other.World, world) < 1.6f) world += Vector3.up * 0.9f;
             var t = UiKit.Text("Popup", popupLayer, text, size, color, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(500, size * 1.3f));
             t.outlineWidth = 0.22f;
             t.outlineColor = new Color32(30, 20, 34, 255);
@@ -238,6 +266,51 @@ namespace OneMoreFloor
         // ---------------------------------------------------------------- frame
 
         public void PunchScore() => scorePunch = 1f;
+
+        sealed class FlyCoin { public RectTransform Rt; public Vector2 From, Ctrl; public float T, Dur; }
+        readonly List<FlyCoin> flying = new List<FlyCoin>();
+
+        /// <summary>Coins arc from a world position into the tips counter.</summary>
+        public void FlyCoins(Vector3 world, int count)
+        {
+            var screen = worldCam.WorldToScreenPoint(world);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);
+            var from = local + canvasRt.rect.size * 0.5f;
+            for (int i = 0; i < count; i++)
+            {
+                var img = UiKit.Image("Coin", popupLayer, UiKit.Circle, Palette.Hex(0xFFC83D), new Vector2(26, 26));
+                UiKit.Image("In", img.transform, UiKit.Circle, Palette.Hex(0xE8A317), new Vector2(15, 15));
+                img.rectTransform.anchorMin = img.rectTransform.anchorMax = Vector2.zero;
+                var jitter = new Vector2(Random.Range(-40f, 40f), Random.Range(-20f, 30f));
+                flying.Add(new FlyCoin { Rt = img.rectTransform, From = from + jitter, Ctrl = from + jitter + new Vector2(Random.Range(-160f, 40f), Random.Range(160f, 320f)),
+                                         T = -i * 0.05f, Dur = Random.Range(0.55f, 0.75f) });
+            }
+        }
+
+        void UpdateCoins(float dt)
+        {
+            if (flying.Count == 0) return;
+            var target = (Vector2)canvasRt.InverseTransformPoint(TipsAnchor.position) + canvasRt.rect.size * 0.5f + new Vector2(-60, -10);
+            for (int i = flying.Count - 1; i >= 0; i--)
+            {
+                var c = flying[i];
+                c.T += dt;
+                if (c.T < 0f) { c.Rt.gameObject.SetActive(false); continue; }
+                c.Rt.gameObject.SetActive(true);
+                float k = Mathf.Clamp01(c.T / c.Dur);
+                float e = Ease.InCubic(k) * 0.6f + k * 0.4f;
+                var p = (1 - e) * (1 - e) * c.From + 2 * (1 - e) * e * c.Ctrl + e * e * target;
+                c.Rt.anchoredPosition = p;
+                c.Rt.localScale = Vector3.one * Mathf.Lerp(1.2f, 0.7f, k) * (1f + 0.15f * Mathf.Sin(c.T * 30f));
+                if (k >= 1f)
+                {
+                    Destroy(c.Rt.gameObject);
+                    flying.RemoveAt(i);
+                    scorePunch = Mathf.Max(scorePunch, 0.6f);
+                    AudioDirector.Instance?.Sfx("tick", 0.18f, 2.2f, -0.8f, 0.1f, 0.03f);
+                }
+            }
+        }
 
         TextMeshProUGUI banner;
         float bannerT = 1f;
@@ -333,6 +406,7 @@ namespace OneMoreFloor
 
             UpdatePopups(dt);
             UpdateBanner(dt);
+            UpdateCoins(dt);
             Panel.Tick(dt);
         }
     }

@@ -29,15 +29,32 @@ namespace OneMoreFloor
         void Awake()
         {
             Instance = this;
+            var args = System.Environment.GetCommandLineArgs();
+            SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0;
             Application.targetFrameRate = 120;
             QualitySettings.vSyncCount = 1;
             BuildWorld();
             BuildUi();
         }
 
+        TitleScreen title;
+        RosterScreen roster;
+        IntroScreen intro;
+        PauseScreen pause;
+        SettingsScreen settings;
+        ResultsScreen results;
+        EndingScreen ending;
+        int currentShift;
+        ulong runSeed = 1;
+        bool endingPending;
+        public bool InShift { get; private set; }
+
         void Start()
         {
-            StartShift(StartIndexFromArgs(), 1);
+            ApplySettings();
+            int direct = StartIndexFromArgs();
+            if (direct >= 0) BeginShift(direct);
+            else ShowTitle();
         }
 
         static int StartIndexFromArgs()
@@ -45,8 +62,156 @@ namespace OneMoreFloor
             var args = System.Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == "-omfShift" && int.TryParse(args[i + 1], out int s)) return Mathf.Clamp(s, 0, ShiftCatalog.All.Count - 1);
-            return 0;
+            return -1;
         }
+
+        void HideAll()
+        {
+            foreach (var sc in new UiScreen[] { title, roster, intro, pause, settings, results, ending })
+                if (sc != null && sc.Visible) sc.Hide();
+        }
+
+        /// <summary>Title: the tower runs itself at dusk behind the logo.</summary>
+        public void ShowTitle()
+        {
+            HideAll();
+            StartAttract();
+            title.Show();
+            Audio.PlayTitle();
+            Audio.MuffleTitle(false);
+        }
+
+        void StartAttract()
+        {
+            InShift = false;
+            var def = ShiftCatalog.Get(3);
+            Sky.Apply("dusk", Sun, WorldCam);
+            Rig.ScreenX = 0.68f;
+            Runner.Attract = true;
+            Runner.Begin(def, (ulong)Random.Range(1, 100000));
+            Runner.AutoBot = Bot.Strong((ulong)Random.Range(1, 1000));
+            Runner.Hud.SetVisible(false);
+            Audio.StopGameplayMusic();
+        }
+
+        public void ShowRoster()
+        {
+            if (endingPending)
+            {
+                endingPending = false;
+                HideAll();
+                ending.Show();
+                return;
+            }
+            if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
+            HideAll();
+            roster.Show();
+            Audio.MuffleTitle(false);
+        }
+
+        public void ShowIntro(int index)
+        {
+            if (index < 0 || index >= ShiftCatalog.All.Count) { ShowRoster(); return; }
+            if (!SaveData.Current.Unlocked(index)) { ShowRoster(); return; }
+            if (InShift || !Runner.Attract) { StartAttract(); Audio.PlayTitle(); }
+            HideAll();
+            intro.Setup(index);
+            intro.Show();
+            Audio.MuffleTitle(true);
+        }
+
+        public void ShowSettings(UiScreen from) => settings.Open(from);
+
+        public void BeginShift(int index)
+        {
+            HideAll();
+            currentShift = index;
+            runSeed = (ulong)System.DateTime.Now.Ticks;
+            InShift = true;
+            var def = ShiftCatalog.Get(index);
+            Sky.Apply(def.Lighting, Sun, WorldCam);
+            Rig.ScreenX = 0.505f;
+            Runner.Attract = false;
+            Runner.AutoBot = null;
+            Runner.Begin(def, runSeed);
+            Runner.Hud.SetVisible(true);
+            Runner.Ended = OnShiftEnded;
+            Audio.PlayGameplay(def);
+            Audio.Sting("sting_start", 0.5f, 0.8f);
+            Coach?.BeginShift(def);
+        }
+
+        public void RestartShift() => BeginShift(currentShift);
+
+        public void Pause()
+        {
+            if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible) return;
+            Runner.Paused = true;
+            pause.Show();
+        }
+
+        public void Resume()
+        {
+            pause.Hide();
+            if (settings.Visible) settings.Hide();
+            Runner.Paused = false;
+        }
+
+        public void QuitShift()
+        {
+            Runner.Paused = false;
+            ShowRoster();
+        }
+
+        void OnShiftEnded(ShiftSim sim)
+        {
+            if (!InShift || Runner.Attract) return;
+            var save = SaveData.Current;
+            bool firstGraveyard = sim.Def.Id == "graveyard" && sim.StarCount >= 1 && !save.EndingSeen;
+            bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount);
+            if (firstGraveyard)
+            {
+                save.EndingSeen = true;
+                save.Save();
+                endingPending = true;
+            }
+            results.Setup(sim, best && sim.Score > 0);
+            results.Show();
+            Audio.Sting(sim.Fired ? "sting_clockout" : "sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
+        }
+
+        public void Quit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        public void ApplySettings()
+        {
+            var save = SaveData.Current;
+            if (Audio != null)
+            {
+                Audio.MasterVolume = save.Master;
+                Audio.MusicVolume = save.Music;
+                Audio.SfxVolume = save.Sfx;
+            }
+            Rig.ShakeScale = save.ScreenShake ? 1f : 0f;
+            if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
+            if (!Application.isEditor)
+            {
+                var mode = save.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                if (Screen.fullScreenMode != mode)
+                {
+                    if (save.Fullscreen) Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, mode);
+                    else Screen.SetResolution(1600, 900, mode);
+                }
+            }
+        }
+
+        public Coach Coach { get; private set; }
 
         void BuildWorld()
         {
@@ -73,6 +238,7 @@ namespace OneMoreFloor
             Sun.transform.rotation = Quaternion.Euler(38f, -32f, 0f);
 
             Sky = Sky.Create(transform);
+            Fx.Create(transform);
 
             var volGo = new GameObject("Post");
             Post = volGo.AddComponent<Volume>();
@@ -141,6 +307,14 @@ namespace OneMoreFloor
             }
 
             Runner.Hud = Hud.Create(Canvas.transform, Runner, WorldCam);
+            Coach = Coach.Create(Canvas.transform, Runner);
+            title = TitleScreen.Create(Canvas.transform, this);
+            roster = RosterScreen.Create(Canvas.transform, this);
+            intro = IntroScreen.Create(Canvas.transform, this);
+            pause = PauseScreen.Create(Canvas.transform, this);
+            settings = SettingsScreen.Create(Canvas.transform, this);
+            results = ResultsScreen.Create(Canvas.transform, this);
+            ending = EndingScreen.Create(Canvas.transform, this);
             SetLayerRecursive(canvasGo, UiLayer);
         }
 
@@ -150,25 +324,23 @@ namespace OneMoreFloor
             foreach (Transform c in go.transform) SetLayerRecursive(c.gameObject, layer);
         }
 
+        /// <summary>Developer/automation entry: start any shift directly.</summary>
         public void StartShift(int index, ulong seed)
         {
-            var def = ShiftCatalog.Get(index);
-            Sky.Apply(def.Lighting, Sun, WorldCam);
-            Runner.Begin(def, seed);
-            Audio.PlayGameplay(def);
-            Audio.Sting("sting_start", 0.5f, 0.8f);
-            SetLayerRecursive(Canvas.gameObject, UiLayer);
+            BeginShift(index);
         }
 
         void Update()
         {
             var kb = Keyboard.current;
             if (kb == null) return;
+            if (InShift && (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame) && !pause.Visible && !settings.Visible && !results.Visible)
+                Pause();
             // developer shortcuts: F1..F10 start a shift
             for (int i = 0; i < 10; i++)
             {
                 var k = kb[Key.F1 + i];
-                if (k != null && k.wasPressedThisFrame) StartShift(i, (ulong)System.DateTime.Now.Ticks);
+                if (k != null && k.wasPressedThisFrame && (Debug.isDebugBuild || Application.isEditor)) BeginShift(i);
             }
             if (kb.f12Key.wasPressedThisFrame)
                 Shots.Capture(System.IO.Path.Combine(Application.persistentDataPath, $"shot_{System.DateTime.Now:HHmmss}.png"));

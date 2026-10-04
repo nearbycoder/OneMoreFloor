@@ -18,11 +18,12 @@ namespace OneMoreFloor
         readonly SlotButton[] buttons = new SlotButton[9];
         Image boardAll;
         public int HoverSlot = -1;
+        public RectTransform ForecastAnchor => cards[0].Root;
 
         sealed class SlotButton
         {
             public RectTransform Root;
-            public Image Cap, Plate, Glow, Ring;
+            public Image Cap, Plate, Glow, Ring, Icon;
             public TextMeshProUGUI Number, Name;
             public TextMeshProUGUI Waiting;
             public Image[] Pips = new Image[4];
@@ -95,7 +96,9 @@ namespace OneMoreFloor
                 b.Cap = UiKit.Image("Cap", b.Root, UiKit.Circle, Palette.Hex(0xF3E6C8), new Vector2(64, 64), new Vector2(0, 20), true);
                 b.Number = UiKit.Text("N", b.Cap.transform, (s + 1).ToString(), 34, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(64, 64));
                 b.Plate = UiKit.Image("Plate", b.Root, UiKit.Pill, Palette.Floor(FloorId.Lobby), new Vector2(98, 30), new Vector2(0, -40));
-                b.Name = UiKit.Text("Name", b.Plate.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(98, 30));
+                b.Name = UiKit.Text("Name", b.Plate.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(70, 30), new Vector2(14, 0));
+                b.Icon = UiKit.Image("Icon", b.Plate.transform, null, Color.white, new Vector2(34, 34), new Vector2(-34, 2));
+                b.Icon.preserveAspect = true;
                 b.Waiting = UiKit.Text("W", b.Root, "", 16, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(40, 22), new Vector2(40, 52));
                 for (int k = 0; k < 4; k++)
                 {
@@ -118,6 +121,15 @@ namespace OneMoreFloor
             e.callback.AddListener(action);
             trig.triggers.Add(e);
         }
+
+        GameObject forecastRoot;
+
+        public void ShowForecast(bool on)
+        {
+            foreach (var c in cards) if (c != null) c.Root.gameObject.SetActive(on);
+            forecastOn = on;
+        }
+        bool forecastOn = true;
 
         public void Press(int slot)
         {
@@ -170,7 +182,7 @@ namespace OneMoreFloor
             var pred = new Building(b);
             for (int i = 0; i < cards.Length; i++)
             {
-                if (i >= sim.Forecast.Count) { cards[i].Root.gameObject.SetActive(false); continue; }
+                if (i >= sim.Forecast.Count || !forecastOn) { cards[i].Root.gameObject.SetActive(false); continue; }
                 var c = sim.Forecast[i];
                 cards[i].Root.gameObject.SetActive(true);
                 cards[i].Title.text = (i == 0 ? "NEXT: " : "THEN: ") + TitleOf(c);
@@ -189,6 +201,8 @@ namespace OneMoreFloor
                 var f = b.At(s);
                 btn.Plate.color = Palette.Floor(f);
                 btn.Name.text = Hud.Code(f);
+                btn.Icon.sprite = Icons.Floor(f);
+                btn.Icon.enabled = btn.Icon.sprite != null;
                 bool lit = s == targetSlot || (sim.Car.Has(Kind.Kid) && targetSlot >= 0 && (s - sim.Car.Pos) * (targetSlot - sim.Car.Pos) > 0 && Mathf.Abs(s - sim.Car.Pos) < Mathf.Abs(targetSlot - sim.Car.Pos));
                 btn.Lit = Mathf.Lerp(btn.Lit, lit ? 1f : 0f, Ease.Damp(14f, dt));
                 btn.Press = Mathf.Max(0f, btn.Press - dt * 5f);

@@ -280,8 +280,9 @@ def tower(root, variant):
 
 def fx_meshes(root):
     coin = Model("Coin")
+    # one material only: particle systems need single-submesh meshes
     coin.add(cyl((0, 0, 0), 0.22, 0.05, "z", seg=24, bevel=0.01), met("FFC83D", 0.8))
-    coin.add(cyl((0, 0, 0), 0.15, 0.07, "z", seg=24), met("F2B33D", 0.7))
+    coin.add(cyl((0, 0, 0), 0.15, 0.07, "z", seg=24), met("FFC83D", 0.8))
     coin.build(parent=root)
     bat = Model("Bat")
     for s in (-1, 1):
@@ -292,7 +293,7 @@ def fx_meshes(root):
     gull.add(sphere((0, 0, 0), 0.18, (1.6, 0.8, 0.8)), WHITE)
     for s in (-1, 1):
         gull.add(prism([(0, 0.02), (s * 0.55, 0.15), (s * 0.5, 0.08)], -0.1, 0.08), WHITE)
-    gull.add(rod((0.28, 0.02, 0), (0.4, 0.0, 0), 0.03, radius2=0.005), col("F2B33D", 0.4))
+    gull.add(rod((0.28, 0.02, 0), (0.4, 0.0, 0), 0.03, radius2=0.005), WHITE)
     gull.build(parent=root)
 
 

@@ -7,8 +7,7 @@ namespace OneMoreFloor
     public sealed class Sky : MonoBehaviour
     {
         Material skyMat;
-        Texture2D gradient;
-        Transform backdrop, skyline;
+        Transform skyline;
         Renderer[] windows;
         System.Collections.Generic.List<Transform> clouds;
 
@@ -41,10 +40,8 @@ namespace OneMoreFloor
 
         void Build()
         {
-            gradient = new Texture2D(4, 256, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
-            skyMat = new Material(Mats.Unlit(Color.white));
-            skyMat.SetTexture("_BaseMap", gradient);
-            backdrop = Prims.Make("Backdrop", Prims.Quad, skyMat, transform, new Vector3(0, 30, 220), new Vector3(520, 300, 1), null, false).transform;
+            var template = Resources.Load<Material>("Materials/Sky");
+            if (template != null) skyMat = new Material(template);
 
             // a distant skyline of Deco towers with lit windows
             skyline = new GameObject("Skyline").transform;
@@ -161,13 +158,17 @@ namespace OneMoreFloor
         public void Apply(string id, Light sun, Camera cam)
         {
             var p = Get(id);
-            for (int y = 0; y < gradient.height; y++)
+            if (skyMat != null)
             {
-                float t = y / (gradient.height - 1f);
-                Color c = t < 0.35f ? Color.Lerp(p.Bottom, p.Horizon, Ease.Smooth(t / 0.35f)) : Color.Lerp(p.Horizon, p.Top, Ease.Smooth((t - 0.35f) / 0.65f));
-                for (int x = 0; x < gradient.width; x++) gradient.SetPixel(x, y, c);
+                skyMat.SetColor("_Top", p.Top);
+                skyMat.SetColor("_Horizon", p.Horizon);
+                skyMat.SetColor("_Bottom", p.Bottom);
+                var sunDir = Quaternion.Euler(p.SunPitch, p.SunYaw, 0f) * Vector3.back;
+                skyMat.SetVector("_SunDir", new Vector4(-sunDir.x, Mathf.Max(0.05f, -sunDir.y) * 0.5f + 0.08f, -sunDir.z, 0));
+                skyMat.SetColor("_SunColor", p.Sun * (id == "night" ? 0.35f : 0.8f));
+                RenderSettings.skybox = skyMat;
+                cam.clearFlags = CameraClearFlags.Skybox;
             }
-            gradient.Apply();
             sun.color = p.Sun;
             sun.intensity = p.SunIntensity;
             sun.transform.rotation = Quaternion.Euler(p.SunPitch, p.SunYaw, 0f);
@@ -180,10 +181,12 @@ namespace OneMoreFloor
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = Color.Lerp(p.Horizon, p.Top, 0.25f);
-            RenderSettings.fogStartDistance = 120f;
-            RenderSettings.fogEndDistance = 360f;
+            RenderSettings.fogStartDistance = 130f;
+            RenderSettings.fogEndDistance = 520f;
             var winMat = Mats.Glow(p.Windows, id == "night" || id == "dusk" || id == "evening" ? 1.6f : 0.4f);
             foreach (var w in windows) if (w) w.sharedMaterial = winMat;
+            // after dark the room lamps become the key light
+            FloorView.LampScale = id == "night" ? 2.1f : id == "evening" ? 1.6f : id == "dusk" ? 1.35f : 1f;
         }
     }
 }

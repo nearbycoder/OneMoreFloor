@@ -22,6 +22,8 @@ namespace OneMoreFloor
         public Camera Cam;
         public bool Paused;
         public bool InputEnabled = true;
+        /// <summary>Title-screen attract mode: the bot plays silently with no HUD and no input.</summary>
+        public bool Attract;
         public float TimeScale = 1f;
         public System.Action<ShiftSim> Ended;
         public System.Action<SimEvent> OnEvent;
@@ -77,12 +79,12 @@ namespace OneMoreFloor
                     Drain();
                 }
             }
-            if (InputEnabled && !Paused) HandleInput();
+            if (InputEnabled && !Paused && !Attract) HandleInput();
             SyncViews(dt);
             Car.Sync(Sim, Paused ? 0f : dt);
             Hud.Tick(dt);
             if (Mathf.Abs(Sim.Car.Vel) > 0.1f) lastCarDir = Mathf.Sign(Sim.Car.Vel);
-            if (Audio != null)
+            if (Audio != null && !Attract)
             {
                 Audio.UpdateShift(Sim, dt, Paused);
                 if (!Sim.Def.Endless && Sim.ClockRunning && !Sim.Ended && Sim.TimeLeft <= 10.5f)
@@ -92,6 +94,7 @@ namespace OneMoreFloor
                 }
             }
 
+            if (Sim.Ended && Attract) { Begin(Sim.Def, (ulong)Random.Range(1, 99999)); AutoBot = Bot.Strong((ulong)Random.Range(1, 999)); return; }
             if (Sim.Ended && endTimer < 0f) endTimer = 1.6f;
             if (endTimer > 0f)
             {
@@ -246,6 +249,74 @@ namespace OneMoreFloor
             Sim.Events.Clear();
         }
 
+        void Later(float delay, System.Action a) => StartCoroutine(LaterRoutine(delay, a));
+
+        System.Collections.IEnumerator LaterRoutine(float delay, System.Action a)
+        {
+            yield return new WaitForSeconds(delay);
+            a();
+        }
+
+        Vector3 FloorFront(FloorId f) => Building[f].transform.position + new Vector3(0f, 0.05f, Layout.FrontZ + 0.3f);
+
+        void PlayFx(SimEvent e)
+        {
+            switch (e.Type)
+            {
+                case Ev.Shuffled:
+                {
+                    var moved = new List<FloorId>();
+                    foreach (var m in e.Moves) moved.Add(m.Floor);
+                    Later(0.62f, () => { foreach (var f in moved) Fx.Play("dust", FloorFront(f), 14); });
+                    break;
+                }
+                case Ev.FloorDeparted:
+                {
+                    var f = e.Floor; var g = e.Floor2;
+                    Fx.Play("dust", FloorFront(f), 30);
+                    Later(1.2f, () => { Fx.Play("dust", FloorFront(g), 30); if (g == FloorId.Ocean) Fx.Play("splash", FloorFront(g) + Vector3.up * 0.3f, 40); });
+                    break;
+                }
+                case Ev.Jammed:
+                    Fx.Play("sparks", Building[e.Floor].transform.position + new Vector3(-Layout.ShaftHalf, 0.6f, -1.3f), 30);
+                    Fx.Play("sparks", Building[e.Floor].transform.position + new Vector3(Layout.ShaftHalf, 0.6f, -1.3f), 30);
+                    break;
+                case Ev.Poofed:
+                {
+                    var at = HeadOf(e.Pid, Car.transform.position) - Vector3.up * 0.8f;
+                    Fx.Play("smoke", at, 16);
+                    Fx.Play("bats", at, 12);
+                    break;
+                }
+                case Ev.Sunned:
+                    Fx.Play("sparkle", HeadOf(e.Pid, Car.transform.position) - Vector3.up * 0.6f, 18);
+                    break;
+                case Ev.Delivered:
+                {
+                    var at = HeadOf(e.Pid, Car.transform.position);
+                    Fx.Play("coins", at - Vector3.up * 0.4f, Mathf.Clamp(e.Value / 120, 3, 10));
+                    Hud.FlyCoins(at, Mathf.Clamp(e.Value / 90, 3, 12));
+                    if (e.Aux >= 2) Fx.Play("confetti", FloorFront(e.Floor) + Vector3.up * 1.2f, 40 + e.Aux * 20);
+                    break;
+                }
+                case Ev.StormedOff:
+                    Fx.Play("smoke", HeadOf(e.Pid, FloorFront(e.Floor)) - Vector3.up * 0.4f, 6);
+                    break;
+                case Ev.Boarded:
+                {
+                    var p = Sim.Find(e.Pid);
+                    if (p != null && p.Kind == Kind.Swimmer) Fx.Play("splash", HeadOf(e.Pid, Car.transform.position) - Vector3.up * 1.6f, 18);
+                    break;
+                }
+                case Ev.RushHour:
+                    Fx.Play("confetti", new Vector3(0f, Building.TopY + 1f, -2f), 160);
+                    break;
+                case Ev.Arrived:
+                    if (e.Floor == FloorId.Ocean) Fx.Play("splash", FloorFront(e.Floor) + Vector3.up * 0.2f, 14);
+                    break;
+            }
+        }
+
         void PlaySound(SimEvent e)
         {
             var a = Audio;
@@ -328,16 +399,40 @@ namespace OneMoreFloor
                 case Ev.ChangedMind: { var p = Sim.Find(e.Pid); if (p != null) a.Voice(p.Kind, 0f, 0.4f); break; }
                 case Ev.StreakBroken: if (e.Value >= 3) a.Sfx("record_scratch", 0.6f); break;
                 case Ev.RushHour: a.Sting("sting_rush", 0.5f); a.Sfx("alarm_bell", 0.5f); break;
+                case Ev.Beat:
+                    if (e.Text == "saturday:ocean" && !Attract) StartCoroutine(OceanMoment());
+                    break;
                 case Ev.ClockStarted: a.Sfx("punch_clock", 0.5f, 1.2f); break;
                 case Ev.Fired: a.Sfx("sad_trombone", 0.9f); break;
                 case Ev.ShiftEnded: if (e.Aux == 0) a.Sfx("punch_clock", 0.8f); break;
             }
         }
 
+        /// <summary>The trailer moment: the doors open onto the ocean and a soaked guest wants the Lobby.</summary>
+        System.Collections.IEnumerator OceanMoment()
+        {
+            var ocean = Building[FloorId.Ocean];
+            Rig.PushIn(ocean.transform.position + new Vector3(0f, 1.2f, 0f), 0.6f, 3.2f);
+            TimeScale = 0.55f;
+            Audio?.SfxLater("gull", 0.4f, 0.8f);
+            Audio?.SfxLater("splash", 0.2f, 0.7f);
+            yield return new WaitForSecondsRealtime(1.1f);
+            foreach (var p in Sim.All)
+                if (p.Kind == Kind.Swimmer && p.State == PState.Waiting)
+                {
+                    Hud.PopupAt(HeadOf(p.Id, ocean.transform.position) + Vector3.up * 0.3f, "\"Lobby, please.\"", Palette.Cream, 40f, 2.6f);
+                    Audio?.Voice(Kind.Swimmer, 0f, 0.7f);
+                    break;
+                }
+            yield return new WaitForSecondsRealtime(1.6f);
+            TimeScale = 1f;
+        }
+
         void Handle(SimEvent e)
         {
             OnEvent?.Invoke(e);
-            PlaySound(e);
+            if (!Attract) PlaySound(e);
+            PlayFx(e);
             switch (e.Type)
             {
                 case Ev.Spawned:
@@ -495,6 +590,9 @@ namespace OneMoreFloor
                     break;
                 case Ev.RushHour:
                     Hud.Banner("RUSH HOUR!", Palette.Hex(0xFF8A3D));
+                    break;
+                case Ev.Beat:
+                    if (e.Text == "saturday:ocean" && !Attract) StartCoroutine(OceanMoment());
                     break;
                 case Ev.ClockStarted:
                     Hud.Banner("ON THE CLOCK!", Palette.Hex(0xFFD23F));

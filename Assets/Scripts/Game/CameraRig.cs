@@ -23,6 +23,11 @@ namespace OneMoreFloor
         }
 
         public float Yaw = 9f, Pitch = 4f;
+        /// <summary>Where the tower's centre sits horizontally on screen (0..1).</summary>
+        public float ScreenX = 0.505f;
+        Vector3 targetPos;
+        Quaternion targetRot;
+        bool hasFrame;
 
         /// <summary>Fit the whole tower (street to roof) in the middle of the screen, seen from a little right and above.</summary>
         public void Frame(BuildingView b)
@@ -38,12 +43,17 @@ namespace OneMoreFloor
             baseRot = Quaternion.Euler(Pitch, -Yaw, 0f);
             var center = new Vector3(0.2f, cy, 0.4f);
             basePos = center - baseRot * Vector3.forward * dist;
-            // nudge so the tower sits between the left HUD column and the panel
+            // nudge so the tower sits where the layout wants it (between HUD and panel, or right of the menu)
             float visibleW = h * 1.06f * Cam.aspect;
-            basePos += baseRot * Vector3.right * (visibleW * (0.5f - 0.505f));
-            transform.position = basePos;
-            transform.rotation = baseRot;
+            basePos += baseRot * Vector3.right * (visibleW * (0.5f - ScreenX));
+            targetPos = basePos;
+            targetRot = baseRot;
+            if (!hasFrame) { transform.position = basePos; transform.rotation = baseRot; framedPos = basePos; framedRot = baseRot; hasFrame = true; }
         }
+
+        Vector3 framedPos;
+        Quaternion framedRot;
+        float lastScreenX = -1f;
 
         public void Shake(float amount) => shake = Mathf.Min(1.2f, shake + amount * ShakeScale);
 
@@ -58,8 +68,13 @@ namespace OneMoreFloor
 
         void LateUpdate()
         {
-            if (framed && Mathf.Abs(Cam.aspect - framedAspect) > 0.01f) Frame(framed);
-            float dt = Time.deltaTime;
+            if (framed && (Mathf.Abs(Cam.aspect - framedAspect) > 0.01f || ScreenX != lastScreenX)) { lastScreenX = ScreenX; Frame(framed); }
+            float dt = Time.unscaledDeltaTime;
+            // glide between framings (menus <-> play)
+            framedPos = Vector3.Lerp(framedPos, targetPos, Ease.Damp(3.5f, dt));
+            framedRot = Quaternion.Slerp(framedRot, targetRot, Ease.Damp(3.5f, dt));
+            basePos = framedPos;
+            baseRot = framedRot;
             shake = Mathf.Max(0f, shake - dt * 2.2f);
             pushHold -= dt;
             pushK = Mathf.Lerp(pushK, pushHold > 0f ? pushAmount : 0f, Ease.Damp(pushHold > 0f ? 3f : 2f, dt));

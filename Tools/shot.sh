@@ -18,6 +18,7 @@ if echo "$r" | grep -q '"failed": true'; then echo "$r" | python3 -c "import jso
 ready
 u eval 'UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/Main.unity"); return "ok";' >/dev/null
 u eval 'UnityEditor.PlayModeWindow.SetCustomRenderingResolution(1920, 1080, "OMF"); return "ok";' >/dev/null
+u clear_console >/dev/null 2>&1 || true
 u editor_play >/dev/null
 sleep 2; ready
 if [ -n "$SETUP" ]; then u eval -- --code "$SETUP return \"ok\";" --timeout 30000 | tail -1; fi

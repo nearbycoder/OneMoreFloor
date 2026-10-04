@@ -72,6 +72,7 @@ namespace OneMoreFloor.EditorTools
                 m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                 m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             });
+            Ensure("Sky", "OMF/SkyGradient", null);
             Ensure("Particles", "Universal Render Pipeline/Particles/Unlit", m =>
             {
                 m.SetFloat("_Surface", 1f);
