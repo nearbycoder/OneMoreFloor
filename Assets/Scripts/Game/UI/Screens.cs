@@ -398,7 +398,7 @@ namespace OneMoreFloor
             lines = UiKit.Text("Lines", p.transform, "", 30, Palette.Ink, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 140), new Vector2(0, -115));
             lines.textWrappingMode = TextWrappingModes.Normal;
             hint = UiKit.Text("Hint", p.transform, "", 26, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 40), new Vector2(0, -205));
-            bestStamp = UiKit.Text("Best", p.transform, "NEW BEST!", 56, Palette.Bad, UiKit.Display, TextAlignmentOptions.Center, new Vector2(400, 80), new Vector2(240, 160));
+            bestStamp = UiKit.Text("Best", p.transform, "NEW BEST!", 56, Palette.Bad, UiKit.Display, TextAlignmentOptions.Center, new Vector2(400, 80), new Vector2(205, -265));
             bestStamp.rectTransform.localRotation = Quaternion.Euler(0, 0, 14);
             retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -400), new Vector2(460, 96), () => game.RestartShift(), true, 38);
             next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(370, -400), new Vector2(260, 80), () => game.ShowIntro(shift + 1), false, 28);

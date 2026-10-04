@@ -31,8 +31,11 @@ namespace OneMoreFloor
             Instance = this;
             var args = System.Environment.GetCommandLineArgs();
             SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0;
-            Application.targetFrameRate = 120;
-            QualitySettings.vSyncCount = 1;
+            // Pace frames ourselves: on Wayland a vsync'd swap blocks on compositor frame callbacks,
+            // which some compositors throttle hard for unfocused windows. Compositors don't tear.
+            QualitySettings.vSyncCount = 0;
+            double hz = Screen.currentResolution.refreshRateRatio.value;
+            Application.targetFrameRate = Mathf.Clamp((int)System.Math.Round(hz > 1 ? hz : 60), 60, 240);
             BuildWorld();
             BuildUi();
         }
@@ -53,6 +56,7 @@ namespace OneMoreFloor
         {
             ApplySettings();
             AutoPilot.TryStart(this);
+            PerfProbe.TryStart(this);
             int direct = StartIndexFromArgs();
             if (direct >= 0) BeginShift(direct);
             else ShowTitle();

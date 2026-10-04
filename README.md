@@ -8,8 +8,12 @@ A short-shift score-attack game made in **Unity 6.6 (URP)**. Every model was bui
 **Blender 4.5**, and all the music and sound was synthesized from scratch in Python. Ten floors,
 eight kinds of guest, ten shifts of two to three minutes, plus an endless Overtime.
 
-![Title](docs/screenshots/title.png)
-![Saturday](docs/screenshots/saturday.png)
+| | |
+| --- | --- |
+| ![Title](docs/screenshots/title.png) | ![The doors open onto the ocean](docs/screenshots/ocean_moment.png) |
+| ![Thursday at dusk](docs/screenshots/thursday.png) | ![Graveyard Shift](docs/screenshots/graveyard.png) |
+| ![Route preview: a kid and a vampire aboard](docs/screenshots/route_preview.png) | ![Clock out](docs/screenshots/results.png) |
+| ![Duty roster](docs/screenshots/roster.png) | ![Shift intro](docs/screenshots/intro.png) |
 
 ## Playing
 
@@ -28,7 +32,7 @@ The build lives in `Builds/Linux/`. Copy that whole folder to move the game else
 | **Click a floor** in the tower, **click a panel button**, or press **1–9** | Send the car there (you can redirect mid-trip) |
 | **Click a guest in the car** (while docked) | Let them off here to wait. Useful for capacity and conflicts. |
 | **Click a guest on another floor** | Send the car to them |
-| **Hover** a guest or floor | Highlights where they're going, or who wants to go there |
+| **Hover** a guest or floor | Highlights where they're going. Hovering a destination previews the trip: every stop on the way (with a kid aboard), sunlight danger for vampires, sun for plants, and how many get off |
 | **Esc / P** | Pause (Resume, Restart, Settings, Quit to roster) |
 | **Enter / Esc** in menus | Confirm / back |
 
@@ -155,6 +159,12 @@ import is asynchronous in batch mode).
   **every shift is beatable** (a decent bot reaches ≥1★ on every seed, and a strong bot reaches 3★).
 - `Tools/autopilot.sh` launches the **built game**, walks the menus, plays all ten shifts with the
   bot through the full presentation, saves screenshots, and fails on any logged error or exception.
+  It also logs average fps.
+- `-omfPerf <shift> [-omfNoVsync]` plays a shift for 30 s and logs frame-time percentiles. Graveyard
+  Shift, nine floors, 1600×900: about 195 fps uncapped (p95 10 ms) on this machine, while it was
+  heavily loaded. Normally it's capped to the display refresh rate.
+- `-omfRecordAudio <file.wav>` records the final mix the player hears. That's how I found the mix was
+  clipping, and confirmed the fix (master limiter + gain staging: 0 clipped samples, about -18 dBFS).
 
 ## Honest notes and limitations
 
