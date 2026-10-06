@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using OneMoreFloor.Core;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -24,14 +25,14 @@ namespace OneMoreFloor
         RectTransform prompts;
         readonly List<Prompt> promptItems = new List<Prompt>();
         readonly List<Edge> edges = new List<Edge>();
-        readonly List<(string key, Color col, string label)> items = new List<(string, Color, string)>();
+        readonly List<(PadGlyphs.Glyph glyph, string label)> items = new List<(PadGlyphs.Glyph, string)>();
         readonly List<int> above = new List<int>(), below = new List<int>();
         float t;
 
         sealed class Prompt
         {
             public RectTransform Rt;
-            public Image Glyph;
+            public Image Glyph, Symbol;
             public TextMeshProUGUI Key, Label;
             public string ShownKey, ShownLabel;
             public float Width;
@@ -152,15 +153,17 @@ namespace OneMoreFloor
                 var rt = UiKit.Rect("P" + promptItems.Count, prompts, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(200, 44));
                 var glyph = UiKit.Image("Glyph", rt, UiKit.Circle, Color.white, new Vector2(38, 38), new Vector2(19, 0));
                 var key = UiKit.Text("Key", glyph.transform, "", 19, Palette.Hex(0x1C1820), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(80, 38));
+                var symbol = UiKit.Image("Symbol", glyph.transform, null, Color.white, new Vector2(30, 30));
                 var label = UiKit.Text("Label", rt, "", 20, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(240, 40));
                 label.rectTransform.pivot = new Vector2(0f, 0.5f);
-                promptItems.Add(new Prompt { Rt = rt, Glyph = glyph, Key = key, Label = label });
+                promptItems.Add(new Prompt { Rt = rt, Glyph = glyph, Symbol = symbol, Key = key, Label = label });
             }
             return promptItems[i];
         }
 
-        static readonly Color PadA = Palette.Hex(0x6CCB5F), PadB = Palette.Hex(0xE5484D), PadX = Palette.Hex(0x3FA9F5), PadY = Palette.Hex(0xFFD23F);
-        static readonly Color KeyCap = Palette.Hex(0xF3E6C8), Shoulder = Palette.Hex(0xC9BBA0);
+        static readonly Color KeyCap = Palette.Hex(0xF3E6C8);
+
+        static PadGlyphs.Glyph Cap(string key) => new PadGlyphs.Glyph { Key = key, Cap = KeyCap, Ink = Palette.Hex(0x1C1820) };
 
         void UpdatePrompts(bool on)
         {
@@ -177,32 +180,36 @@ namespace OneMoreFloor
             items.Clear();
             if (pad)
             {
-                items.Add(("A", PadA, confirm));
-                if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add(("X", PadX, "Let off"));
-                if (confirm != "Everyone in") items.Add(("Y", PadY, "Everyone in"));
-                items.Add(("LB RB", Shoulder, "Guest"));
-                if (guest != null) items.Add(("B", PadB, "Unpick"));
-                items.Add(("RT", Shoulder, "Zoom"));
+                items.Add((PadGlyphs.Face(GamepadButton.South), confirm));
+                if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add((PadGlyphs.Face(GamepadButton.West), "Let off"));
+                if (confirm != "Everyone in") items.Add((PadGlyphs.Face(GamepadButton.North), "Everyone in"));
+                items.Add((PadGlyphs.Pill(GamepadButton.LeftShoulder, GamepadButton.RightShoulder), "Guest"));
+                if (guest != null) items.Add((PadGlyphs.Face(GamepadButton.East), "Unpick"));
+                items.Add((PadGlyphs.Pill(GamepadButton.RightTrigger), "Zoom"));
             }
             else
             {
-                items.Add(("ENTER", KeyCap, confirm));
-                if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add(("F", KeyCap, "Let off"));
-                if (confirm != "Everyone in") items.Add(("SPACE", KeyCap, "Everyone in"));
-                items.Add(("← →", KeyCap, "Guest"));
-                items.Add(("Z", KeyCap, "Zoom"));
+                items.Add((Cap("ENTER"), confirm));
+                if (guest != null && guest.State == PState.Riding && sim.Car.IsOpen) items.Add((Cap("F"), "Let off"));
+                if (confirm != "Everyone in") items.Add((Cap("SPACE"), "Everyone in"));
+                items.Add((Cap("← →"), "Guest"));
+                items.Add((Cap("Z"), "Zoom"));
             }
             float x = 22f;
             for (int i = 0; i < items.Count; i++)
             {
                 var p = GetPrompt(i);
                 p.Rt.gameObject.SetActive(true);
-                var (key, col, label) = items[i];
-                bool round = key.Length == 1 && pad;
+                var (g, label) = items[i];
+                string key = g.Key;
+                bool round = g.Round;
                 float gw = round ? 38f : Mathf.Max(38f, 16f + key.Length * 15f);
                 p.Glyph.sprite = round ? UiKit.Circle : UiKit.Pill;
                 p.Glyph.type = round ? Image.Type.Simple : Image.Type.Sliced;
-                p.Glyph.color = col;
+                p.Glyph.color = g.Cap;
+                p.Key.color = g.Ink;
+                p.Symbol.gameObject.SetActive(g.Symbol != null);
+                if (g.Symbol != null) { p.Symbol.sprite = g.Symbol; p.Symbol.color = g.Ink; }
                 p.Glyph.rectTransform.sizeDelta = new Vector2(gw, 38f);
                 p.Glyph.rectTransform.anchoredPosition = new Vector2(gw * 0.5f, 0);
                 if (p.ShownKey != key || p.ShownLabel != label)

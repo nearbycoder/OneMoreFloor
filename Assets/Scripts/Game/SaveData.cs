@@ -19,6 +19,8 @@ namespace OneMoreFloor
         public bool ScreenShake = true;
         public bool Fullscreen;
         public bool ShowForecast = true;
+        /// <summary>No camera drift, push-ins or shake, floors settle without overshoot, and the UI holds still.</summary>
+        public bool ReducedMotion;
         /// <summary>Camera zoom during play (0 = whole tower, 1 = close-up following the car).</summary>
         public float Zoom;
 

@@ -2,6 +2,10 @@ using System.Collections;
 using System.IO;
 using OneMoreFloor.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.DualShock;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.Switch;
 
 namespace OneMoreFloor
 {
@@ -144,7 +148,6 @@ namespace OneMoreFloor
             if (onlyShift < 0)
             {
                 yield return PadCheck(root);
-                yield return UiChecks(root);
                 root.ShowRoster();
                 yield return Wait(1.2f);
                 Shot("roster_unlocked");
@@ -159,6 +162,7 @@ namespace OneMoreFloor
                 Shot("ending");
                 root.ShowTitle();
                 yield return Wait(1.5f);
+                yield return UiChecks(root);
             }
 
             yield return Finish();
@@ -218,6 +222,7 @@ namespace OneMoreFloor
 
             // a weak player's Graveyard Shift: several kinds of complaint, one tip for the biggest
             for (int k = 0; k < 8; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);
+            save.EndingSeen = true; // a star here would otherwise queue the first-time ending
             root.StartShift(8, 1301);
             runner = root.Runner;
             runner.AutoBot = Bot.Human(7, 0f);
@@ -253,7 +258,48 @@ namespace OneMoreFloor
             Shot("ui_pause_pad");
             root.Resume();
             root.AutoPause = false;
+
+            // controller families: the prompt strip and hints follow the pad in use
+            runner.AutoBot = null;
+            runner.InputEnabled = false;
+            Controls.ForcePad = true;
+            runner.ScriptCursor(1, -1);
+            var ds = InputSystem.AddDevice<DualShock4GamepadHID>();
+            ds.MakeCurrent();
+            yield return Wait(0.8f);
+            Check("a DualShock 4 shows PlayStation prompts", PadGlyphs.Family == PadFamily.PlayStation && PadGlyphs.Face(GamepadButton.South).Symbol != null
+                && PadGlyphs.Words("Press <b>A</b> (<b>LB/RB</b> picks one, hold <b>RT</b> to zoom)") == "Press <b>Cross</b> (<b>L1/R1</b> picks one, hold <b>R2</b> to zoom)", "ui");
+            Shot("ui_prompts_playstation");
+            var nx = InputSystem.AddDevice<SwitchProControllerHID>();
+            nx.MakeCurrent();
+            yield return Wait(0.8f);
+            Check("a Switch Pro Controller shows Nintendo prompts (B on the bottom)", PadGlyphs.Family == PadFamily.Nintendo
+                && PadGlyphs.Name(GamepadButton.South) == "B" && PadGlyphs.Name(GamepadButton.RightTrigger) == "ZR", "ui");
+            Shot("ui_prompts_nintendo");
+            InputSystem.RemoveDevice(ds);
+            InputSystem.RemoveDevice(nx);
+            Controls.ReleaseForcedPad();
+            runner.InputEnabled = true;
+            Check("a plain gamepad shows Xbox prompts", PadGlyphs.Family == PadFamily.Xbox && PadGlyphs.Name(GamepadButton.South) == "A", "ui");
             root.QuitShift();
+            yield return Wait(1f);
+
+            // reduced motion, switched on from the settings screen
+            var settings = FindAnyObjectByType<SettingsScreen>(FindObjectsInactive.Include);
+            root.ShowSettings(null);
+            yield return Wait(0.6f);
+            UiToggle motion = null;
+            foreach (var tg in settings.GetComponentsInChildren<UiToggle>(true)) if (tg.name.Contains("REDUCED")) motion = tg;
+            if (motion != null) motion.Set(true);
+            yield return Wait(0.6f);
+            Shot("ui_settings_reduced_motion");
+            var back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
+            Check("reduced motion toggles on, stills the camera and survives a save round trip",
+                motion != null && save.ReducedMotion && back.ReducedMotion && root.Rig.Still && root.Rig.ShakeScale == 0f, "ui");
+            settings.Hide();
+            save.ReducedMotion = false;
+            root.ApplySettings();
+            root.ShowTitle();
             yield return Wait(1f);
         }
 

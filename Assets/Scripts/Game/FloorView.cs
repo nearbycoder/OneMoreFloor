@@ -212,7 +212,7 @@ namespace OneMoreFloor
 
         public void SetHover(bool on) => hoverTarget = on ? 1f : 0f;
         public void Flash(float amount = 1f) => flash = Mathf.Max(flash, amount);
-        public void Kick(float v) => bounce.Velocity += v;
+        public void Kick(float v) { if (!SaveData.Current.ReducedMotion) bounce.Velocity += v; }
 
         void Update()
         {
@@ -237,11 +237,12 @@ namespace OneMoreFloor
                 {
                     // out (0-0.3), across (0.15-0.8), back in with a bounce (0.65-1)
                     float zOut = Ease.OutCubic(t / 0.3f);
-                    float zIn = Ease.OutBack((t - 0.65f) / 0.35f, 2.2f);
+                    bool still = SaveData.Current.ReducedMotion;
+                    float zIn = still ? Ease.OutCubic(Mathf.Clamp01((t - 0.65f) / 0.35f)) : Ease.OutBack((t - 0.65f) / 0.35f, 2.2f);
                     float z = popZ * (zOut - zIn);
                     float y = Mathf.Lerp(fromY - toY, 0f, Ease.InOutCubic((t - 0.15f) / 0.65f));
                     Content.localPosition = new Vector3(0f, y + bounce.Value, z);
-                    Content.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * Mathf.PI) * (popZ < 0 ? 1.2f : -1.2f));
+                    Content.localRotation = Quaternion.Euler(0f, 0f, still ? 0f : Mathf.Sin(t * Mathf.PI) * (popZ < 0 ? 1.2f : -1.2f));
                     if (animT >= 1f) { mode = 0; Content.localRotation = Quaternion.identity; Kick(-3.5f); }
                     break;
                 }

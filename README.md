@@ -97,8 +97,9 @@ The shift also pauses itself if the window loses focus or the controller you're 
 | **RT / LT**, right stick | | Zoom in / out |
 | **Start** | **Esc** | Pause |
 
-A strip along the bottom says what each button will do right now. Menus have a focus ring that the d-pad, stick
-and arrow keys move.
+A strip along the bottom says what each button will do right now. It names the buttons for the controller you're
+holding: Xbox letters, PlayStation shapes (✕ ○ □ △), or Nintendo letters, with B on the bottom. The table above uses Xbox
+names. Menus have a focus ring that the d-pad, stick and arrow keys move.
 
 <p align="center">
   <img src="docs/media/screenshots/gamepad-closeup.jpg" alt="Gamepad play zoomed in: gold floor brackets, a guest card and the button prompt strip" width="720">
@@ -182,7 +183,8 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally.
+settings are saved locally. Settings cover volume, fullscreen, screen shake, the shuffle forecast and **reduced
+motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
 
 ## Screenshots
 
@@ -348,8 +350,11 @@ gamepad support), and it passes its automated checks. Honest caveats:
   shift) is the safety net until then.
 - **The audio has been measured, not listened to critically.** Every sound passes the objective audit (loudness,
   peaks, clicks, seams, balance), but nobody has judged how it sounds on the hundredth play.
-- **Gamepad support is tested with a virtual pad.** Every path runs through the Input System in the autopilot, but
-  no physical controller has been tried. Button glyphs are generic (A/B/X/Y).
+- **Gamepad support is tested with virtual pads.** Every path runs through the Input System in the autopilot, but
+  no physical controller has been tried. Prompts switch to PlayStation or Nintendo names for virtual DualShock 4
+  and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
+  ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
+  names.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Small guests at full zoom-out.** With nine floors on screen, guests are about 50–60 px tall at 1080p. The

@@ -113,7 +113,7 @@ namespace OneMoreFloor
             ground.SetParent(transform, false);
             var b = ModelLibrary.Instantiate("Base");
             if (b) b.transform.SetParent(ground, false);
-            var plaque = UiKit.WorldText(ground, "THE SHUFFLETON · EST. 1931", new Vector3(0, -1.05f, Layout.FrontZ - 0.47f), 2.4f, Palette.Brass, UiKit.Display);
+            var plaque = UiKit.WorldText(ground, "THE SHUFFLETON · EST. 1929", new Vector3(0, -1.05f, Layout.FrontZ - 0.47f), 2.4f, Palette.Brass, UiKit.Display);
             plaque.rectTransform.sizeDelta = new Vector2(3f, 0.5f);
         }
 

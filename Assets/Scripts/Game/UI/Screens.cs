@@ -135,7 +135,7 @@ namespace OneMoreFloor
         {
             base.Update();
             t += UiTime.Dt;
-            if (logo) logo.rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 0.8f) * 0.5f);
+            if (logo) logo.rectTransform.localRotation = Quaternion.Euler(0, 0, SaveData.Current.ReducedMotion ? 0f : Mathf.Sin(t * 0.8f) * 0.5f);
         }
     }
 
@@ -351,7 +351,7 @@ namespace OneMoreFloor
         {
             base.Update();
             t += UiTime.Dt;
-            if (noteRt) noteRt.localRotation = Quaternion.Euler(0, 0, -3f + Mathf.Sin(t * 1.3f) * 0.4f);
+            if (noteRt) noteRt.localRotation = Quaternion.Euler(0, 0, -3f + (SaveData.Current.ReducedMotion ? 0f : Mathf.Sin(t * 1.3f) * 0.4f));
         }
     }
 
@@ -397,7 +397,7 @@ namespace OneMoreFloor
         UiScreen returnTo;
         GameRoot game;
         UiSlider master, music, sfx;
-        UiToggle full, shake, forecast;
+        UiToggle full, shake, forecast, motion;
 
         public static SettingsScreen Create(Transform parent, GameRoot game)
         {
@@ -406,18 +406,19 @@ namespace OneMoreFloor
             s.Init("Settings");
             s.game = game;
             Dim(rt, 0.75f);
-            var card = Card(rt, new Vector2(900, 780), Vector2.zero);
-            Heading(card, "Settings", 296, 600, 80);
+            var card = Card(rt, new Vector2(900, 840), Vector2.zero);
+            Heading(card, "Settings", 326, 600, 80);
             var save = SaveData.Current;
-            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 202), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 150), save.Master, v => { save.Master = v; game.ApplySettings(); });
-            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 84), save.Music, v => { save.Music = v; game.ApplySettings(); });
-            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 18), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
-            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, -50), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -98), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -160), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
-            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -222), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
-            var done = UiButton.Create(card, "DONE", new Vector2(0, -318), new Vector2(300, 74), () => s.Close(), true, 30);
+            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 232), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 180), save.Master, v => { save.Master = v; game.ApplySettings(); });
+            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 114), save.Music, v => { save.Music = v; game.ApplySettings(); });
+            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 48), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
+            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, -20), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -68), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
+            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -130), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
+            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -192), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
+            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -254), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
+            var done = UiButton.Create(card, "DONE", new Vector2(0, -350), new Vector2(300, 74), () => s.Close(), true, 30);
             done.Focused = true;
             s.Primary = () => s.Close();
             s.Back = () => s.Close();

@@ -274,7 +274,8 @@ namespace OneMoreFloor
                 Audio.MusicVolume = save.Music;
                 Audio.SfxVolume = save.Sfx;
             }
-            Rig.ShakeScale = save.ScreenShake ? 1f : 0f;
+            Rig.ShakeScale = save.ScreenShake && !save.ReducedMotion ? 1f : 0f;
+            Rig.Still = save.ReducedMotion;
             if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
             if (!Application.isEditor)
             {

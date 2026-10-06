@@ -10,6 +10,8 @@ namespace OneMoreFloor
     {
         public Camera Cam;
         public float ShakeScale = 1f;
+        /// <summary>Reduced motion: no idle drift and no push-ins (shake is off through <see cref="ShakeScale"/>).</summary>
+        public bool Still;
         Vector3 basePos;
         Quaternion baseRot;
         float shake;
@@ -81,6 +83,7 @@ namespace OneMoreFloor
 
         public void PushIn(Vector3 worldTarget, float amount, float hold)
         {
+            if (Still) return;
             pushTarget = worldTarget;
             push = Mathf.Max(push, 0.0001f);
             pushHold = hold;
@@ -105,7 +108,7 @@ namespace OneMoreFloor
             float t = UiTime.Now;
             float s = shake * shake;
             var offset = new Vector3((Mathf.PerlinNoise(t * 23f, 1.3f) - 0.5f) * 1.1f, (Mathf.PerlinNoise(2.7f, t * 23f) - 0.5f) * 1.1f, 0f) * s;
-            var drift = new Vector3(Mathf.Sin(t * 0.21f) * 0.25f, Mathf.Sin(t * 0.17f) * 0.18f, 0f);
+            var drift = Still ? Vector3.zero : new Vector3(Mathf.Sin(t * 0.21f) * 0.25f, Mathf.Sin(t * 0.17f) * 0.18f, 0f);
             var pos = basePos + drift;
             if (pushK > 0.001f) pos = Vector3.Lerp(pos, pushTarget + (basePos - pushTarget).normalized * 22f, pushK);
             transform.position = pos + transform.rotation * offset;

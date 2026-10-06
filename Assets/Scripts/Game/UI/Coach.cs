@@ -24,7 +24,7 @@ namespace OneMoreFloor
             public string Id, Text;
             /// <summary>Wording for gamepad players and for arrow-key players (null = same as Text).</summary>
             public string Pad, Keys;
-            public string For() => Controls.Pad && Pad != null ? Pad : Controls.KeyNav && Keys != null ? Keys : Text;
+            public string For() => Controls.Pad && Pad != null ? PadGlyphs.Words(Pad) : Controls.KeyNav && Keys != null ? Keys : Text;
             public Func<Vector3?> World;      // world target (arrow points down at it)
             public Func<RectTransform> Ui;    // or a UI target
             public float MinTime = 1.2f, MaxTime = 7f;
@@ -247,6 +247,7 @@ namespace OneMoreFloor
             // position: above the world target, or beside the UI target, else top-centre of the play area
             Vector2 anchorPos;
             bool hasArrow = false;
+            float side = 0f; // UI targets: the marker sits beside the panel and points at it (-1 left of it, +1 right)
             var size = canvasRt.rect.size;
             Vector3? w = current.World?.Invoke();
             RectTransform ui = current.Ui?.Invoke();
@@ -263,7 +264,9 @@ namespace OneMoreFloor
             {
                 var sp = RectTransformUtility.WorldToScreenPoint(canvasCam, ui.position);
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, sp, canvasCam, out var lp);
-                anchorPos = lp + size * 0.5f + new Vector2(0, ui.rect.height * 0.5f);
+                // beside the target rather than on it, so the marker never covers the text it points at
+                side = lp.x > 0f ? -1f : 1f;
+                anchorPos = lp + size * 0.5f + new Vector2(side * (ui.rect.width * 0.5f + 58f), 0f);
                 hasArrow = true;
             }
             else anchorPos = new Vector2(size.x * 0.5f, size.y * 0.78f);
@@ -273,7 +276,8 @@ namespace OneMoreFloor
             var boxPos = new Vector2(218f, size.y * 0.43f);
             box.anchoredPosition = boxPos + new Vector2(0, bob * 0.15f);
             arrow.gameObject.SetActive(hasArrow);
-            arrow.anchoredPosition = anchorPos + new Vector2(0, bob * 0.6f);
+            arrow.anchoredPosition = anchorPos + (side != 0f ? new Vector2(-side * bob * 0.6f, 0f) : new Vector2(0, bob * 0.6f));
+            arrow.localRotation = Quaternion.Euler(0f, 0f, side * 90f);
             arrow.localScale = Vector3.one * (1f + 0.12f * Mathf.Sin(UiTime.Now * 6f));
             box.localScale = Vector3.one * (0.9f + 0.1f * Ease.OutBack(Mathf.Clamp01(shown * 4f), 2f));
         }
