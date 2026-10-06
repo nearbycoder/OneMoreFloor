@@ -273,6 +273,45 @@ namespace OneMoreFloor
             Check("fired twice on a shift: the time card suggests Relaxed", runner.Sim.Fired && results.HintText.Contains("Relaxed"), "ui");
             Shot("ui_results_suggest_relaxed");
 
+            // guest size: a crowded nine-floor shift at full zoom-out, then a full car in close-up
+            save.Zoom = 0f;
+            root.StartShift(6, 777);
+            runner = root.Runner;
+            runner.Rig.Zoom = 0f;
+            runner.AutoBot = Bot.Strong(9);
+            runner.FastForward(70f);
+            runner.Paused = true;
+            yield return Wait(1.5f);
+            Shot("ui_guests_busy");
+            runner.Paused = false;
+            // fill the car: let everyone in at each stop, then head for the busiest other floor
+            runner.AutoBot = null;
+            var fs = runner.Sim;
+            for (int i = 0; i < 160 && !(fs.Car.Load == fs.Car.Capacity && fs.Car.IsOpen); i++)
+            {
+                if (fs.Car.IsOpen)
+                {
+                    fs.BoardAll();
+                    if (fs.Car.Load < fs.Car.Capacity)
+                    {
+                        int bestSlot = -1, most = 0;
+                        for (int sl = 0; sl < fs.B.Count; sl++)
+                            if (sl != fs.Car.DockedSlot && fs.Waiting[(int)fs.B.At(sl)].Count > most) { most = fs.Waiting[(int)fs.B.At(sl)].Count; bestSlot = sl; }
+                        if (bestSlot >= 0) runner.RequestSend(bestSlot, false);
+                    }
+                }
+                runner.FastForward(0.5f);
+            }
+            runner.Paused = true;
+            runner.Rig.Zoom = 1f;
+            yield return Wait(2.5f);
+            Shot("ui_guests_full_car");
+            Check($"captured a full car for the guest-size check (load {runner.Sim.Car.Load})", runner.Sim.Car.Load == runner.Sim.Car.Capacity, "ui");
+            runner.Paused = false;
+            runner.Rig.Zoom = 0f;
+            root.QuitShift();
+            yield return Wait(1f);
+
             // daily Overtime: today's shift opens the same way every time, and today's best is kept
             int ot = GameRoot.OvertimeIndex;
             for (int k = 0; k < ot; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);
