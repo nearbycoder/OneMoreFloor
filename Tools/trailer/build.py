@@ -347,6 +347,10 @@ def main():
         raise SystemExit(__doc__)
     cap, out = sys.argv[1], sys.argv[2]
     what = set(sys.argv[3:]) or {"trailer", "media"}
+    if what == {"screenshots"}:
+        # README stills only: no shot manifest or audio needed
+        screenshots(cap, os.path.join(out, "screenshots"))
+        return
     work = os.path.join(cap, "build")
     os.makedirs(work, exist_ok=True)
     os.makedirs(out, exist_ok=True)

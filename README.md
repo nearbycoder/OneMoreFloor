@@ -140,11 +140,12 @@ a few stops.
 
 ### Tips, streaks and group drops
 
-<img src="docs/media/screenshots/triple-drop.jpg" alt="Rush hour: a triple drop with sunkissed and jammed popups and the streak at x2.50" width="100%">
+<img src="docs/media/screenshots/triple-drop.jpg" alt="Rush hour: a triple drop pays $2,605 in one popup, with the streak at x2.50" width="100%">
 
 Tips are fare plus patience left, times your **streak** (+5% per delivery, up to ×2.5; any complaint resets it)
 times **group drops** (+25% for each extra guest delivered at the same stop). The last 30 seconds are **Rush Hour**,
-worth ×1.5. Stars come from your tips, and **one star unlocks the next shift**. If a shift won't give you a star,
+worth ×1.5. Each stop's tips add up in a single popup, and the drop banner upgrades from DOUBLE to TRIPLE to
+FULL HOUSE. Stars come from your tips, and **one star unlocks the next shift**. If a shift won't give you a star,
 clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
 star on the Graveyard Shift).
 
@@ -160,7 +161,9 @@ Hover a guest to see who they are and where they're going. Hover a floor to prev
 when a kid is aboard, where sunlight will hit a vampire or sun a plant, and how many guests get off.
 
 Labels beside the tower name every floor, with its slot number, how many guests are waiting there and, when it's
-leaving the building, how many stops it has left. They follow the floors as the building shuffles.
+leaving the building, how many stops it has left. They follow the floors as the building shuffles. The waiting
+count, on the labels and on the panel's buttons, is ringed with the patience of the floor's most impatient guest:
+dark while everyone is calm, amber under half, and red and pulsing when someone is about to storm off.
 
 ### Music that panics
 
@@ -271,7 +274,8 @@ Tools/unity.sh test        # EditMode tests: every rule, determinism, a random-i
 Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands against every shift, invariants checked
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game, then drives the menus with a virtual gamepad
-                           # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings)
+                           # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings,
+                           # patience badges); every shift also fails if two reward popups ever overlap
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 
@@ -280,7 +284,11 @@ Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```sh
 Tools/make_trailer.sh      # records every shot from the built game, then cuts docs/media/trailer.mp4,
                            # the poster, the teaser GIF and the screenshots (about 15 minutes)
+Tools/make_trailer.sh stills   # only the README screenshots (about 6 minutes)
 ```
+
+Automation runs (`autopilot.sh`, `demo.sh`, `make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg`,
+so they never touch your save or Unity's prefs in `~/.config/unity3d`.
 
 `TrailerReel` (in the game) plays each shot from a fixed seed, skips ahead to a moment it found by playing the same
 seed headlessly, and records it twice: once rendered offline at a locked 30 fps, and once in real time to capture
@@ -381,9 +389,11 @@ gamepad support), and it passes its automated checks. Honest caveats:
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
   floors it's about 25% bigger than in 0.1.0 (floors 116 px apart at 1080p, up from 92, or 112 px with the gamepad
   prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
-  checked at 1920×1080, 1440×900 and 2560×1080, not on other screens. The README's older screenshots and the
-  trailer show the 0.1.0 framing. Drawing guests 15% bigger was tried and dropped: a full car pushes heads up to its
-  ceiling. Bigger guests need the car and floors re-proportioned.
+  checked at 1920×1080, 1440×900 and 2560×1080, not on other screens. The screenshots above are from the current
+  build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing. Drawing guests 15% bigger was
+  tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
+  nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer
+  floors at once, which is a design decision.
 - **Linux is the only released platform.** A universal macOS app builds (both architectures confirmed with `file`,
   bundle id `com.nearbycoder.onemorefloor`), but it has never been run on a Mac, and it's unsigned and
   un-notarized. No Windows build has been made: this machine's editor doesn't have Windows Build Support.

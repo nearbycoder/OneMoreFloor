@@ -9,9 +9,21 @@
 #   Tools/make_trailer.sh            capture + assemble (about 15 minutes)
 #   Tools/make_trailer.sh capture    only capture
 #   Tools/make_trailer.sh assemble   re-assemble from an existing capture
+#   Tools/make_trailer.sh stills     only the README screenshots: the video pass, then docs/media/screenshots
+#                                    (the trailer, its poster and the teaser GIF are left as they are; ~6 minutes)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="${WORK:-$ROOT/Captures/trailer}"
+
+if [ "${1:-}" = "stills" ]; then
+  STILLS="$ROOT/Captures/stills"
+  rm -rf "$STILLS" && mkdir -p "$STILLS"
+  echo "video pass for the stills (offline render, ~6 min)..."
+  timeout 1800 "$ROOT/Tools/play.sh" -logFile "$STILLS/video.log" -omfTrailer "$STILLS" -omfTrailerPass video > /dev/null 2>&1 || true
+  grep -q "\[Trailer\] done" "$STILLS/video.log" || { echo "video pass failed (see $STILLS/video.log)"; exit 1; }
+  nice -n 10 python3 "$ROOT/Tools/trailer/build.py" "$STILLS" "$ROOT/docs/media" screenshots
+  exit 0
+fi
 
 if [ "${1:-}" != "assemble" ]; then
   rm -rf "$WORK" && mkdir -p "$WORK"
