@@ -289,3 +289,66 @@ Found along the way:
 Still open: bigger guests via an art pass (#12), Windows (#13, needs the module), WebGL (#14), a listening pass
 (#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next release,
 and regenerating the README screenshots and trailer, which still show the 0.1.0 look.
+
+## Round 3 scope (2026-10-06, branch `improvements-3`)
+
+Picked after a fresh baseline on `227c0b7`. `build-linux` passes, and the Graveyard autopilot passes. The `ui` flow checks
+**fail one check on unchanged `main`**: "unplugging the controller in use pauses". Captures from those runs showed
+two things a player meets every shift: reward popups that pile up into unreadable text at a group drop
+(`+$345`, `AHH, SUNSHINE!`, `SUNKISSED!`, `DOUBLE DROP!` and `+$220` drawn over each other), and patience that's only
+shown on small rings above small guests, while "stormed off waiting" is the biggest cause of complaints on every
+shift (`sim.sh causes`). Every item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot
+(all shifts, pad pass, `ui` flow checks) passing. Screenshots go to `docs/media/improvements/round3/`.
+
+### T1. Rewards you can read
+
+- Popups are laid out in screen space so they never draw over each other: a new popup moves up to clear the
+  ones already showing. The group-drop banner is a single banner that upgrades DOUBLE → TRIPLE → FULL HOUSE
+  instead of stacking a new one for each guest.
+- **Acceptance:** while the autopilot plays every shift, the largest overlap between any two visible popups
+  is ≤ 4 px in each direction (measured every frame on their text bounds). One drop banner per stop.
+- **Verify:** an autopilot measurement printed per shift and checked, and before/after crops of a group drop.
+
+### T2. Patience at a glance
+
+- The waiting-count badges on the floor labels and the panel buttons show the patience of the floor's most
+  impatient waiting guest: a ring around the count in the same green/amber/red as the guest bubbles, with
+  the badge going amber under 50% and red (and pulsing) under 25%. Calm floors get a dark badge, not today's
+  always-red one.
+- **Acceptance:** label and panel badges agree with the guests' own rings. Nothing moves or resizes in the layout.
+- **Verify:** an EditMode test for the core "lowest waiting patience on a floor" rule. An autopilot `ui` check
+  that drains one waiting guest's patience and reads the label and panel badge colours. Screenshots.
+
+### T3. Controller disconnect pause that holds up
+
+- The baseline failure: auto-pause only fires if the last input was the gamepad, so a mouse nudge (or another
+  window's pointer crossing this one) between the last button press and the disconnect stops the pause. Now a
+  gamepad that was used during the running shift pauses it when it disconnects, whatever was touched last. A pad
+  that was never used in the shift still doesn't pause it.
+- **Acceptance:** the `ui` check passes deterministically. New checks: pad press, then virtual mouse movement,
+  then unplug → paused with "Controller disconnected". An unused second pad unplugged → not paused.
+- **Verify:** the autopilot `ui` checks, run twice.
+
+### T4. Automation can't touch the real config
+
+- Round 2's tests overwrote the real save. Since then the game has used an ephemeral save under automation, but
+  Unity still writes its own `prefs` file there on every run. `Tools/play.sh` now points `XDG_CONFIG_HOME` at the
+  gitignored `Logs/xdg/` whenever an automation flag is passed, so autopilot, demo and trailer runs keep
+  everything in the repo.
+- **Verify:** `sha256sum` of `~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` before and after every run
+  this round, and the files appearing under `Logs/xdg/`.
+
+### T5. README screenshots that match the game
+
+- The ten README screenshots still show the 0.1.0 framing (no floor labels, smaller tower). Regenerate them from
+  the current build with the game's own `TrailerReel` stills: a new `Tools/make_trailer.sh stills` mode runs only
+  the video pass and writes only `docs/media/screenshots/`. The trailer, its poster and the teaser GIF are left
+  alone (re-cutting the trailer is the owner's call).
+- **Acceptance:** each screenshot still shows what its README caption says. Alt text and captions are corrected if not.
+- **Verify:** look at every image. The README caveat about old media is narrowed to the trailer, poster and teaser.
+
+Also to write up: the "ghost riders" from round 2's S4 captures, and why bigger guests are an art-and-framing decision,
+not a scale tweak.
+
+Not this round: bigger guests (#12, see the write-up), Windows (#13, needs the module), WebGL (#14), a listening pass
+(#15), the license (#16), signing, hosting, releases, and the trailer (owner).
