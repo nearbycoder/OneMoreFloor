@@ -267,6 +267,8 @@ Tools/unity.sh test        # EditMode tests: every rule, determinism, a random-i
 Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands against every shift, invariants checked
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes)
 Tools/autopilot.sh         # plays all ten shifts in the built game, then drives the menus with a virtual gamepad
+                           # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings)
+Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 
 ### Trailer and README media

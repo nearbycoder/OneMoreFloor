@@ -180,3 +180,33 @@ this audio design, and the listening pass (#15) and license (#16) need the owner
 3. **macOS distribution:** ship unsigned (with Gatekeeper instructions), or hold the Mac zip until it can be signed
    and notarized on a Mac with an Apple Developer account?
 4. **License:** still unset ("all rights reserved").
+
+## Outcome of this round (2026-10-06)
+
+The orchestrator approved R1–R6 and the late pass. It decided: skip Windows (module not installed), build macOS
+locally (unsigned, `com.nearbycoder.<game>` bundle id, not published), and leave the license, releases and signing
+to the owner. Every item landed and was checked against its acceptance criteria, with one shortfall noted under R3.
+Screenshots are in `docs/media/improvements/`. The final full autopilot on the last build, in a real 1920×1080 window, passed all ten shifts, 8 pad checks and 12 flow checks, at 80 fps average (worst frame 90 ms) on the Radeon 8060S iGPU.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| R1 pacing + late pass | `4192ea9` | `sim.sh causes/human 32`, 5 new EditMode tests, autopilot `ui` (third starless Tuesday opens Wednesday) | New-player fired on Wednesday 37% → 3%, worst shift now 18% (Thursday). Wednesday 1★ for new players 41%, equal to Tuesday. |
+| R2 auto-pause | `c73bac5` | autopilot `ui`: focus callback and unplugging the virtual pad mid-shift | Met. A real alt-tab wasn't scripted (Wayland); the check drives Unity's own `OnApplicationFocus`. |
+| R4 time card | `b1d6263` | 3 new EditMode tests (every cause has words and a tip; counts add up over bot runs of every shift), autopilot `ui` | Met. |
+| R6 glyphs, reduced motion, fixes | `34c6815` | autopilot `ui` with virtual `DualShock4GamepadHID` / `SwitchProControllerHID`, settings toggle + save round trip, `uicheck.sh` | Met with virtual devices only. The Flip aberration pulse from PLAN.md never existed, so reduced motion covers drift, push-ins, shake, floor overshoot and UI wobble. |
+| R5 macOS + release script | `b62706f` | build log, `file` (universal x86_64 + arm64 for the binary and every dylib), Info.plist, `sha256sum -c`, the extracted Linux zip passing the pad autopilot | Built and packaged locally only. **Never run on a Mac**, unsigned, un-notarized. |
+| R3 readable late shifts | `3018ed9` | slab-pitch measurement on captures, autopilot at 1920×1080 / 1440×900 / 2560×1080, `uicheck.sh` | Guests +26% (mouse) / +22% (prompt strip). No overlaps at the three aspect ratios. **Label caps measure ~16 px, short of the 18 px target** (24 px type). |
+
+Found along the way:
+- `Tools/play.sh` always put `-screen-width 1600 -screen-height 900` before the caller's arguments, and Unity takes
+  the first one. So every autopilot run, including the 0.1.0 baseline, ran in a 1600×900 window. Fixed in R3.
+- A full autopilot run once crashed inside Wayland event dispatch (`wl_display_dispatch_queue_pending`, during
+  startup resizes that every run makes). The rerun passed and it hasn't recurred. It looks like a Unity/libdecor
+  issue on this compositor, not game code, but it's unexplained.
+- `/tmp` here is a shared tmpfs that other sessions fill up, and one run failed on "Disk full". Automation output now
+  goes to the repo's gitignored `Logs/`.
+
+Still open: Daily Overtime (#10), Relaxed mode (#11), larger guests by art layout (#12), Windows (#13, needs the
+module), WebGL (#14), a listening pass (#15) and a license (#16). Still for the owner: signing/notarizing and
+publishing the macOS zip, and a version bump before any new release (`Tools/release.sh` uses the project's
+`bundleVersion`, still 0.1.0, and won't overwrite the published 0.1.0 zip).
