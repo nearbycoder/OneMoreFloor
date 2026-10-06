@@ -5,7 +5,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$ROOT/Builds/Demo/OneMoreFloor-demo.mp4}"
-WORK="$(mktemp -d /tmp/omf-demo.XXXX)"
+mkdir -p "$ROOT/Logs"
+WORK="$(mktemp -d "$ROOT/Logs/demo.XXXX")"   # not /tmp: a shared RAM disk here
 mkdir -p "$(dirname "$OUT")"
 
 echo "video pass (offline, ~2 min)..."
