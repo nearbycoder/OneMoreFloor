@@ -262,3 +262,30 @@ the Mirror Mover's two spaces and the door frame.
 
 Not this round: Windows (module), WebGL, the audio listening pass, signing, hosting and the license (owner), and
 regenerating the trailer and README screenshots (heavy, and they're still honest about showing 0.1.0).
+
+## Round 2 results (2026-10-06)
+
+Three of the four items landed. S4 was tried and deliberately not landed. The final checks on the last build:
+EditMode 38/38, `sim.sh fuzz` OK, and the full autopilot in a 1920×1080 window passed all ten shifts, 8 gamepad
+checks and 18 flow checks, at 85 fps average. Screenshots are in `docs/media/improvements/round2/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| S1 label and window size | `0f97808` | Pixel cap height on text-only crops (same method for both rounds), `DisplayTests`, Graveyard captures at 1920×1080 and 1440×900 | Label caps 17 px → **20 px** (CRYPT, BOILER ROOM, LAUNDROMAT). Labels fade while their floor is mid-shuffle. The window clamp (owed from round 1) is covered by a unit test for six display sizes. No small display was available to see it. |
+| S2 Relaxed shifts | `52c79a7` | 5 EditMode tests, `sim.sh relaxed 32`, autopilot `ui` (relaxed Wednesday, fired-twice suggestion) | Modelled new players are fired 0% relaxed (3–18% standard) and reach 1★ on 59–96% of shifts (40–53% standard). No stars or bests are saved, and a relaxed clear opens the next shift. Not tried by a person. |
+| S3 Daily Overtime | `8e340ee` | 3 EditMode tests, autopilot `ui` with a pinned date (record, lower rerun, ONE MORE SHIFT replay) | Same building and first six guests on a replay. Today's best rolls over at local midnight. No online leaderboard. |
+| S4 bigger guests | `24e0df1` (reverted change, captures kept) | Same-seed captures at 1.0 and 1.15 | **Not landed.** A full car at 1.15 pushes heads to the car ceiling and under the floor sign. It needs the car and floor art re-proportioned in Blender. |
+
+Found along the way:
+- **A test overwrote the real save.** The first run of the new SaveData tests called `Record`, which saves to
+  `persistentDataPath` (shared by the editor and the player): `~/.config/unity3d/Nearby/One More Floor/save.json`.
+  The file already existed (the directory dates from Oct 4) and its old contents are gone. Every SaveData test now
+  sets `SaveData.Ephemeral`, `SaveData.Save` documents the trap, and later runs were checked to leave the file
+  byte-identical. The overwritten file was left as the test wrote it. It might be recoverable from the machine's
+  snapper snapshots (`/.snapshots`, root only), if those cover `/home`. That's for the owner.
+- The S4 captures show ghost copies of riders in every floor's shaft opening when the car moves during kid stops,
+  at both scales. It's probably the car showing through the doors as it passes, but it wasn't investigated.
+
+Still open: bigger guests via an art pass (#12), Windows (#13, needs the module), WebGL (#14), a listening pass
+(#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next release,
+and regenerating the README screenshots and trailer, which still show the 0.1.0 look.

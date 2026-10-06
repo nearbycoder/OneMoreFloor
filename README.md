@@ -367,7 +367,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
 - **No human playtests yet.** Difficulty and star thresholds are fitted to a model of a player, not real people.
   The model is grounded in standard human-factors numbers, but it plays smarter than a first-timer. The local
   playtest log is there so the first real sessions can correct it. The late pass (three tries opens the next
-  shift) is the safety net until then.
+  shift) is the safety net until then. Relaxed shifts (1.5× patience, no firing) are tuned the same way: modelled
+  new players are never fired and reach the 1★ score on 59–96% of shifts, but no person has tried them.
 - **The audio has been measured, not listened to critically.** Every sound passes the objective audit (loudness,
   peaks, clicks, seams, balance), but nobody has judged how it sounds on the hundredth play.
 - **Gamepad support is tested with virtual pads.** Every path runs through the Input System in the autopilot, but
@@ -381,7 +382,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
   floors it's about 25% bigger than in 0.1.0 (floors 116 px apart at 1080p, up from 92, or 112 px with the gamepad
   prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
   checked at 1920×1080, 1440×900 and 2560×1080, not on other screens. The README's older screenshots and the
-  trailer show the 0.1.0 framing.
+  trailer show the 0.1.0 framing. Drawing guests 15% bigger was tried and dropped: a full car pushes heads up to its
+  ceiling. Bigger guests need the car and floors re-proportioned.
 - **Linux is the only released platform.** A universal macOS app builds (both architectures confirmed with `file`,
   bundle id `com.nearbycoder.onemorefloor`), but it has never been run on a Mac, and it's unsigned and
   un-notarized. No Windows build has been made: this machine's editor doesn't have Windows Build Support.
