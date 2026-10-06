@@ -22,6 +22,10 @@ namespace OneMoreFloor
         /// <summary>Back in menus: B (Escape is handled by the screens themselves).</summary>
         public static bool Cancel { get; private set; }
         public static bool PausePressed { get; private set; }
+        /// <summary>The gamepad the player last pressed something on, and when (unscaled realtime). Unlike
+        /// <see cref="Pad"/>, a mouse nudge doesn't clear it, so a disconnect can still be traced to the pad in use.</summary>
+        public static InputDevice LastPadDevice { get; private set; }
+        public static float LastPadUse { get; private set; } = -1f;
         /// <summary>Recordings: behave as if a gamepad is in use (prompts, cursor mode) without any real input.</summary>
         public static bool ForcePad;
 
@@ -41,6 +45,8 @@ namespace OneMoreFloor
         static void ResetStatics()
         {
             Pad = KeyNav = false;
+            LastPadDevice = null;
+            LastPadUse = -1f;
             NavX = NavY = 0;
             Submit = Cancel = PausePressed = false;
             held = Vector2Int.zero;
@@ -80,6 +86,7 @@ namespace OneMoreFloor
                 if (kb.leftArrowKey.isPressed) k.x -= 1f;
                 if (k != Vector2.zero) { stick = k; keysUsed = true; }
             }
+            if (padUsed) { LastPadDevice = gp; LastPadUse = Time.realtimeSinceStartup; }
             if (ForcePad) { Pad = KeyNav = true; NavX = NavY = 0; Submit = Cancel = PausePressed = false; return; }
             if (padUsed && !Pad) { Pad = true; if (!Application.isEditor) Cursor.visible = false; }
             if (padUsed || keysUsed) KeyNav = true;

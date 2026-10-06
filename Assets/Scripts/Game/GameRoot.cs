@@ -155,6 +155,7 @@ namespace OneMoreFloor
             DailyRun = false;
             runSeed = FixedSeed != 0 ? FixedSeed : (ulong)System.DateTime.Now.Ticks;
             InShift = true;
+            shiftStartedAt = Time.realtimeSinceStartup;
             var def = ShiftCatalog.Get(index);
             Sky.Apply(def.Lighting, Sun, WorldCam);
             Rig.ScreenX = 0.505f;
@@ -234,9 +235,14 @@ namespace OneMoreFloor
 
         void OnDestroy() => InputSystem.onDeviceChange -= OnDeviceChange;
 
+        float shiftStartedAt;
+
         void OnDeviceChange(InputDevice device, InputDeviceChange change)
         {
-            if (device is Gamepad && Controls.Pad && (change == InputDeviceChange.Removed || change == InputDeviceChange.Disconnected))
+            if (!(device is Gamepad) || (change != InputDeviceChange.Removed && change != InputDeviceChange.Disconnected)) return;
+            // the pad being played with: the last one pressed, if it's still the active input or was used this shift
+            // (a nudged mouse clears Controls.Pad, but the player is still holding the controller)
+            if (device == Controls.LastPadDevice && (Controls.Pad || Controls.LastPadUse >= shiftStartedAt))
                 AutoPauseFor("Controller disconnected");
         }
 

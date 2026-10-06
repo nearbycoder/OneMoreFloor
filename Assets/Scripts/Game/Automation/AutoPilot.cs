@@ -31,6 +31,10 @@ namespace OneMoreFloor
             var args = System.Environment.GetCommandLineArgs();
             int i = System.Array.IndexOf(args, "-omfAutopilot");
             if (i < 0) return;
+            // The virtual pads must keep working when another window takes focus (a shared desktop does that):
+            // by default the Input System disables devices while unfocused. Players keep the default (and a
+            // focus loss pauses the shift); the focus pause itself is checked through OnApplicationFocus.
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             var ap = root.gameObject.AddComponent<AutoPilot>();
             ap.outDir = i + 1 < args.Length && !args[i + 1].StartsWith("-") ? args[i + 1] : Path.Combine(Application.persistentDataPath, "autopilot");
             int s = System.Array.IndexOf(args, "-omfAutopilotShift");
@@ -370,9 +374,23 @@ namespace OneMoreFloor
             yield return Wait(0.6f);
             Check("resume carries on from the same moment", !runner.Paused && runner.Sim.Time > t0, "ui");
             yield return Pad("rb");
+            // a nudged mouse becomes the active input, but the player is still holding the controller
+            var nudge = InputSystem.AddDevice<Mouse>("OMF Virtual Mouse");
+            nudge.MakeCurrent();
+            InputSystem.QueueStateEvent(nudge, new MouseState { delta = new Vector2(40f, 0f) });
+            yield return null;
+            yield return null;
+            bool nudged = !Controls.Pad;
+            // a second controller nobody touched this shift goes away: play carries on
+            var spare = InputSystem.AddDevice<Gamepad>("OMF Spare Pad");
+            yield return null;
+            InputSystem.RemoveDevice(spare);
+            yield return Wait(0.5f);
+            Check("an untouched second controller going away doesn't pause", !runner.Paused && !pause.Visible, "ui");
             PadSim.Unplug();
             yield return Wait(0.6f);
-            Check("unplugging the controller in use pauses", pause.Visible && runner.Paused && pause.Reason.Contains("CONTROLLER"), "ui");
+            InputSystem.RemoveDevice(nudge);
+            Check($"unplugging the controller in use pauses, even after a mouse nudge (nudged {nudged})", nudged && pause.Visible && runner.Paused && pause.Reason.Contains("CONTROLLER"), "ui");
             Shot("ui_pause_pad");
             root.Resume();
             root.AutoPause = false;
