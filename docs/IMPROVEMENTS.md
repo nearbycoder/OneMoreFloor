@@ -352,3 +352,35 @@ not a scale tweak.
 
 Not this round: bigger guests (#12, see the write-up), Windows (#13, needs the module), WebGL (#14), a listening pass
 (#15), the license (#16), signing, hosting, releases, and the trailer (owner).
+
+## Round 3 results (2026-10-06)
+
+All five items landed. Final checks on the final code: EditMode **39/39**, `sim.sh fuzz` OK, and the full
+autopilot on the last build in a 1920×1080 window passes all ten shifts (worst popup overlap 0.0 px on each),
+8/8 gamepad checks and every `ui` flow check (now 21), at 76 fps average. The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot and
+capture run this round. Screenshots are in `docs/media/improvements/round3/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| T4 automation config isolation | `45b8c5f` | Hashes around every run. Unity's files appear under `Logs/xdg/` | Met for the player (autopilot, demo, trailer). The **editor** (build and test) still rewrites the game's `prefs` with identical bytes; its config dir also holds the shared Unity licence, so it was left alone. |
+| T3 controller disconnect pause | `0df0976` | Autopilot `ui`: pad press, virtual mouse nudge, untouched spare pad removed (no pause), used pad unplugged (pause) | Met. **Correction to the plan:** the baseline failure wasn't the mouse. With no Input System settings asset, devices are disabled while the window is unfocused, so on this shared desktop the virtual pad's presses never arrived. The autopilot now sets `IgnoreFocus` for itself; players keep the default. The mouse-nudge gap was real too, and it's fixed. |
+| T2 patience badges | `37fd402` | New EditMode test, autopilot `ui` (red at 15%, calm on a patient floor), `t2-*` captures | Met. The amber case is coded but wasn't hit by the seeded check (no third floor had guests waiting), so it's unverified in the built game. |
+| T1 readable rewards | `7be27e0` | Per-frame overlap measurement on every shift, `t1-before-*` / `t1-after-*` | Met: 0.0 px everywhere. The first build measured 5–81 px, from a popup easing down into an older one and from the pop-in overshoot. Both were fixed before the commit. Flying coins and world signs aren't popups and can still cross the text (see the new `triple-drop.jpg`). |
+| T5 README screenshots | `8984154` | Each image looked at against its caption | All ten regenerated with `make_trailer.sh stills`. One alt text corrected. The trailer, poster and teaser GIF are unchanged. |
+
+Found along the way:
+- **The S4 "ghost riders" are an automation artifact**, not a game bug. `FastForward` drains all 70 s of skipped
+  deliveries in one frame, so every delivered guest's 2.2 s walk-out starts at once, one per floor. In normal play,
+  guests leave only at the car's floor.
+- **Why bigger guests are a design call:** a slot is 2.8 units (a 2.5-unit room, a 2.4-unit car interior), and nine
+  slots have to fit the screen's height, so guests can't grow without the car. Thinner slabs and sign bands would
+  win under 10%. A real gain means showing fewer floors at once (a closer default zoom) or a different floor
+  layout. That's a judgment for the owner, not a scale tweak.
+- A run that dies mid-coroutine leaves the player running until `autopilot.sh`'s 20-minute timeout. One did this
+  round (the pad pass threw after its input was lost). It was stopped by PID.
+
+Still open: bigger guests (#12, see above), Windows (#13, needs the module), WebGL (#14), a listening pass (#15),
+a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and
+re-cutting the trailer, poster and teaser GIF, which still show 0.1.0. Nobody has played these changes yet: the
+badge colours and popup layout were checked by measurement and screenshots only.
