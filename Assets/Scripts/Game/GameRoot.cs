@@ -161,7 +161,7 @@ namespace OneMoreFloor
             Rig.Zoom = SaveData.Current.Zoom;
             Runner.Attract = false;
             Runner.AutoBot = null;
-            Runner.Begin(def, runSeed);
+            Runner.Begin(def, runSeed, SaveData.Current.Relaxed && !def.Endless);
             Runner.Hud.SetVisible(true);
             Runner.Ended = OnShiftEnded;
             Audio.PlayGameplay(def);
@@ -239,11 +239,12 @@ namespace OneMoreFloor
             if (!InShift || Runner.Attract) return;
             var save = SaveData.Current;
             save.Zoom = Rig.Zoom;
-            bool firstGraveyard = sim.Def.Id == "graveyard" && sim.StarCount >= 1 && !save.EndingSeen;
+            bool firstGraveyard = sim.Def.Id == "graveyard" && sim.StarCount >= 1 && !save.EndingSeen;  // a relaxed clear counts
             int nextIdx = sim.Def.Index + 1;
             bool nextWasOpen = save.Unlocked(nextIdx);
-            bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount);
+            bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount, sim.Relaxed, sim.Fired);
             bool latePass = !nextWasOpen && nextIdx < ShiftCatalog.All.Count && save.LatePassed(nextIdx);
+            bool relaxedOpened = !nextWasOpen && !latePass && sim.Relaxed && nextIdx < ShiftCatalog.All.Count && save.Unlocked(nextIdx);
             Runner.Log.Finish("finished");
             if (firstGraveyard)
             {
@@ -251,7 +252,7 @@ namespace OneMoreFloor
                 save.Save();
                 endingPending = true;
             }
-            results.Setup(sim, best && sim.Score > 0, latePass);
+            results.Setup(sim, best && sim.Score > 0, latePass, relaxedOpened);
             results.Show();
             Audio.Sting("sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
         }

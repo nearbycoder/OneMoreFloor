@@ -244,9 +244,9 @@ namespace OneMoreFloor.Core
         }
 
         /// <summary>Plays a whole shift at a fixed timestep; returns the finished sim.</summary>
-        public static ShiftSim PlayOut(ShiftDef def, ulong seed, Bot bot, float dt = 1f / 30f, float maxSeconds = 900f)
+        public static ShiftSim PlayOut(ShiftDef def, ulong seed, Bot bot, float dt = 1f / 30f, float maxSeconds = 900f, bool relaxed = false)
         {
-            var sim = new ShiftSim(def, seed);
+            var sim = new ShiftSim(def, seed, relaxed);
             float t = 0f;
             while (!sim.Ended && t < maxSeconds)
             {

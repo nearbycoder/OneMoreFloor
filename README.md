@@ -148,6 +148,10 @@ worth ×1.5. Stars come from your tips, and **one star unlocks the next shift**.
 clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
 star on the Graveyard Shift).
 
+**Relaxed shifts** (Settings) are an assist for anyone who keeps getting fired. Guests' patience lasts 1.5× longer,
+complaints never end the shift, and reaching the 1★ score opens the next shift (a "relaxed clear"). Relaxed runs
+don't save stars or best scores, and Overtime always plays standard.
+
 ### Plan every trip
 
 <img src="docs/media/screenshots/route-preview.jpg" alt="Hovering a floor previews every stop the car will make on the way with a kid aboard" width="100%">
@@ -186,7 +190,7 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast and **reduced
+settings are saved locally. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast, relaxed shifts and **reduced
 motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
 
 ## Screenshots
@@ -265,7 +269,7 @@ Tools/unity.sh batch OneMoreFloor.EditorTools.ProjectSetup.Apply
 ```sh
 Tools/unity.sh test        # EditMode tests: every rule, determinism, a random-input fuzz, every shift beatable
 Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands against every shift, invariants checked
-Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes)
+Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game, then drives the menus with a virtual gamepad
                            # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings)
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)

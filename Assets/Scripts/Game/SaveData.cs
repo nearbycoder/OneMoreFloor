@@ -13,6 +13,10 @@ namespace OneMoreFloor
         public int[] Best = new int[16];
         public int[] Stars = new int[16];
         public int[] Plays = new int[16];
+        /// <summary>Relaxed clears: the 1-star score reached in a Relaxed shift (opens the next shift like a star).</summary>
+        public bool[] RelaxedClear = new bool[16];
+        /// <summary>Standard shifts that ended in "You're fired!", per shift.</summary>
+        public int[] FiredCount = new int[16];
         public bool EndingSeen;
         public string[] SeenHints = new string[0];
         public float Master = 1f, Music = 0.8f, Sfx = 0.9f;
@@ -21,6 +25,8 @@ namespace OneMoreFloor
         public bool ShowForecast = true;
         /// <summary>No camera drift, push-ins or shake, floors settle without overshoot, and the UI holds still.</summary>
         public bool ReducedMotion;
+        /// <summary>Relaxed shifts: more patience, no firing, stars and bests not saved (an assist).</summary>
+        public bool Relaxed;
         /// <summary>Camera zoom during play (0 = whole tower, 1 = close-up following the car).</summary>
         public float Zoom;
 
@@ -44,6 +50,8 @@ namespace OneMoreFloor
                         if (s.Best == null || s.Best.Length < 16) Array.Resize(ref s.Best, 16);
                         if (s.Stars == null || s.Stars.Length < 16) Array.Resize(ref s.Stars, 16);
                         if (s.Plays == null || s.Plays.Length < 16) Array.Resize(ref s.Plays, 16);
+                        if (s.RelaxedClear == null || s.RelaxedClear.Length < 16) Array.Resize(ref s.RelaxedClear, 16);
+                        if (s.FiredCount == null || s.FiredCount.Length < 16) Array.Resize(ref s.FiredCount, 16);
                         if (s.SeenHints == null) s.SeenHints = new string[0];
                         return s;
                     }
@@ -56,6 +64,10 @@ namespace OneMoreFloor
             return new SaveData();
         }
 
+        /// <summary>
+        /// Writes persistentDataPath/save.json: the player's real save, shared by the editor and the built game. Tests
+        /// and automation must set <see cref="Ephemeral"/> first (Record and MarkHint save too).
+        /// </summary>
         public void Save()
         {
             if (Ephemeral) return;
@@ -63,12 +75,12 @@ namespace OneMoreFloor
             catch (Exception ex) { Debug.LogWarning("[Save] could not write save: " + ex.Message); }
         }
 
-        public bool Unlocked(int shift) => Progress.Unlocked(shift, Stars, Plays);
+        public bool Unlocked(int shift) => Progress.Unlocked(shift, Stars, Plays, RelaxedClear);
 
         /// <summary>Open only thanks to the late pass (three tries without a star on the shift before).</summary>
-        public bool LatePassed(int shift) => Progress.ByLatePass(shift, Stars, Plays);
+        public bool LatePassed(int shift) => Progress.ByLatePass(shift, Stars, Plays, RelaxedClear);
 
-        public int NextShift() => Progress.NextShift(Stars, Plays);
+        public int NextShift() => Progress.NextShift(Stars, Plays, RelaxedClear);
 
         public int TotalStars()
         {
@@ -77,10 +89,20 @@ namespace OneMoreFloor
             return n;
         }
 
-        /// <summary>Records a finished shift. Returns true when it's a new best score.</summary>
-        public bool Record(int shift, int score, int stars)
+        /// <summary>
+        /// Records a finished shift. Returns true when it's a new best score. A relaxed shift counts as a try and can
+        /// earn a relaxed clear, but never saves stars or a best score.
+        /// </summary>
+        public bool Record(int shift, int score, int stars, bool relaxed = false, bool fired = false)
         {
             Plays[shift]++;
+            if (relaxed)
+            {
+                if (stars >= 1) RelaxedClear[shift] = true;
+                Save();
+                return false;
+            }
+            if (fired) FiredCount[shift]++;
             bool best = score > Best[shift];
             if (best) Best[shift] = score;
             if (stars > Stars[shift]) Stars[shift] = stars;

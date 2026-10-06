@@ -14,6 +14,7 @@ static class Program
         if (mode == "stars") return SuggestStars(args.Length > 1 ? int.Parse(args[1]) : 12);
         if (mode == "human") return Human(args.Length > 1 ? int.Parse(args[1]) : 16);
         if (mode == "pace") return Pace(args.Length > 1 ? int.Parse(args[1]) : 16);
+        if (mode == "relaxed") return Relaxed(args.Length > 1 ? int.Parse(args[1]) : 16);
         if (mode == "causes") return Causes(args.Length > 1 ? float.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 0.5f, args.Length > 2 ? int.Parse(args[2]) : 16);
         return Balance(args.Length > 1 ? int.Parse(args[1]) : 8);
     }
@@ -60,6 +61,31 @@ static class Program
     // For each shift: the smallest slow-down of the spawn pacing (both ends of the ramp) at which modelled
     // average players are rarely fired and new players usually survive, then star thresholds from human
     // score percentiles at that pacing.
+    // Relaxed shifts against standard ones for modelled people: how often they're fired, mean complaints, and how
+    // often they reach the 1-star score (a relaxed clear, which unlocks the next shift).
+    static int Relaxed(int seeds)
+    {
+        var levels = new (string name, float skill)[] { ("lowest", 0f), ("new", 0.15f) };
+        Console.WriteLine($"{"shift",-10} " + string.Join("   ", levels.Select(l => $"{l.name + ": standard fired/compl/1*  relaxed fired/compl/1*",-58}")));
+        foreach (var def in ShiftCatalog.All)
+        {
+            if (def.Endless) continue;
+            var cols = new List<string>();
+            foreach (var (name, skill) in levels)
+            {
+                string Row(bool relaxed)
+                {
+                    var res = new List<ShiftSim>();
+                    for (ulong s = 1; s <= (ulong)seeds; s++) res.Add(Bot.PlayOut(def, s * 7919, Bot.Human(s, skill), relaxed: relaxed));
+                    return $"{res.Count(r => r.Fired) * 100 / seeds,3}% {res.Average(r => r.Complaints),4:0.0} {res.Count(r => r.Score >= def.Stars[0]) * 100 / seeds,3}%";
+                }
+                cols.Add($"{"",8}{Row(false),-20}  {"",6}{Row(true),-20}");
+            }
+            Console.WriteLine($"{def.Id,-10} " + string.Join("   ", cols));
+        }
+        return 0;
+    }
+
     static int Pace(int seeds)
     {
         foreach (var def in ShiftCatalog.All)

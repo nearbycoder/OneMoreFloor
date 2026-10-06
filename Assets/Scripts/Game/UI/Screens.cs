@@ -211,8 +211,9 @@ namespace OneMoreFloor
                 if (unlocked)
                 {
                     Stars.Row(card, 3, save.Stars[i], new Vector2(0, -102), 34, 6);
-                    var best = UiKit.Text("Best", card, save.Best[i] > 0 ? "BEST  $" + save.Best[i].ToString("N0") : i == nextUp ? "UP NEXT" : "NOT PLAYED", 17,
-                        save.Best[i] > 0 ? Palette.Cream : i == nextUp ? Deco.Gold : Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -136));
+                    bool relaxedOnly = save.Stars[i] == 0 && save.RelaxedClear[i];
+                    var best = UiKit.Text("Best", card, relaxedOnly ? "RELAXED CLEAR" : save.Best[i] > 0 ? "BEST  $" + save.Best[i].ToString("N0") : i == nextUp ? "UP NEXT" : "NOT PLAYED", 17,
+                        relaxedOnly ? Palette.Hex(0x8FD6C4) : save.Best[i] > 0 ? Palette.Cream : i == nextUp ? Deco.Gold : Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -136));
                     best.characterSpacing = 4f;
                     int idx = i;
                     var btn = UiButton.Attach(card, face, () => game.ShowIntro(idx));
@@ -241,7 +242,7 @@ namespace OneMoreFloor
     public sealed class IntroScreen : UiScreen
     {
         GameRoot game;
-        TextMeshProUGUI day, title, note, newLabel, newTitle, newRule;
+        TextMeshProUGUI day, title, note, newLabel, newTitle, newRule, relaxedLine;
         RectTransform goalsRoot;
         Image kindDisc;
         RectTransform noteRt;
@@ -295,6 +296,8 @@ namespace OneMoreFloor
             newRule.textWrappingMode = TextWrappingModes.Normal;
             newRule.lineSpacing = 6;
 
+            relaxedLine = Deco.Label("Relaxed", Root, "", 18, new Vector2(1400, 28), new Vector2(0, -329), TextAlignmentOptions.Center);
+            relaxedLine.characterSpacing = 6f;
             goalsRoot = UiKit.Rect("Goals", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -268), new Vector2(1400, 80));
             var go = UiButton.Create(Root, "CLOCK IN", new Vector2(120, -400), new Vector2(400, 96), () => game.BeginShift(shift), true, 42);
             UiButton.Create(Root, "BACK", new Vector2(-220, -400), new Vector2(220, 72), () => game.ShowRoster(), false, 26);
@@ -330,6 +333,8 @@ namespace OneMoreFloor
             newRule.text = def.Id == "monday" && Controls.Pad ? "Press A to let a guest in, then pick their floor with up/down and press A."
                          : def.Id == "monday" && Controls.KeyNav ? "Press Enter to let a guest in, then pick their floor with Up/Down and press Enter."
                          : def.NewText;
+            relaxedLine.text = SaveData.Current.Relaxed && !def.Endless
+                ? "RELAXED SHIFT  ·  MORE PATIENCE  ·  NO FIRING  ·  A 1-STAR SCORE OPENS THE NEXT SHIFT  ·  STARS AREN'T SAVED" : "";
             foreach (Transform c in goalsRoot) Destroy(c.gameObject);
             if (def.Endless)
             {
@@ -397,7 +402,7 @@ namespace OneMoreFloor
         UiScreen returnTo;
         GameRoot game;
         UiSlider master, music, sfx;
-        UiToggle full, shake, forecast, motion;
+        UiToggle full, shake, forecast, motion, relaxed;
 
         public static SettingsScreen Create(Transform parent, GameRoot game)
         {
@@ -406,19 +411,20 @@ namespace OneMoreFloor
             s.Init("Settings");
             s.game = game;
             Dim(rt, 0.75f);
-            var card = Card(rt, new Vector2(900, 840), Vector2.zero);
-            Heading(card, "Settings", 326, 600, 80);
+            var card = Card(rt, new Vector2(900, 900), Vector2.zero);
+            Heading(card, "Settings", 356, 600, 80);
             var save = SaveData.Current;
-            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 232), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 180), save.Master, v => { save.Master = v; game.ApplySettings(); });
-            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 114), save.Music, v => { save.Music = v; game.ApplySettings(); });
-            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 48), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
-            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, -20), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -68), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -130), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
-            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -192), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
-            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -254), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
-            var done = UiButton.Create(card, "DONE", new Vector2(0, -350), new Vector2(300, 74), () => s.Close(), true, 30);
+            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 262), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 210), save.Master, v => { save.Master = v; game.ApplySettings(); });
+            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 144), save.Music, v => { save.Music = v; game.ApplySettings(); });
+            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 78), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
+            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, 10), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -38), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
+            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -100), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
+            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -162), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
+            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -224), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
+            s.relaxed = UiToggle.Create(card, "RELAXED SHIFTS", new Vector2(0, -286), save.Relaxed, v => { save.Relaxed = v; game.ApplySettings(); });
+            var done = UiButton.Create(card, "DONE", new Vector2(0, -382), new Vector2(300, 74), () => s.Close(), true, 30);
             done.Focused = true;
             s.Primary = () => s.Close();
             s.Back = () => s.Close();
@@ -518,8 +524,10 @@ namespace OneMoreFloor
 
         public string CausesText => causes.text;
         public string AdviceText => advice.text;
+        public string HintText => hint.text;
+        public string BestLineText => bestLine.text;
 
-        public void Setup(ShiftSim sim, bool best, bool latePass = false)
+        public void Setup(ShiftSim sim, bool best, bool latePass = false, bool relaxedOpened = false)
         {
             shift = sim.Def.Index;
             targetScore = sim.Score;
@@ -540,6 +548,13 @@ namespace OneMoreFloor
                 hint.text = "The building never sleeps.";
             else if (latePass)
                 hint.text = $"<b>Late pass:</b> we'll pretend we didn't see that. <b>{ShiftCatalog.Get(shift + 1).Day}</b> is open.";
+            else if (relaxedOpened)
+                hint.text = $"<b>Relaxed clear!</b> <b>{ShiftCatalog.Get(shift + 1).Day}</b> is open.";
+            else if (sim.Relaxed)
+                hint.text = starCount >= 1 ? "<b>Relaxed clear.</b> Turn Relaxed off in Settings to go for stars."
+                    : $"A relaxed clear needs <b>${sim.Def.Stars[0]:N0}</b>  ·  ${sim.Def.Stars[0] - sim.Score:N0} to go";
+            else if (sim.Fired && SaveData.Current.FiredCount[shift] >= 2 && !SaveData.Current.Relaxed)
+                hint.text = "Fired twice here? <b>Relaxed shifts</b> in Settings give guests more patience.";
             else if (starCount < 3)
                 hint.text = $"Next star at <b>${sim.Def.Stars[starCount]:N0}</b>  ·  ${sim.Def.Stars[starCount] - sim.Score:N0} to go";
             else
@@ -550,7 +565,7 @@ namespace OneMoreFloor
             foreach (var s in stars) { s.color = Stars.Unlit(true); s.rectTransform.localScale = Vector3.one; }
             bestBox.gameObject.SetActive(false);
             int prev = SaveData.Current.Best[shift];
-            bestLine.text = !best && prev > 0 ? $"PERSONAL BEST  ${prev:N0}" : "";
+            bestLine.text = sim.Relaxed ? "RELAXED SHIFT  ·  STARS AND BESTS AREN'T SAVED" : !best && prev > 0 ? $"PERSONAL BEST  ${prev:N0}" : "";
             bool hasNext = shift + 1 < ShiftCatalog.All.Count && SaveData.Current.Unlocked(shift + 1);
             next.gameObject.SetActive(hasNext);
             tips.text = "$0";

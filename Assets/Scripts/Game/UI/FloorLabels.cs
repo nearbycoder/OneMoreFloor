@@ -99,7 +99,7 @@ namespace OneMoreFloor
             if (w > 1f && rig != null)
                 rig.PlayBand = new Vector2((HudRight + Gutter) / w, (w - PanelLeftInset) / w);
             if (rig != null) rig.RoomForPrompts = runner.CursorMode;
-            bool on = sim != null && !runner.Attract && rig != null && rig.ZoomShown < 0.35f;
+            bool on = sim != null && !sim.Ended && !runner.Attract && rig != null && rig.ZoomShown < 0.35f;
             group.alpha = Mathf.MoveTowards(group.alpha, on ? 1f : 0f, dt * 5f);
             if (sim == null || runner.Building == null) return;
 

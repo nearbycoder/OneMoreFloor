@@ -94,6 +94,8 @@ namespace OneMoreFloor.Core
         public const int Capacity = 4;
         public const int QueueCap = 5;
         public const int MaxComplaints = 5;
+        /// <summary>Relaxed shifts: how much longer guests' patience lasts.</summary>
+        public const float RelaxedPatience = 1.5f;
         public const float RushHourSeconds = 30f;
         public const float RushFareMul = 1.5f;
         public const float RushSpawnMul = 1.4f;

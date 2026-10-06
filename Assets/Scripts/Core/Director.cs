@@ -175,6 +175,7 @@ namespace OneMoreFloor.Core
             var kd = Defs.Of(kind);
             float patience = Def.PatienceBase * kd.PatienceMul;
             if (Def.Endless && Time > 240f) patience *= Math.Max(0.75f, 1f - (Time - 240f) / 900f);
+            if (Relaxed) patience *= Tuning.RelaxedPatience;
             var p = new Passenger
             {
                 Id = nextId++, Kind = kind, Origin = origin, Dest = dest, At = origin, State = PState.Waiting,

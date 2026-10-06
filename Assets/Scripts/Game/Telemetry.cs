@@ -31,6 +31,7 @@ namespace OneMoreFloor
             public int firstActionSamples, actionGapSamples;
             public float zoomMean;
             public int plays;
+            public bool relaxed;
         }
 
         public static bool Enabled = true;
@@ -128,6 +129,7 @@ namespace OneMoreFloor
             if (rec.actionGapSamples > 0) rec.actionGapMean /= rec.actionGapSamples;
             rec.zoomMean = zoomFrames > 0 ? zoomSum / zoomFrames : 0f;
             rec.plays = SaveData.Current.Plays[sim.Def.Index];
+            rec.relaxed = sim.Relaxed;
             try { File.AppendAllText(PathName, JsonUtility.ToJson(rec) + "\n"); }
             catch (Exception ex) { Debug.LogWarning("[Telemetry] could not write playtest log: " + ex.Message); }
         }

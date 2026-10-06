@@ -91,7 +91,7 @@ namespace OneMoreFloor
             streak = UiKit.Text("Streak", streakBadge.transform, "x1.00", 20, Palette.Hex(0x3A230C), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(104, 38));
             Deco.Divider(col, W - 56f, new Vector2(0, Y(360)), 0.7f);
 
-            Deco.Label("CLabel", col, "COMPLAINTS", 15, new Vector2(300, 22), new Vector2(0, Y(386)), TextAlignmentOptions.Left, Deco.Muted);
+            complaintsLabel = Deco.Label("CLabel", col, "COMPLAINTS", 15, new Vector2(300, 22), new Vector2(0, Y(386)), TextAlignmentOptions.Left, Deco.Muted);
             for (int i = 0; i < complaintSlots.Length; i++)
             {
                 var slot = UiKit.Image("Slot" + i, col, Deco.Recess, Color.white, new Vector2(42, 42), new Vector2(X + 21f + i * 58f, Y(428)));
@@ -105,6 +105,7 @@ namespace OneMoreFloor
             FloorLabels = FloorLabels.Create(transform, runner, worldCam, canvasRt);
         }
 
+        TextMeshProUGUI complaintsLabel;
         public HudCursor Cursor { get; private set; }
         public FloorLabels FloorLabels { get; private set; }
         /// <summary>Recordings: no popups, banners or flying coins while the simulation is skipped ahead.</summary>
@@ -540,6 +541,7 @@ namespace OneMoreFloor
             clockPunch = Mathf.Max(0f, clockPunch - dt * 4f);
             clock.rectTransform.localScale = Vector3.one * (1f + 0.15f * clockPunch);
 
+            complaintsLabel.text = sim.Relaxed ? "COMPLAINTS  ·  RELAXED, NO FIRING" : "COMPLAINTS";
             for (int i = 0; i < complaintSlots.Length; i++)
             {
                 bool on = i < sim.Complaints;

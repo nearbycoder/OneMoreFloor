@@ -78,7 +78,8 @@ def main():
     print(f"{len(rows)} shifts logged from {len(paths)} file(s)\n")
     for shift in sorted({r["shift"] for r in rows}, key=lambda s: order.index(s) if s in order else 99):
         rs = [r for r in rows if r["shift"] == shift]
-        done = [r for r in rs if r["end"] == "finished"]
+        # relaxed shifts (more patience, no firing) say nothing about the standard thresholds
+        done = [r for r in rs if r["end"] == "finished" and not r.get("relaxed", False)]
         cur = stars.get(shift, [0, 0, 0])
         print(f"== {shift}  ({len(rs)} attempts: {len(done)} finished, "
               f"{sum(r['end'] == 'restarted' for r in rs)} restarted, {sum(r['end'] == 'quit' for r in rs)} quit)")

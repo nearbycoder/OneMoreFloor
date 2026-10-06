@@ -236,6 +236,43 @@ namespace OneMoreFloor
                 results.Visible && sim.Complaints > 0 && biggest.HasValue && results.AdviceText == Advice.Tip(biggest.Value), "ui");
             Shot("ui_results_causes");
 
+            // relaxed shifts: a weak player's Wednesday runs to the bell and saves no stars or best
+            System.Array.Clear(save.Stars, 0, save.Stars.Length);
+            System.Array.Clear(save.Best, 0, save.Best.Length);
+            System.Array.Clear(save.RelaxedClear, 0, save.RelaxedClear.Length);
+            System.Array.Clear(save.FiredCount, 0, save.FiredCount.Length);
+            save.Stars[0] = save.Stars[1] = 1;
+            save.Relaxed = true;
+            root.ShowIntro(2);
+            yield return Wait(1.2f);
+            Shot("ui_intro_relaxed");
+            root.StartShift(2, 2024);
+            runner = root.Runner;
+            runner.AutoBot = Bot.Human(5, 0f);
+            yield return Wait(1f);
+            runner.FastForward(runner.Sim.TimeLeft + 0.1f);
+            yield return Wait(6.5f);
+            sim = runner.Sim;
+            Shot("ui_results_relaxed");
+            Check($"a relaxed Wednesday isn't fired and saves no stars (score {sim.Score}, complaints {sim.Complaints}, clear {save.RelaxedClear[2]})",
+                sim.Relaxed && !sim.Fired && save.Stars[2] == 0 && save.Best[2] == 0 && results.BestLineText.Contains("RELAXED")
+                && save.RelaxedClear[2] == (sim.Score >= sim.Def.Stars[0]) && save.Unlocked(3) == save.RelaxedClear[2], "ui");
+            root.ShowRoster();
+            yield return Wait(1.2f);
+            Shot("ui_roster_relaxed");
+            save.Relaxed = false;
+
+            // fired a second time on a shift: the time card suggests Relaxed
+            save.FiredCount[2] = 1;
+            root.StartShift(2, 31);
+            runner = root.Runner;
+            runner.AutoBot = null;
+            yield return Wait(1f);
+            runner.FastForward(runner.Sim.TimeLeft + 0.1f);
+            yield return Wait(6.5f);
+            Check("fired twice on a shift: the time card suggests Relaxed", runner.Sim.Fired && results.HintText.Contains("Relaxed"), "ui");
+            Shot("ui_results_suggest_relaxed");
+
             // auto-pause: losing focus, then the controller going away
             var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
             root.AutoPause = true;

@@ -56,11 +56,11 @@ namespace OneMoreFloor
 
         public PassengerView ViewOf(int pid) => views.TryGetValue(pid, out var v) && v ? v : null;
 
-        public void Begin(ShiftDef def, ulong seed)
+        public void Begin(ShiftDef def, ulong seed, bool relaxed = false)
         {
             foreach (var v in views.Values) if (v) Destroy(v.gameObject);
             views.Clear();
-            Sim = new ShiftSim(def, seed);
+            Sim = new ShiftSim(def, seed, relaxed);
             if (!Attract) Log.Begin(Sim, seed);
             Building.Setup(Sim.B);
             Car.Setup(Building.PulleyY - 0.82f);

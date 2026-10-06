@@ -32,9 +32,16 @@ namespace OneMoreFloor.Core
         FloorId? oceanDisplaced;
         readonly bool[] forceDepart = new bool[Defs.FloorCount];
 
-        public ShiftSim(ShiftDef def, ulong seed)
+        /// <summary>
+        /// Relaxed shift (an assist): patience lasts <see cref="Tuning.RelaxedPatience"/>x longer and complaints never
+        /// end the shift. Never applies to endless shifts, which only end on complaints.
+        /// </summary>
+        public readonly bool Relaxed;
+
+        public ShiftSim(ShiftDef def, ulong seed, bool relaxed = false)
         {
             Def = def;
+            Relaxed = relaxed && !def.Endless;
             Rng = new Rng(seed);
             B = new Building(def.Floors, def.Offsite);
             for (int i = 0; i < Waiting.Length; i++) Waiting[i] = new List<Passenger>();
@@ -566,7 +573,7 @@ namespace OneMoreFloor.Core
             if (Streak > 0) Emit(new SimEvent { Type = Ev.StreakBroken, Value = Streak });
             Streak = 0;
             Emit(new SimEvent { Type = Ev.Complaint, Pid = p?.Id ?? 0, Value = Complaints, Aux = (int)why });
-            if (Complaints >= Tuning.MaxComplaints) End(true);
+            if (Complaints >= Tuning.MaxComplaints && !Relaxed) End(true);
         }
 
         void End(bool fired)
