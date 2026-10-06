@@ -273,6 +273,46 @@ namespace OneMoreFloor
             Check("fired twice on a shift: the time card suggests Relaxed", runner.Sim.Fired && results.HintText.Contains("Relaxed"), "ui");
             Shot("ui_results_suggest_relaxed");
 
+            // daily Overtime: today's shift opens the same way every time, and today's best is kept
+            int ot = GameRoot.OvertimeIndex;
+            for (int k = 0; k < ot; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);
+            save.EndingSeen = true;
+            save.DailyDate = ""; save.DailyBest = save.DailyRecord = save.DailyPlays = 0;
+            root.DailyDateOverride = new System.DateTime(2026, 10, 6);
+            root.ShowIntro(ot);
+            yield return Wait(1.2f);
+            Shot("ui_intro_daily");
+            root.BeginDaily();
+            runner = root.Runner;
+            runner.AutoBot = null;
+            runner.FastForward(12f);
+            string open1 = Opening(runner.Sim);
+            runner.AutoBot = Bot.Decent(4);
+            runner.FastForward(90f);
+            runner.AutoBot = null;
+            while (!runner.Sim.Ended) runner.FastForward(5f);
+            yield return Wait(6.5f);
+            int daily1 = runner.Sim.Score;
+            Shot("ui_results_daily");
+            Check($"today's shift is recorded (${daily1}, best today ${save.DailyBestOn("2026-10-06")})",
+                results.Visible && root.DailyRun && save.DailyBestOn("2026-10-06") == daily1 && save.DailyPlays == 1 && results.HintText.Contains("Today's shift"), "ui");
+            root.RestartShift(); // ONE MORE SHIFT plays today's shift again
+            runner = root.Runner;
+            runner.AutoBot = null;
+            runner.FastForward(12f);
+            string open2 = Opening(runner.Sim);
+            runner.AutoBot = null;
+            while (!runner.Sim.Ended) runner.FastForward(5f);
+            yield return Wait(6.5f);
+            Shot("ui_results_daily_again");
+            Check($"a lower second run keeps today's best (${runner.Sim.Score} vs ${daily1})",
+                save.DailyPlays == 2 && save.DailyBestOn("2026-10-06") == System.Math.Max(daily1, runner.Sim.Score)
+                && (runner.Sim.Score > daily1 || results.BestLineText.Contains("TODAY'S BEST")), "ui");
+            Check("ONE MORE SHIFT replays today's shift with the same opening", root.DailyRun && open1 == open2 && open1.Length > 0, "ui");
+            root.QuitShift();
+            root.DailyDateOverride = null;
+            yield return Wait(1f);
+
             // auto-pause: losing focus, then the controller going away
             var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
             root.AutoPause = true;
@@ -386,6 +426,14 @@ namespace OneMoreFloor
             Check("LT zooms back out", runner.Rig.Zoom < 0.05f);
             root.QuitShift();
             yield return Wait(1f);
+        }
+
+        /// <summary>The building's order and the first guests: what two runs of the same daily share.</summary>
+        static string Opening(ShiftSim sim)
+        {
+            var sb = new System.Text.StringBuilder(string.Join(",", sim.B.Slots));
+            for (int i = 0; i < Mathf.Min(6, sim.All.Count); i++) sb.Append($" {sim.All[i].Kind}:{sim.All[i].Origin}>{sim.All[i].Dest}");
+            return sb.ToString();
         }
 
         static IEnumerator Wait(float seconds)

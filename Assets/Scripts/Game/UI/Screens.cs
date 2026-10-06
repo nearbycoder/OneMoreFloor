@@ -243,6 +243,7 @@ namespace OneMoreFloor
     {
         GameRoot game;
         TextMeshProUGUI day, title, note, newLabel, newTitle, newRule, relaxedLine;
+        UiButton daily;
         RectTransform goalsRoot;
         Image kindDisc;
         RectTransform noteRt;
@@ -301,6 +302,7 @@ namespace OneMoreFloor
             goalsRoot = UiKit.Rect("Goals", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -268), new Vector2(1400, 80));
             var go = UiButton.Create(Root, "CLOCK IN", new Vector2(120, -400), new Vector2(400, 96), () => game.BeginShift(shift), true, 42);
             UiButton.Create(Root, "BACK", new Vector2(-220, -400), new Vector2(220, 72), () => game.ShowRoster(), false, 26);
+            daily = UiButton.Create(Root, "TODAY'S SHIFT", new Vector2(520, -400), new Vector2(330, 72), () => game.BeginDaily(), false, 26);
             go.Focused = true;
             Primary = () => go.Click();
             Back = () => game.ShowRoster();
@@ -336,11 +338,15 @@ namespace OneMoreFloor
             relaxedLine.text = SaveData.Current.Relaxed && !def.Endless
                 ? "RELAXED SHIFT  ·  MORE PATIENCE  ·  NO FIRING  ·  A 1-STAR SCORE OPENS THE NEXT SHIFT  ·  STARS AREN'T SAVED" : "";
             foreach (Transform c in goalsRoot) Destroy(c.gameObject);
+            daily.gameObject.SetActive(def.Endless);
             if (def.Endless)
             {
-                var p = Deco.Panel("Goal", goalsRoot, new Vector2(760, 76), Vector2.zero, true);
-                UiKit.Text("G", p, $"Last as long as you can.    <color=#F2C66B>Best ${SaveData.Current.Best[index]:N0}</color>", 28, Palette.Cream, UiKit.Signage,
-                    TextAlignmentOptions.Center, new Vector2(720, 50));
+                var key = GameRoot.DateKey(game.Today);
+                int today = SaveData.Current.DailyBestOn(key);
+                var p = Deco.Panel("Goal", goalsRoot, new Vector2(1100, 76), Vector2.zero, true);
+                UiKit.Text("G", p, $"Last as long as you can.    <color=#F2C66B>Best ${SaveData.Current.Best[index]:N0}</color>    " +
+                    $"Today's shift ({GameRoot.DateLabel(game.Today)}): " + (today > 0 ? $"<color=#F2C66B>${today:N0}</color>" : "not played"), 26, Palette.Cream, UiKit.Signage,
+                    TextAlignmentOptions.Center, new Vector2(1060, 50));
             }
             else
                 for (int i = 0; i < 3; i++)
@@ -564,11 +570,25 @@ namespace OneMoreFloor
             advice.text = biggest.HasValue ? Advice.Tip(biggest.Value) : "";
             foreach (var s in stars) { s.color = Stars.Unlit(true); s.rectTransform.localScale = Vector3.one; }
             bestBox.gameObject.SetActive(false);
+            bestStamp.text = "NEW BEST!";
             int prev = SaveData.Current.Best[shift];
             bestLine.text = sim.Relaxed ? "RELAXED SHIFT  ·  STARS AND BESTS AREN'T SAVED" : !best && prev > 0 ? $"PERSONAL BEST  ${prev:N0}" : "";
             bool hasNext = shift + 1 < ShiftCatalog.All.Count && SaveData.Current.Unlocked(shift + 1);
             next.gameObject.SetActive(hasNext);
             tips.text = "$0";
+        }
+
+        /// <summary>Today's Overtime: today's best and the best day so far instead of the all-time line.</summary>
+        public void SetupDaily(string dateKey, string dateLabel, bool newToday)
+        {
+            var save = SaveData.Current;
+            hint.text = $"<b>Today's shift</b> · {dateLabel} · the same building all day. Tomorrow brings a new one.";
+            string record = save.DailyRecord > 0 && save.DailyRecordDate != dateKey
+                ? $"  ·  BEST DAY  ${save.DailyRecord:N0}" : "";
+            // a new best today gets the stamp instead (they share a spot on the card)
+            bestLine.text = newToday ? "" : $"TODAY'S BEST  ${save.DailyBestOn(dateKey):N0}{record}";
+            newBest = newToday;
+            bestStamp.text = "BEST TODAY!";
         }
 
         void SetStat(int i, string label, string value)

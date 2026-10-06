@@ -152,6 +152,7 @@ namespace OneMoreFloor
         {
             HideAll();
             currentShift = index;
+            DailyRun = false;
             runSeed = FixedSeed != 0 ? FixedSeed : (ulong)System.DateTime.Now.Ticks;
             InShift = true;
             var def = ShiftCatalog.Get(index);
@@ -172,7 +173,32 @@ namespace OneMoreFloor
         public void RestartShift()
         {
             if (InShift && Runner.Sim != null && !Runner.Sim.Ended) Runner.Log.Finish("restarted");
-            BeginShift(currentShift);
+            if (DailyRun) BeginDaily();
+            else BeginShift(currentShift);
+        }
+
+        /// <summary>This run is today's daily Overtime.</summary>
+        public bool DailyRun { get; private set; }
+        /// <summary>Automation: pretend today is this date (null = the real local date).</summary>
+        public System.DateTime? DailyDateOverride;
+        public System.DateTime Today => (DailyDateOverride ?? System.DateTime.Now).Date;
+        public static string DateKey(System.DateTime d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        public static string DateLabel(System.DateTime d) => d.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
+
+        public static int OvertimeIndex
+        {
+            get { for (int i = 0; i < ShiftCatalog.All.Count; i++) if (ShiftCatalog.Get(i).Endless) return i; return -1; }
+        }
+
+        /// <summary>Today's Overtime: everyone playing on this date gets the same seed.</summary>
+        public void BeginDaily()
+        {
+            int ot = OvertimeIndex;
+            if (ot < 0 || !SaveData.Current.Unlocked(ot)) { ShowRoster(); return; }
+            var d = Today;
+            StartShift(ot, Progress.DailySeed(d.Year, d.Month, d.Day));
+            DailyRun = true;
+            Runner.Hud.SetShiftName("Today's Shift · " + DateLabel(d), "Daily Overtime");
         }
 
         /// <summary>Remember the player's zoom level for the next shift.</summary>
@@ -245,6 +271,7 @@ namespace OneMoreFloor
             bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount, sim.Relaxed, sim.Fired);
             bool latePass = !nextWasOpen && nextIdx < ShiftCatalog.All.Count && save.LatePassed(nextIdx);
             bool relaxedOpened = !nextWasOpen && !latePass && sim.Relaxed && nextIdx < ShiftCatalog.All.Count && save.Unlocked(nextIdx);
+            bool dailyBest = DailyRun && save.RecordDaily(DateKey(Today), sim.Score);
             Runner.Log.Finish("finished");
             if (firstGraveyard)
             {
@@ -253,6 +280,7 @@ namespace OneMoreFloor
                 endingPending = true;
             }
             results.Setup(sim, best && sim.Score > 0, latePass, relaxedOpened);
+            if (DailyRun) results.SetupDaily(DateKey(Today), DateLabel(Today), dailyBest && sim.Score > 0);
             results.Show();
             Audio.Sting("sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
         }

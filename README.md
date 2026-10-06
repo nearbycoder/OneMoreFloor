@@ -185,7 +185,7 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 | 7 | Sunday · Family Day | Kids and the Daycare |
 | 8 | Monday Again · Board Meeting | Tycoons |
 | 9 | Friday the 13th · Graveyard Shift | Everyone at once, Flip cards, night. Clearing it plays the ending. |
-| 10 | Overtime | Endless. It keeps getting busier until five complaints. |
+| 10 | Overtime | Endless. It keeps getting busier until five complaints. **Today's Shift** is a daily Overtime: the same building and opening guests for every run that day, with its own best. |
 
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each

@@ -25,6 +25,10 @@ namespace OneMoreFloor
         public bool ShowForecast = true;
         /// <summary>No camera drift, push-ins or shake, floors settle without overshoot, and the UI holds still.</summary>
         public bool ReducedMotion;
+        /// <summary>Daily Overtime: the date of the runs below ("2026-10-06"), today's best and tries, and the best day.</summary>
+        public string DailyDate = "";
+        public int DailyBest, DailyPlays, DailyRecord;
+        public string DailyRecordDate = "";
         /// <summary>Relaxed shifts: more patience, no firing, stars and bests not saved (an assist).</summary>
         public bool Relaxed;
         /// <summary>Camera zoom during play (0 = whole tower, 1 = close-up following the car).</summary>
@@ -53,6 +57,8 @@ namespace OneMoreFloor
                         if (s.RelaxedClear == null || s.RelaxedClear.Length < 16) Array.Resize(ref s.RelaxedClear, 16);
                         if (s.FiredCount == null || s.FiredCount.Length < 16) Array.Resize(ref s.FiredCount, 16);
                         if (s.SeenHints == null) s.SeenHints = new string[0];
+                        if (s.DailyDate == null) s.DailyDate = "";
+                        if (s.DailyRecordDate == null) s.DailyRecordDate = "";
                         return s;
                     }
                 }
@@ -109,6 +115,21 @@ namespace OneMoreFloor
             Save();
             return best;
         }
+
+        /// <summary>Records a daily Overtime run on <paramref name="date"/>. Returns true for a new best today.</summary>
+        public bool RecordDaily(string date, int score)
+        {
+            if (DailyDate != date) { DailyDate = date; DailyBest = 0; DailyPlays = 0; }
+            DailyPlays++;
+            bool best = score > DailyBest;
+            if (best) DailyBest = score;
+            if (score > DailyRecord) { DailyRecord = score; DailyRecordDate = date; }
+            Save();
+            return best;
+        }
+
+        /// <summary>Today's best, or 0 when the stored day isn't <paramref name="date"/>.</summary>
+        public int DailyBestOn(string date) => DailyDate == date ? DailyBest : 0;
 
         public bool HintSeen(string id) => Array.IndexOf(SeenHints, id) >= 0;
 

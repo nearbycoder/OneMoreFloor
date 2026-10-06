@@ -44,6 +44,17 @@ namespace OneMoreFloor.Core
         }
 
         /// <summary>
+        /// Today's Overtime seed: the same for every run on a calendar date, different from day to day (FNV-1a over
+        /// the date). The building, deck and opening guests follow from it; later spawns depend on how you play.
+        /// </summary>
+        public static ulong DailySeed(int year, int month, int day)
+        {
+            ulong h = 14695981039346656037UL;
+            foreach (char c in $"omf-daily-{year:0000}-{month:00}-{day:00}") { h ^= c; h *= 1099511628211UL; }
+            return h == 0 ? 1 : h;
+        }
+
+        /// <summary>
         /// The shift the title screen offers: the first open shift without a star whose next shift isn't open yet
         /// (a late-passed shift doesn't keep pulling the player back), else the last open shift.
         /// </summary>
