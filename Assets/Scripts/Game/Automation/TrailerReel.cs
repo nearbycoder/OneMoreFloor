@@ -467,7 +467,7 @@ namespace OneMoreFloor
                 var def = ShiftCatalog.Get(k);
                 save.Stars[k] = k < upTo ? stars[k] : 0;
                 save.Best[k] = k < upTo ? def.Stars[Mathf.Max(0, stars[k] - 1)] + 650 * (k + 1) : 0;
-                save.Plays[k] = k < upTo ? 2 + k : 0;
+                save.Plays[k] = k < upTo && stars[k] > 0 ? 2 + k : 0; // no tries without a star: no late passes
             }
             save.EndingSeen = false;
         }

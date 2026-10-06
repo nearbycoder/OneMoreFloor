@@ -61,21 +61,12 @@ namespace OneMoreFloor
             catch (Exception ex) { Debug.LogWarning("[Save] could not write save: " + ex.Message); }
         }
 
-        public bool Unlocked(int shift)
-        {
-            if (shift <= 0) return true;
-            return Stars[shift - 1] >= 1;
-        }
+        public bool Unlocked(int shift) => Progress.Unlocked(shift, Stars, Plays);
 
-        public int NextShift()
-        {
-            var all = ShiftCatalog.All;
-            for (int i = 0; i < all.Count; i++)
-                if (Unlocked(i) && Stars[i] == 0) return i;
-            for (int i = all.Count - 1; i >= 0; i--)
-                if (Unlocked(i)) return i;
-            return 0;
-        }
+        /// <summary>Open only thanks to the late pass (three tries without a star on the shift before).</summary>
+        public bool LatePassed(int shift) => Progress.ByLatePass(shift, Stars, Plays);
+
+        public int NextShift() => Progress.NextShift(Stars, Plays);
 
         public int TotalStars()
         {

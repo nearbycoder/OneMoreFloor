@@ -83,7 +83,7 @@ static class Program
                 double complAvg = avg.Average(r => r.Complaints);
                 line = $"k={k:0.00} avg fired {firedAvg * 100,3:0}% compl {complAvg:0.0} | new fired {firedNew * 100,3:0}%";
                 chosen = k;
-                if (def.Endless || (firedAvg <= 0.1 && complAvg <= 2.2 && firedNew <= 0.4)) break;
+                if (def.Endless || (firedAvg <= 0.1 && complAvg <= 2.2 && firedNew <= 0.2)) break;
             }
             var a = Run(0.5f).Select(r => (double)r.Score).OrderBy(x => x).ToList();
             var n = Run(0.15f).Select(r => (double)r.Score).OrderBy(x => x).ToList();

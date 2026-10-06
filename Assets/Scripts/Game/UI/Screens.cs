@@ -158,7 +158,7 @@ namespace OneMoreFloor
             eb.characterSpacing = 12f;
             Deco.Gilded(UiKit.Text("Title", rt, "Duty Roster", 96, Color.white, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1200, 120), new Vector2(0, 400)));
             Deco.Divider(rt, 560, new Vector2(0, 336));
-            UiKit.Text("Sub", rt, "A week at The Shuffleton. Earn a star to unlock the next shift.", 24, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(1400, 36), new Vector2(0, 302));
+            UiKit.Text("Sub", rt, "A week at The Shuffleton. Earn a star to unlock the next shift, or clock out three times trying.", 24, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(1400, 36), new Vector2(0, 302));
             s.grid = UiKit.Rect("Grid", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(1700, 680));
             UiButton.Create(rt, "BACK", new Vector2(0, -474), new Vector2(280, 66), () => game.ShowTitle(), false, 26);
             s.Back = () => game.ShowTitle();
@@ -222,7 +222,14 @@ namespace OneMoreFloor
                 {
                     face.color = new Color(0.62f, 0.58f, 0.62f, 0.92f);
                     Deco.Label("Lock", card, "LOCKED", 20, new Vector2(272, 30), new Vector2(0, -104), TextAlignmentOptions.Center, new Color(1, 1, 1, 0.5f));
-                    UiKit.Text("How", card, $"Earn a star on {all[i - 1].Day}", 17, new Color(1, 1, 1, 0.38f), UiKit.Body, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -134));
+                    int tries = Progress.TriesToLatePass(i, save.Stars, save.Plays);
+                    string how = tries > 0 && save.Plays[i - 1] > 0
+                        ? $"A star on {all[i - 1].Day}, or {tries} more {(tries == 1 ? "try" : "tries")}"
+                        : $"Earn a star on {all[i - 1].Day}";
+                    var howText = UiKit.Text("How", card, how, 17, new Color(1, 1, 1, 0.38f), UiKit.Body, TextAlignmentOptions.Center, new Vector2(272, 26), new Vector2(0, -134));
+                    howText.enableAutoSizing = true;
+                    howText.fontSizeMin = 12;
+                    howText.fontSizeMax = 17;
                 }
             }
             GameRoot.SetLayerRecursive(gameObject, GameRoot.UiLayer);
@@ -468,6 +475,10 @@ namespace OneMoreFloor
             }
             UiKit.Image("Rule2", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -154));
             hint = UiKit.Text("Hint", paper, "", 24, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 40), new Vector2(0, -192));
+            hint.richText = true;
+            hint.enableAutoSizing = true;
+            hint.fontSizeMin = 16;
+            hint.fontSizeMax = 24;
             var stampInk = Palette.Hex(0xC8303A);
             stampInk.a = 0.88f;
             bestBox = UiKit.Rect("BestStamp", paper, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -262), new Vector2(330, 84));
@@ -485,7 +496,7 @@ namespace OneMoreFloor
             Back = () => game.ShowRoster();
         }
 
-        public void Setup(ShiftSim sim, bool best)
+        public void Setup(ShiftSim sim, bool best, bool latePass = false)
         {
             shift = sim.Def.Index;
             targetScore = sim.Score;
@@ -504,6 +515,8 @@ namespace OneMoreFloor
             statValue[2].color = sim.Complaints > 0 ? Palette.Oxblood : Palette.Hex(0x2A1E2E);
             if (sim.Def.Endless)
                 hint.text = "The building never sleeps.";
+            else if (latePass)
+                hint.text = $"<b>Late pass:</b> we'll pretend we didn't see that. <b>{ShiftCatalog.Get(shift + 1).Day}</b> is open.";
             else if (starCount < 3)
                 hint.text = $"Next star at <b>${sim.Def.Stars[starCount]:N0}</b>";
             else

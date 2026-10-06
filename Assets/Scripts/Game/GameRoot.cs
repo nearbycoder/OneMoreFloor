@@ -208,7 +208,10 @@ namespace OneMoreFloor
             var save = SaveData.Current;
             save.Zoom = Rig.Zoom;
             bool firstGraveyard = sim.Def.Id == "graveyard" && sim.StarCount >= 1 && !save.EndingSeen;
+            int nextIdx = sim.Def.Index + 1;
+            bool nextWasOpen = save.Unlocked(nextIdx);
             bool best = save.Record(sim.Def.Index, sim.Score, sim.StarCount);
+            bool latePass = !nextWasOpen && nextIdx < ShiftCatalog.All.Count && save.LatePassed(nextIdx);
             Runner.Log.Finish("finished");
             if (firstGraveyard)
             {
@@ -216,7 +219,7 @@ namespace OneMoreFloor
                 save.Save();
                 endingPending = true;
             }
-            results.Setup(sim, best && sim.Score > 0);
+            results.Setup(sim, best && sim.Score > 0, latePass);
             results.Show();
             Audio.Sting("sting_clockout", 0.25f, sim.Fired ? 0.5f : 0.9f);
         }

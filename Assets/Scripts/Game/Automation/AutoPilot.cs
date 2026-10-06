@@ -18,7 +18,7 @@ namespace OneMoreFloor
         int shots;
         float speed = 3f;
         int onlyShift = -1;
-        bool padOnly;
+        bool padOnly, uiOnly;
         int frames;
         float frameTime, worst;
 
@@ -33,6 +33,7 @@ namespace OneMoreFloor
             if (s >= 0 && s + 1 < args.Length)
             {
                 if (args[s + 1] == "pad") ap.padOnly = true;
+                else if (args[s + 1] == "ui") ap.uiOnly = true;
                 else int.TryParse(args[s + 1], out ap.onlyShift);
             }
             int sp = System.Array.IndexOf(args, "-omfAutopilotSpeed");
@@ -75,6 +76,13 @@ namespace OneMoreFloor
             root.ShowRoster();
             yield return Wait(1.2f);
             Shot("roster_locked");
+
+            if (uiOnly)
+            {
+                yield return UiChecks(root);
+                yield return Finish();
+                yield break;
+            }
 
             if (padOnly)
             {
@@ -136,6 +144,7 @@ namespace OneMoreFloor
             if (onlyShift < 0)
             {
                 yield return PadCheck(root);
+                yield return UiChecks(root);
                 root.ShowRoster();
                 yield return Wait(1.2f);
                 Shot("roster_unlocked");
@@ -163,10 +172,47 @@ namespace OneMoreFloor
             Application.Quit(errors == 0 ? 0 : 1);
         }
 
-        void Check(string what, bool ok)
+        void Check(string what, bool ok, string area = "pad")
         {
-            Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} pad: {what}");
+            Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {area}: {what}");
             if (!ok) errors++;
+        }
+
+        /// <summary>
+        /// Menu and flow checks that need a particular save or situation, set up in the ephemeral save: the late pass,
+        /// the time card's complaint breakdown, pausing when focus or the controller goes away, and the settings.
+        /// </summary>
+        IEnumerator UiChecks(GameRoot root)
+        {
+            var save = SaveData.Current;
+            var results = FindAnyObjectByType<ResultsScreen>(FindObjectsInactive.Include);
+            System.Array.Clear(save.Stars, 0, save.Stars.Length);
+            System.Array.Clear(save.Plays, 0, save.Plays.Length);
+            System.Array.Clear(save.Best, 0, save.Best.Length);
+
+            // late pass: two tries on Tuesday without a star, then a third
+            save.Stars[0] = 2; save.Plays[0] = 1; save.Best[0] = 20500;
+            save.Plays[1] = Progress.LatePassAttempts - 1;
+            root.ShowRoster();
+            yield return Wait(1.2f);
+            Shot("ui_roster_one_more_try");
+            Check("Wednesday is locked with one try to go", !save.Unlocked(2) && Progress.TriesToLatePass(2, save.Stars, save.Plays) == 1, "ui");
+            root.StartShift(1, 4242);
+            var runner = root.Runner;
+            runner.AutoBot = Bot.Human(3, 0f);
+            yield return Wait(1f);
+            runner.FastForward(40f);
+            runner.AutoBot = null; // walk away: complaints pile up
+            runner.FastForward(runner.Sim.TimeLeft + 0.1f);
+            yield return Wait(6.5f);
+            Shot("ui_results_late_pass");
+            var sim = runner.Sim;
+            Check($"third try without a star opens Wednesday (stars {sim.StarCount}, complaints {sim.Complaints})",
+                sim.StarCount == 0 && save.Unlocked(2) && save.LatePassed(2) && results.Visible, "ui");
+            root.ShowRoster();
+            yield return Wait(1.2f);
+            Shot("ui_roster_late_pass");
+            Check("the title offers Wednesday next", save.NextShift() == 2, "ui");
         }
 
         IEnumerator Pad(string script, float gap = 0.35f)

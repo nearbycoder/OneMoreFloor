@@ -141,7 +141,9 @@ a few stops.
 
 Tips are fare plus patience left, times your **streak** (+5% per delivery, up to ×2.5; any complaint resets it)
 times **group drops** (+25% for each extra guest delivered at the same stop). The last 30 seconds are **Rush Hour**,
-worth ×1.5. Stars come from your tips, and **one star unlocks the next shift**.
+worth ×1.5. Stars come from your tips, and **one star unlocks the next shift**. If a shift won't give you a star,
+clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
+star on the Graveyard Shift).
 
 ### Plan every trip
 
@@ -300,7 +302,8 @@ docs/
 - **Balanced against a model of a person.** `Tools/sim.sh human` plays every shift with a human model: decision
   time, Fitts'-law pointer travel for every click, and a beat to take in each stop, at three skill levels. Star
   thresholds come from its score percentiles, so about half of first attempts earn the star that unlocks the next
-  shift. Real playtests append to a local log that `Tools/playtest_report.py` turns into new thresholds.
+  shift, and spawn pacing is set so that modelled new players are fired on at most about one run in five
+  (`Tools/sim.sh pace`, `causes`). Real playtests append to a local log that `Tools/playtest_report.py` turns into new thresholds.
 - **Every model is a script.** `ArtSource/*.py` builds the ten floors, nine characters, the car, panel and props in
   Blender from primitives, with a material-name convention that `ModelLibrary` turns into URP materials at runtime.
   The characters have real armatures with keyframed clips (idle, walk, stomp, tap, cheer, tuck, fume) that
@@ -338,7 +341,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
 
 - **No human playtests yet.** Difficulty and star thresholds are fitted to a model of a player, not real people.
   The model is grounded in standard human-factors numbers, but it plays smarter than a first-timer. The local
-  playtest log is there so the first real sessions can correct it.
+  playtest log is there so the first real sessions can correct it. The late pass (three tries opens the next
+  shift) is the safety net until then.
 - **The audio has been measured, not listened to critically.** Every sound passes the objective audit (loudness,
   peaks, clicks, seams, balance), but nobody has judged how it sounds on the hundredth play.
 - **Gamepad support is tested with a virtual pad.** Every path runs through the Input System in the autopilot, but
