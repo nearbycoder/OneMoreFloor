@@ -60,6 +60,14 @@ namespace OneMoreFloor.Core
         public FloorId DockedFloor => B.At(Car.DockedSlot);
         public bool Docked => Car.IsOpen;
         public int WaitingCount { get { int n = 0; foreach (var w in Waiting) n += w.Count; return n; } }
+
+        /// <summary>Patience left (0–1) of the most impatient guest waiting on a floor; 1 when nobody waits there.</summary>
+        public float LowestWaitingPatience(FloorId f)
+        {
+            float low = 1f;
+            foreach (var p in Waiting[(int)f]) low = Math.Min(low, p.PatienceFrac);
+            return Math.Max(0f, low);
+        }
         public int StarCount => Def.StarsFor(Score);
         public float Multiplier => 1f + Tuning.StreakStep * Math.Min(Streak, Tuning.StreakCap);
 

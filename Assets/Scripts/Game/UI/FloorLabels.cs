@@ -30,8 +30,9 @@ namespace OneMoreFloor
         {
             public RectTransform Rt;
             public CanvasGroup Group;
-            public Image Bg, Disc, Icon, Badge, Tag;
-            public TextMeshProUGUI Name, Number, BadgeText, TagText;
+            public Image Bg, Disc, Icon, Tag;
+            public WaitBadge Badge;
+            public TextMeshProUGUI Name, Number, TagText;
             public FloorId Shown = (FloorId)(-1);
         }
 
@@ -73,11 +74,10 @@ namespace OneMoreFloor
                 name.enableAutoSizing = true;
                 name.fontSizeMin = 20;
                 name.fontSizeMax = 28;
-                // guests waiting: a count on the pill's top-left corner, like the panel's buttons
-                var badge = UiKit.Image("Badge", rt, UiKit.Circle, Palette.Bad, new Vector2(26, 26));
-                badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = new Vector2(0f, 1f);
-                badge.rectTransform.anchoredPosition = new Vector2(8, -4);
-                var bt = UiKit.Text("Count", badge.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(26, 26));
+                // guests waiting: a count on the pill's top-left corner, like the panel's buttons, ringed with the
+                // patience of the most impatient one
+                var badge = WaitBadge.Create(rt, new Vector2(8, -4));
+                badge.Root.anchorMin = badge.Root.anchorMax = new Vector2(0f, 1f);
                 // leaving: a countdown tag hanging under the pill
                 var tag = UiKit.Image("Tag", rt, UiKit.Pill, Palette.Warn, new Vector2(120, 24));
                 tag.type = Image.Type.Sliced;
@@ -86,7 +86,7 @@ namespace OneMoreFloor
                 tag.rectTransform.anchoredPosition = new Vector2(-8, 4);
                 var tt = UiKit.Text("Left", tag.transform, "", 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(120, 24));
                 Deco.Fill(tt.rectTransform);
-                labels.Add(new Label { Group = rt.gameObject.AddComponent<CanvasGroup>(), Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, BadgeText = bt, TagText = tt });
+                labels.Add(new Label { Group = rt.gameObject.AddComponent<CanvasGroup>(), Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, TagText = tt });
             }
             return labels[i];
         }
@@ -133,8 +133,7 @@ namespace OneMoreFloor
 
                 int waiting = sim.Waiting[(int)f].Count;
                 bool leaving = sim.B.IsLeaving(f);
-                l.Badge.gameObject.SetActive(waiting > 0);
-                if (waiting > 0) l.BadgeText.text = waiting.ToString();
+                l.Badge.Show(waiting, sim.LowestWaitingPatience(f));
                 l.Tag.gameObject.SetActive(leaving);
                 if (leaving)
                 {
@@ -148,6 +147,57 @@ namespace OneMoreFloor
                 }
             }
             for (int i = n; i < labels.Count; i++) labels[i].Rt.gameObject.SetActive(false);
+        }
+
+        /// <summary>Self-test: the waiting badge on the label for a slot (null if that label isn't built).</summary>
+        public WaitBadge BadgeAt(int slot) => slot >= 0 && slot < labels.Count ? labels[slot].Badge : null;
+    }
+
+    /// <summary>
+    /// How many guests wait on a floor, with a ring for the patience of the most impatient one, in the colours of
+    /// the guests' own rings. The badge is dark while everyone's calm, amber under half and red (pulsing) under a
+    /// quarter, so a floor about to lose someone stands out in the label column and on the panel.
+    /// </summary>
+    public sealed class WaitBadge
+    {
+        public RectTransform Root;
+        public Image Disc, Track, Ring;
+        public TextMeshProUGUI Count;
+        public static readonly Color Calm = Palette.Hex(0x3B2A40);
+
+        public static WaitBadge Create(Transform parent, Vector2 pos, float size = 26f)
+        {
+            var w = new WaitBadge();
+            w.Root = UiKit.Rect("WaitBadge", parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(size, size));
+            float ring = size + 12f;
+            w.Track = UiKit.Image("Track", w.Root, UiKit.Ring, new Color(0.08f, 0.05f, 0.1f, 0.85f), new Vector2(ring, ring));
+            w.Ring = UiKit.Image("Ring", w.Root, UiKit.Ring, Palette.Good, new Vector2(ring, ring));
+            w.Ring.type = Image.Type.Filled;
+            w.Ring.fillMethod = Image.FillMethod.Radial360;
+            w.Ring.fillOrigin = (int)Image.Origin360.Top;
+            w.Ring.fillClockwise = false;
+            w.Disc = UiKit.Image("Disc", w.Root, UiKit.Circle, Calm, new Vector2(size, size));
+            UiKit.Image("Rim", w.Disc.transform, UiKit.Ring, new Color(1f, 0.89f, 0.66f, 0.9f), new Vector2(size, size));
+            w.Count = UiKit.Text("Count", w.Disc.transform, "", 15, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(size, size));
+            return w;
+        }
+
+        /// <summary>The colour the disc is showing (self-test).</summary>
+        public Color Shown => Disc.color;
+        public bool Visible => Root.gameObject.activeSelf;
+
+        public void Show(int waiting, float lowestPatience)
+        {
+            Root.gameObject.SetActive(waiting > 0);
+            if (waiting <= 0) return;
+            float frac = Mathf.Clamp01(lowestPatience);
+            Count.text = waiting.ToString();
+            Ring.fillAmount = frac;
+            Ring.color = Palette.Patience(frac);
+            Disc.color = frac > 0.5f ? Calm : Palette.Patience(frac);
+            Count.color = frac > 0.5f ? Palette.Cream : frac > 0.25f ? Palette.Ink : Color.white;
+            float pulse = frac <= 0.25f && !SaveData.Current.ReducedMotion ? 0.12f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 7f)) : 0f;
+            Root.localScale = Vector3.one * (1f + pulse);
         }
     }
 }

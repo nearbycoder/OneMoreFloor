@@ -94,6 +94,9 @@ namespace OneMoreFloor
         public static readonly Color Warn = Hex(0xF2B33D);
         public static readonly Color Bad = Hex(0xE5484D);
 
+        /// <summary>Patience colours, shared by the guests' rings and the waiting badges: green, amber under half, red under a quarter.</summary>
+        public static Color Patience(float frac) => frac > 0.5f ? Good : frac > 0.25f ? Warn : Bad;
+
         public static Color KindColor(Kind k)
         {
             switch (k)

@@ -26,8 +26,7 @@ namespace OneMoreFloor
             public RectTransform Root;
             public Image Cap, Plate, Glow, Ring, Icon;
             public TextMeshProUGUI Number, Name;
-            public TextMeshProUGUI Waiting;
-            public Image WaitBadge;
+            public WaitBadge WaitBadge;
             public Image[] Pips = new Image[4];
             public float Press, Lit;
             public int Slot;
@@ -111,9 +110,7 @@ namespace OneMoreFloor
                 Deco.Shadowed(b.Name, 0.55f, 0.6f, 0.2f);
                 b.Icon = UiKit.Image("Icon", b.Plate.transform, null, Color.white, new Vector2(30, 30), new Vector2(-28, 1));
                 b.Icon.preserveAspect = true;
-                b.WaitBadge = UiKit.Image("WaitBadge", b.Root, UiKit.Circle, Palette.Hex(0xD8383E), new Vector2(26, 26), new Vector2(36, 50));
-                UiKit.Image("Rim", b.WaitBadge.transform, UiKit.Ring, Palette.Hex(0xFFE3A8), new Vector2(26, 26));
-                b.Waiting = UiKit.Text("W", b.WaitBadge.transform, "", 15, Color.white, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(26, 26), new Vector2(0.5f, 1f));
+                b.WaitBadge = WaitBadge.Create(b.Root, new Vector2(36, 50));
                 for (int k = 0; k < 4; k++)
                     b.Pips[k] = UiKit.Image("Pip" + k, b.Root, UiKit.Circle, Palette.Good, new Vector2(12, 12), new Vector2(-42, 50 - k * 14));
                 int slot = s;
@@ -231,8 +228,7 @@ namespace OneMoreFloor
                 btn.Glow.color = new Color(1f, 0.72f, 0.28f, 0.55f * btn.Lit);
                 btn.Cap.rectTransform.localScale = Vector3.one * (1f - 0.12f * Ease.OutCubic(btn.Press) + (hover ? 0.05f : 0f));
                 int waiting = sim.Waiting[(int)f].Count;
-                btn.Waiting.text = waiting.ToString();
-                btn.WaitBadge.gameObject.SetActive(waiting > 0);
+                btn.WaitBadge.Show(waiting, sim.LowestWaitingPatience(f));
                 int pip = 0;
                 foreach (var r in sim.Car.Riders)
                 {
@@ -244,5 +240,8 @@ namespace OneMoreFloor
                 for (int k = pip; k < btn.Pips.Length; k++) btn.Pips[k].gameObject.SetActive(false);
             }
         }
+
+        /// <summary>Self-test: the waiting badge on the button for a slot.</summary>
+        public WaitBadge BadgeAt(int slot) => slot >= 0 && slot < buttons.Length && buttons[slot] != null ? buttons[slot].WaitBadge : null;
     }
 }

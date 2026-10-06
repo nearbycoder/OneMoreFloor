@@ -46,6 +46,25 @@ namespace OneMoreFloor.Tests
         }
 
         [Test]
+        public void LowestWaitingPatienceIsTheMostImpatientGuestWaitingThere()
+        {
+            var sim = new ShiftSim(Quiet(FloorId.Lobby, FloorId.Office, FloorId.Library), 1);
+            Assert.AreEqual(1f, sim.LowestWaitingPatience(FloorId.Office), "nobody waiting reads as calm");
+            var a = Add(sim, Kind.Commuter, FloorId.Office, FloorId.Lobby);
+            var b = Add(sim, Kind.Commuter, FloorId.Office, FloorId.Library);
+            var c = Add(sim, Kind.Commuter, FloorId.Library, FloorId.Lobby);
+            a.Patience = 60; b.Patience = 20; c.Patience = -3;
+            Assert.AreEqual(0.2f, sim.LowestWaitingPatience(FloorId.Office), 1e-4f);
+            Assert.AreEqual(0f, sim.LowestWaitingPatience(FloorId.Library), 1e-4f, "never below zero");
+            // a guest who has boarded no longer counts for the floor they left
+            var r = Add(sim, Kind.Commuter, FloorId.Lobby, FloorId.Office);
+            r.Patience = 10;
+            Assert.AreEqual(0.1f, sim.LowestWaitingPatience(FloorId.Lobby), 1e-4f);
+            Assert.AreEqual(BoardResult.Ok, sim.Board(r.Id));
+            Assert.AreEqual(1f, sim.LowestWaitingPatience(FloorId.Lobby));
+        }
+
+        [Test]
         public void CapacityCountsMirrorAsTwo()
         {
             var sim = new ShiftSim(Quiet(FloorId.Lobby, FloorId.Office), 1);

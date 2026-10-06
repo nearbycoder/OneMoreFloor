@@ -316,6 +316,43 @@ namespace OneMoreFloor
             root.QuitShift();
             yield return Wait(1f);
 
+            // patience at a glance: a floor's waiting badges (label column and panel) follow its most impatient guest
+            root.StartShift(8, 91);
+            runner = root.Runner;
+            runner.Rig.Zoom = 0f;
+            runner.AutoBot = null;
+            runner.FastForward(9f);
+            var ps = runner.Sim;
+            int lowSlot = -1, warnSlot = -1, calmSlot = -1;
+            for (int sl = 0; sl < ps.B.Count; sl++)
+            {
+                if (sl == ps.Car.DockedSlot || ps.Waiting[(int)ps.B.At(sl)].Count == 0) continue;
+                if (lowSlot < 0) lowSlot = sl; else if (calmSlot < 0) calmSlot = sl; else if (warnSlot < 0) warnSlot = sl;
+            }
+            void SetPatience(int sl, float frac)
+            {
+                if (sl < 0) return;
+                var w = ps.Waiting[(int)ps.B.At(sl)];
+                foreach (var g in w) g.Patience = g.PatienceMax;
+                w[0].Patience = w[0].PatienceMax * frac;
+            }
+            SetPatience(lowSlot, 0.15f);
+            SetPatience(calmSlot, 1f);
+            SetPatience(warnSlot, 0.4f);
+            runner.Paused = true;
+            yield return Wait(1.2f);
+            var labelsUi = runner.Hud.FloorLabels;
+            var panelUi = runner.Hud.Panel;
+            bool BadgeIs(int sl, Color c) => sl >= 0 && labelsUi.BadgeAt(sl) != null && labelsUi.BadgeAt(sl).Visible && labelsUi.BadgeAt(sl).Shown == c
+                                             && panelUi.BadgeAt(sl) != null && panelUi.BadgeAt(sl).Visible && panelUi.BadgeAt(sl).Shown == c;
+            Check($"a floor with a guest at 15% patience shows red badges on its label and panel button (slot {lowSlot + 1})", BadgeIs(lowSlot, Palette.Bad), "ui");
+            Check($"a floor where everyone's patient shows calm badges (slot {calmSlot + 1})", BadgeIs(calmSlot, WaitBadge.Calm), "ui");
+            if (warnSlot >= 0) Check($"a floor with a guest at 40% shows amber badges (slot {warnSlot + 1})", BadgeIs(warnSlot, Palette.Warn), "ui");
+            Shot("ui_patience_badges");
+            runner.Paused = false;
+            root.QuitShift();
+            yield return Wait(1f);
+
             // daily Overtime: today's shift opens the same way every time, and today's best is kept
             int ot = GameRoot.OvertimeIndex;
             for (int k = 0; k < ot; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);

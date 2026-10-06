@@ -186,7 +186,7 @@ namespace OneMoreFloor
             }
             float frac = Mathf.Clamp01(p.PatienceFrac);
             b.Ring.fillAmount = frac;
-            b.Ring.color = frac > 0.5f ? Palette.Good : frac > 0.25f ? Palette.Warn : Palette.Bad;
+            b.Ring.color = Palette.Patience(frac);
             b.Pop = Mathf.Min(1f, b.Pop + dt * 4f);
             b.Wobble = Mathf.Max(0f, b.Wobble - dt * 2f);
             bool riding = p.State == PState.Riding;
