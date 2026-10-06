@@ -214,6 +214,22 @@ namespace OneMoreFloor
             Shot("ui_roster_late_pass");
             Check("the title offers Wednesday next", save.NextShift() == 2, "ui");
 
+            Check("the time card lists what the complaints were about", results.CausesText.Contains("TOOK THE STAIRS") && results.AdviceText.Length > 0, "ui");
+
+            // a weak player's Graveyard Shift: several kinds of complaint, one tip for the biggest
+            for (int k = 0; k < 8; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);
+            root.StartShift(8, 1301);
+            runner = root.Runner;
+            runner.AutoBot = Bot.Human(7, 0f);
+            yield return Wait(1f);
+            runner.FastForward(runner.Sim.TimeLeft + 0.1f);
+            yield return Wait(6.5f);
+            sim = runner.Sim;
+            var biggest = Advice.Biggest(sim.ComplaintsBy);
+            Check($"weak Graveyard time card: '{results.CausesText}' / '{results.AdviceText}'",
+                results.Visible && sim.Complaints > 0 && biggest.HasValue && results.AdviceText == Advice.Tip(biggest.Value), "ui");
+            Shot("ui_results_causes");
+
             // auto-pause: losing focus, then the controller going away
             var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
             root.AutoPause = true;

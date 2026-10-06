@@ -23,6 +23,8 @@ namespace OneMoreFloor.Core
         public bool ClockRunning;
         public bool Ended, Fired, RushHour;
         public int Score, Streak, BestStreak, Complaints, DeliveredCount, Stops;
+        /// <summary>Complaints by cause, indexed by <see cref="Outcome"/>.</summary>
+        public readonly int[] ComplaintsBy = new int[System.Enum.GetValues(typeof(Outcome)).Length];
 
         int nextId = 1;
         readonly List<Card> history = new List<Card>();
@@ -560,6 +562,7 @@ namespace OneMoreFloor.Core
         void Complain(Passenger p, Outcome why)
         {
             Complaints++;
+            ComplaintsBy[(int)why]++;
             if (Streak > 0) Emit(new SimEvent { Type = Ev.StreakBroken, Value = Streak });
             Streak = 0;
             Emit(new SimEvent { Type = Ev.Complaint, Pid = p?.Id ?? 0, Value = Complaints, Aux = (int)why });

@@ -180,7 +180,8 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 | 10 | Overtime | Endless. It keeps getting busier until five complaints. |
 
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
-shows the new rule. The first time a rule matters in play, a one-line tip points at it. Progress, best scores and
+shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each
+complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
 settings are saved locally.
 
 ## Screenshots

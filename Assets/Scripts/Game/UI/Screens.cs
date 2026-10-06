@@ -444,7 +444,7 @@ namespace OneMoreFloor
     public sealed class ResultsScreen : UiScreen
     {
         GameRoot game;
-        TextMeshProUGUI stamp, tips, hint, bestStamp, bestLine;
+        TextMeshProUGUI stamp, tips, hint, causes, advice, bestStamp, bestLine;
         readonly TextMeshProUGUI[] statLabel = new TextMeshProUGUI[4], statValue = new TextMeshProUGUI[4];
         Image[] stars;
         UiButton retry, next;
@@ -466,46 +466,57 @@ namespace OneMoreFloor
         void Build()
         {
             Dim(Root, 0.65f);
-            paper = Deco.Panel("TimeCard", Root, new Vector2(760, 740), new Vector2(0, 60), false, Deco.Paper);
+            paper = Deco.Panel("TimeCard", Root, new Vector2(760, 800), new Vector2(0, 40), false, Deco.Paper);
             var ink = Palette.Hex(0x2A1E2E);
-            var band = UiKit.Image("Band", paper, UiKit.Rounded, Palette.Oxblood, new Vector2(720, 70), new Vector2(0, 316));
+            var band = UiKit.Image("Band", paper, UiKit.Rounded, Palette.Oxblood, new Vector2(720, 70), new Vector2(0, 346));
             var hdr = Deco.Label("Hdr", band.transform, "THE SHUFFLETON  ·  TIME CARD", 22, new Vector2(700, 40), Vector2.zero, TextAlignmentOptions.Center, Palette.Cream);
             hdr.characterSpacing = 10f;
-            stamp = UiKit.Text("Stamp", paper, "CLOCKED OUT", 64, Palette.Hex(0x2F6F6A), UiKit.Display, TextAlignmentOptions.Center, new Vector2(700, 90), new Vector2(0, 224));
+            stamp = UiKit.Text("Stamp", paper, "CLOCKED OUT", 64, Palette.Hex(0x2F6F6A), UiKit.Display, TextAlignmentOptions.Center, new Vector2(700, 90), new Vector2(0, 254));
             stamp.rectTransform.localRotation = Quaternion.Euler(0, 0, 2f);
-            tips = UiKit.Text("Tips", paper, "$0", 104, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(700, 120), new Vector2(0, 122));
-            stars = Stars.Row(paper, 3, 0, new Vector2(0, 18), 88, 18, true);
-            UiKit.Image("Rule", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -48));
+            tips = UiKit.Text("Tips", paper, "$0", 104, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(700, 120), new Vector2(0, 152));
+            stars = Stars.Row(paper, 3, 0, new Vector2(0, 48), 88, 18, true);
+            UiKit.Image("Rule", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -18));
             for (int i = 0; i < 4; i++)
             {
                 float x = -255 + i * 170;
-                statLabel[i] = UiKit.Text("L" + i, paper, "", 15, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 24), new Vector2(x, -74));
+                statLabel[i] = UiKit.Text("L" + i, paper, "", 15, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 24), new Vector2(x, -44));
                 statLabel[i].characterSpacing = 6f;
-                statValue[i] = UiKit.Text("V" + i, paper, "", 40, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 50), new Vector2(x, -112));
-                if (i > 0) UiKit.Image("Sep" + i, paper, null, new Color(0.5f, 0.35f, 0.2f, 0.25f), new Vector2(2, 60), new Vector2(x - 85, -94));
+                statValue[i] = UiKit.Text("V" + i, paper, "", 40, ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(170, 50), new Vector2(x, -82));
+                if (i > 0) UiKit.Image("Sep" + i, paper, null, new Color(0.5f, 0.35f, 0.2f, 0.25f), new Vector2(2, 60), new Vector2(x - 85, -64));
             }
-            UiKit.Image("Rule2", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -154));
-            hint = UiKit.Text("Hint", paper, "", 24, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 40), new Vector2(0, -192));
+            UiKit.Image("Rule2", paper, null, new Color(0.5f, 0.35f, 0.2f, 0.3f), new Vector2(620, 2), new Vector2(0, -124));
+            hint = UiKit.Text("Hint", paper, "", 24, Palette.Oxblood, UiKit.Body, TextAlignmentOptions.Center, new Vector2(700, 36), new Vector2(0, -150));
             hint.richText = true;
             hint.enableAutoSizing = true;
             hint.fontSizeMin = 16;
             hint.fontSizeMax = 24;
+            // what the complaints were about, and one tip for the biggest cause
+            causes = UiKit.Text("Causes", paper, "", 15, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(700, 26), new Vector2(0, -184));
+            causes.characterSpacing = 3f;
+            causes.enableAutoSizing = true;
+            causes.fontSizeMin = 11;
+            causes.fontSizeMax = 15;
+            advice = UiKit.Text("Advice", paper, "", 20, Palette.Hex(0x2A1E2E), UiKit.Body, TextAlignmentOptions.Top, new Vector2(640, 56), new Vector2(0, -226));
+            advice.textWrappingMode = TextWrappingModes.Normal;
             var stampInk = Palette.Hex(0xC8303A);
             stampInk.a = 0.88f;
-            bestBox = UiKit.Rect("BestStamp", paper, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -262), new Vector2(330, 84));
+            bestBox = UiKit.Rect("BestStamp", paper, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -318), new Vector2(330, 84));
             bestBox.localRotation = Quaternion.Euler(0, 0, -5f);
             var ring = UiKit.Image("Ring", bestBox, Deco.StampRing, stampInk, new Vector2(330, 84));
             Deco.Fill(ring.rectTransform);
             bestStamp = UiKit.Text("Best", bestBox, "NEW BEST!", 46, Palette.Hex(0xC8303A), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(310, 70), new Vector2(0, -2));
             bestStamp.characterSpacing = 8f;
-            bestLine = UiKit.Text("BestLine", paper, "", 18, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(600, 30), new Vector2(0, -258));
+            bestLine = UiKit.Text("BestLine", paper, "", 18, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(600, 30), new Vector2(0, -318));
             bestLine.characterSpacing = 6f;
-            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -410), new Vector2(460, 96), () => game.RestartShift(), true, 36);
-            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(380, -410), new Vector2(260, 74), () => game.ShowIntro(shift + 1), false, 26);
-            UiButton.Create(Root, "ROSTER", new Vector2(-380, -410), new Vector2(260, 74), () => game.ShowRoster(), false, 26);
+            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -420), new Vector2(460, 96), () => game.RestartShift(), true, 36);
+            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(380, -420), new Vector2(260, 74), () => game.ShowIntro(shift + 1), false, 26);
+            UiButton.Create(Root, "ROSTER", new Vector2(-380, -420), new Vector2(260, 74), () => game.ShowRoster(), false, 26);
             Primary = () => retry.Click();
             Back = () => game.ShowRoster();
         }
+
+        public string CausesText => causes.text;
+        public string AdviceText => advice.text;
 
         public void Setup(ShiftSim sim, bool best, bool latePass = false)
         {
@@ -529,9 +540,12 @@ namespace OneMoreFloor
             else if (latePass)
                 hint.text = $"<b>Late pass:</b> we'll pretend we didn't see that. <b>{ShiftCatalog.Get(shift + 1).Day}</b> is open.";
             else if (starCount < 3)
-                hint.text = $"Next star at <b>${sim.Def.Stars[starCount]:N0}</b>";
+                hint.text = $"Next star at <b>${sim.Def.Stars[starCount]:N0}</b>  ·  ${sim.Def.Stars[starCount] - sim.Score:N0} to go";
             else
                 hint.text = "A perfect shift. The Management is speechless.";
+            causes.text = Advice.Summary(sim.ComplaintsBy).ToUpperInvariant();
+            var biggest = Advice.Biggest(sim.ComplaintsBy);
+            advice.text = biggest.HasValue ? Advice.Tip(biggest.Value) : "";
             foreach (var s in stars) { s.color = Stars.Unlit(true); s.rectTransform.localScale = Vector3.one; }
             bestBox.gameObject.SetActive(false);
             int prev = SaveData.Current.Best[shift];
