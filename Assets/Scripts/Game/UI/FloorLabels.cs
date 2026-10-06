@@ -16,7 +16,7 @@ namespace OneMoreFloor
     public sealed class FloorLabels : MonoBehaviour
     {
         /// <summary>Canvas units the labels need left of the tower (widest label plus gaps).</summary>
-        public const float Gutter = 266f;
+        public const float Gutter = 300f;
         // the HUD card ends at x = 28 + 360 (Hud.Build); the panel is 400 wide, 30 in from the right (PanelUi.Create)
         const float HudRight = 400f, PanelLeftInset = 440f;
 
@@ -29,6 +29,7 @@ namespace OneMoreFloor
         sealed class Label
         {
             public RectTransform Rt;
+            public CanvasGroup Group;
             public Image Bg, Disc, Icon, Badge, Tag;
             public TextMeshProUGUI Name, Number, BadgeText, TagText;
             public FloorId Shown = (FloorId)(-1);
@@ -55,8 +56,8 @@ namespace OneMoreFloor
         {
             while (labels.Count <= i)
             {
-                var rt = UiKit.Rect("Floor" + labels.Count, root, Vector2.zero, Vector2.zero, new Vector2(1f, 0.5f), Vector2.zero, new Vector2(254, 40));
-                var bg = UiKit.Image("Bg", rt, UiKit.Pill, new Color(0.11f, 0.08f, 0.13f, 0.86f), new Vector2(254, 40));
+                var rt = UiKit.Rect("Floor" + labels.Count, root, Vector2.zero, Vector2.zero, new Vector2(1f, 0.5f), Vector2.zero, new Vector2(288, 44));
+                var bg = UiKit.Image("Bg", rt, UiKit.Pill, new Color(0.11f, 0.08f, 0.13f, 0.86f), new Vector2(288, 44));
                 bg.type = Image.Type.Sliced;
                 Deco.Fill(bg.rectTransform);
                 var disc = UiKit.Image("Disc", rt, UiKit.Circle, Palette.Brass, new Vector2(30, 30), new Vector2(-19, 0));
@@ -65,13 +66,13 @@ namespace OneMoreFloor
                 var icon = UiKit.Image("Icon", rt, null, Color.white, new Vector2(28, 28), new Vector2(-52, 0));
                 icon.rectTransform.anchorMin = icon.rectTransform.anchorMax = new Vector2(1f, 0.5f);
                 icon.preserveAspect = true;
-                var name = UiKit.Text("Name", rt, "", 24, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(174, 34));
+                var name = UiKit.Text("Name", rt, "", 28, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(206, 38));
                 name.rectTransform.anchorMin = name.rectTransform.anchorMax = new Vector2(1f, 0.5f);
                 name.rectTransform.pivot = new Vector2(1f, 0.5f);
                 name.rectTransform.anchoredPosition = new Vector2(-72, 0);
                 name.enableAutoSizing = true;
-                name.fontSizeMin = 16;
-                name.fontSizeMax = 24;
+                name.fontSizeMin = 20;
+                name.fontSizeMax = 28;
                 // guests waiting: a count on the pill's top-left corner, like the panel's buttons
                 var badge = UiKit.Image("Badge", rt, UiKit.Circle, Palette.Bad, new Vector2(26, 26));
                 badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = new Vector2(0f, 1f);
@@ -85,7 +86,7 @@ namespace OneMoreFloor
                 tag.rectTransform.anchoredPosition = new Vector2(-8, 4);
                 var tt = UiKit.Text("Left", tag.transform, "", 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(120, 24));
                 Deco.Fill(tt.rectTransform);
-                labels.Add(new Label { Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, BadgeText = bt, TagText = tt });
+                labels.Add(new Label { Group = rt.gameObject.AddComponent<CanvasGroup>(), Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, BadgeText = bt, TagText = tt });
             }
             return labels[i];
         }
@@ -121,6 +122,8 @@ namespace OneMoreFloor
                     l.Bg.color = Color.Lerp(new Color(0.11f, 0.08f, 0.13f, 0.88f), Palette.Floor(f), 0.22f);
                 }
                 l.Number.text = (slot + 1).ToString();
+                // floors crossing in a shuffle drag their labels through each other: fade them until they land
+                l.Group.alpha = Mathf.MoveTowards(l.Group.alpha, view.Moving ? 0.25f : 1f, dt * 6f);
 
                 // right edge of the label just left of the floor's left wall, at mid-height, wherever the floor is now
                 var anchor = view.Content.position + new Vector3(-Layout.HalfWidth - 0.9f, Layout.SlotHeight * 0.45f, Layout.FrontZ);

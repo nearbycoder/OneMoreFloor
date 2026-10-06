@@ -212,6 +212,9 @@ namespace OneMoreFloor
 
         public void SetHover(bool on) => hoverTarget = on ? 1f : 0f;
         public void Flash(float amount = 1f) => flash = Mathf.Max(flash, amount);
+        /// <summary>Mid shuffle, departure or arrival.</summary>
+        public bool Moving => mode != 0;
+
         public void Kick(float v) { if (!SaveData.Current.ReducedMotion) bounce.Velocity += v; }
 
         void Update()

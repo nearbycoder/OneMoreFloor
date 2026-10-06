@@ -280,12 +280,32 @@ namespace OneMoreFloor
             if (!Application.isEditor)
             {
                 var mode = save.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                int dw = Display.main.systemWidth, dh = Display.main.systemHeight;
                 if (Screen.fullScreenMode != mode)
                 {
-                    if (save.Fullscreen) Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, mode);
-                    else Screen.SetResolution(1600, 900, mode);
+                    if (save.Fullscreen) Screen.SetResolution(dw, dh, mode);
+                    else { var w = WindowSize(dw, dh); Screen.SetResolution(w.x, w.y, mode); }
+                }
+                else if (!save.Fullscreen && dw > 0 && (Screen.width > dw * 0.95f || Screen.height > dh * 0.95f))
+                {
+                    // a window that doesn't fit the display (a small laptop screen, or a size remembered from a bigger one)
+                    var w = WindowSize(dw, dh);
+                    Screen.SetResolution(w.x, w.y, mode);
                 }
             }
+        }
+
+        /// <summary>The windowed size: 1600x900, shrunk to 90% of the display when that's smaller, always 16:9.</summary>
+        public static Vector2Int WindowSize(int displayW, int displayH)
+        {
+            int w = Mathf.Min(1600, Mathf.FloorToInt(displayW * 0.9f));
+            int h = Mathf.RoundToInt(w * 9f / 16f);
+            if (h > displayH * 0.9f)
+            {
+                h = Mathf.FloorToInt(displayH * 0.9f);
+                w = Mathf.RoundToInt(h * 16f / 9f);
+            }
+            return new Vector2Int(w, h);
         }
 
         public Coach Coach { get; private set; }

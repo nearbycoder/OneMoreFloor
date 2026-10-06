@@ -186,7 +186,7 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally. Settings cover volume, fullscreen, screen shake, the shuffle forecast and **reduced
+settings are saved locally. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast and **reduced
 motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
 
 ## Screenshots
