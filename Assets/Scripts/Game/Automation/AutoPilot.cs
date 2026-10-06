@@ -25,6 +25,7 @@ namespace OneMoreFloor
         bool padOnly, uiOnly;
         int frames;
         float frameTime, worst;
+        bool popupShot;
 
         public static void TryStart(GameRoot root)
         {
@@ -112,6 +113,7 @@ namespace OneMoreFloor
                 root.BeginShift(k);
                 var runner = root.Runner;
                 runner.AutoBot = Bot.Decent((ulong)(k + 11));
+                runner.Hud.WorstPopupOverlap = 0f;
                 Time.timeScale = speed;
                 float played = 0f;
                 float limit = k == 0 ? 200f : 60f;  // Monday plays to the bell; others get a minute of game time
@@ -121,6 +123,15 @@ namespace OneMoreFloor
                     yield return null;
                     played += Time.unscaledDeltaTime * speed;
                     if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
+                    if (!popupShot && k >= 3 && runner.Hud.PopupCount >= 4)
+                    {
+                        // a busy reward moment, to see the popups laid out
+                        popupShot = true;
+                        Time.timeScale = 0f;
+                        yield return null;
+                        Shot($"popups_{def.Id}");
+                        Time.timeScale = speed;
+                    }
                     if (played >= nextShot)
                     {
                         Time.timeScale = 0f;
@@ -147,6 +158,9 @@ namespace OneMoreFloor
                 bool ok = sim.Ended && sim.Score > 0 && sim.DeliveredCount > 0;
                 Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {def.Id}: score {sim.Score} stars {sim.StarCount} delivered {sim.DeliveredCount} complaints {sim.Complaints} stops {sim.Stops} fired {sim.Fired}");
                 if (!ok) errors++;
+                // popups never draw over each other (a few px of glyph-box contact is allowed)
+                float overlap = runner.Hud.WorstPopupOverlap;
+                Check($"{def.Id}: worst popup overlap {overlap:0.0} px" + (overlap > 0f ? $" ({runner.Hud.WorstPopupPair})" : ""), overlap <= 4f, "popups");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }
 

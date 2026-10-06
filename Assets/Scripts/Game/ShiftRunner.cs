@@ -52,7 +52,8 @@ namespace OneMoreFloor
         float acc;
         float endTimer = -1f;
         bool endFired;
-        int lastGroupStop = -1, groupCount;
+        int lastGroupStop = -1, groupCount, groupTips;
+        readonly Dictionary<string, int> groupTags = new Dictionary<string, int>();
 
         public PassengerView ViewOf(int pid) => views.TryGetValue(pid, out var v) && v ? v : null;
 
@@ -637,6 +638,8 @@ namespace OneMoreFloor
                     Building[e.Floor].Flash(0.8f);
                     lastGroupStop = Sim.Stops;
                     groupCount = 0;
+                    groupTips = 0;
+                    groupTags.Clear();
                     break;
                 case Ev.QuickStop:
                     Car.Bump(-0.05f);
@@ -681,18 +684,28 @@ namespace OneMoreFloor
                     var p = Sim.Find(e.Pid);
                     Vector3 at = HeadOf(e.Pid, Car.transform.position);
                     if (v) v.PlayExit(Building[e.Floor].Content, -1f);
-                    Hud.PopupAt(at, "+$" + e.Value.ToString("N0"), Palette.Hex(0xFFD23F), 42f + Mathf.Min(20f, e.Value / 60f));
+                    // one running total per stop, not a "+$" per guest stacked on top of each other
+                    groupTips += e.Value;
+                    Hud.PopupAt(at, "+$" + groupTips.ToString("N0"), Palette.Hex(0xFFD23F), 42f + Mathf.Min(20f, groupTips / 60f), 1.3f, "tips" + lastGroupStop);
                     Hud.PunchScore();
                     var flags = (DeliveryFlags)int.Parse(e.Text ?? "0");
                     string extra = (flags & DeliveryFlags.Express) != 0 ? "EXPRESS!" :
                                    (flags & DeliveryFlags.JustInTime) != 0 ? "JUST IN TIME!" :
                                    (flags & DeliveryFlags.Rescued) != 0 ? "RESCUED!" :
                                    (flags & DeliveryFlags.Sunkissed) != 0 ? "SUNKISSED!" : null;
-                    if (extra != null) Hud.PopupAt(at + Vector3.up * 1.1f, extra, Palette.Hex(0x9BE15D), 30f, 1.5f);
+                    if (extra != null)
+                    {
+                        // two swimmers rescued at one stop read "RESCUED! ×2", not the same word twice
+                        groupTags[extra] = groupTags.TryGetValue(extra, out int seen) ? seen + 1 : 1;
+                        string tag = groupTags[extra] > 1 ? $"{extra} ×{groupTags[extra]}" : extra;
+                        Hud.PopupAt(at + Vector3.up * 1.1f, tag, Palette.Hex(0x9BE15D), 30f, 1.5f, extra + lastGroupStop);
+                    }
                     groupCount++;
-                    if (groupCount == 2) Hud.PopupAt(FloorPoint(e.Floor, -3f), "DOUBLE DROP!", Palette.Hex(0xFF8A3D), 40f, 1.4f);
-                    else if (groupCount == 3) Hud.PopupAt(FloorPoint(e.Floor, -3f), "TRIPLE DROP!", Palette.Hex(0xFF5DA2), 46f, 1.5f);
-                    else if (groupCount == 4) Hud.PopupAt(FloorPoint(e.Floor, -3f), "FULL HOUSE!", Palette.Hex(0xC77DFF), 52f, 1.6f);
+                    // one drop banner per stop that upgrades as more guests get off
+                    string drop = "drop" + lastGroupStop;
+                    if (groupCount == 2) Hud.PopupAt(FloorPoint(e.Floor, -3f), "DOUBLE DROP!", Palette.Hex(0xFF8A3D), 40f, 1.4f, drop);
+                    else if (groupCount == 3) Hud.PopupAt(FloorPoint(e.Floor, -3f), "TRIPLE DROP!", Palette.Hex(0xFF5DA2), 46f, 1.5f, drop);
+                    else if (groupCount == 4) Hud.PopupAt(FloorPoint(e.Floor, -3f), "FULL HOUSE!", Palette.Hex(0xC77DFF), 52f, 1.6f, drop);
                     Car.Cheer();
                     break;
                 }

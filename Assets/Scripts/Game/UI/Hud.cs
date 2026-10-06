@@ -250,18 +250,52 @@ namespace OneMoreFloor
             public TextMeshProUGUI Text;
             public Vector3 World;
             public float T, Dur, Rise;
+            /// <summary>Height risen so far (never sinks back when an update restarts its life) and the pop-in clock.</summary>
+            public float Risen, PopT;
+            /// <summary>Canvas size the layout reserves (the text's preferred size plus its outline).</summary>
+            public Vector2 Size;
+            /// <summary>The space it takes this frame (its size, grown while it pops in).</summary>
+            public Vector2 Box;
+            /// <summary>Extra height that keeps it clear of older popups (eases back down when they go).</summary>
+            public float Lift;
+            public string Key;
+            public Vector2 Pos;
         }
 
-        public void PopupAt(Vector3 world, string text, Color color, float size = 40f, float dur = 1.3f)
+        const float PopupGap = 6f;
+
+        /// <summary>
+        /// A floating word or amount over the tower. Popups never draw over each other: each one is lifted clear of
+        /// the ones already showing. With a <paramref name="key"/>, a popup with the same key that's still showing is
+        /// updated in place (and pops again) instead of stacking a new one, e.g. a stop's running tip total.
+        /// </summary>
+        public void PopupAt(Vector3 world, string text, Color color, float size = 40f, float dur = 1.3f, string key = null)
         {
             if (Quiet) return;
-            foreach (var other in popups)
-                if (other.T < 0.35f && Vector3.Distance(other.World, world) < 1.6f) world += Vector3.up * 0.9f;
+            if (key != null)
+                foreach (var other in popups)
+                    if (other.Key == key && other.Text && other.T < 0.75f)
+                    {
+                        other.Text.text = text;
+                        other.Text.color = color;
+                        other.Text.fontSize = size;
+                        other.Size = PopupSize(other.Text, text);
+                        other.T = 0f;          // a full life from the latest update
+                        other.Dur = dur;
+                        other.PopT = 0.35f;    // and a smaller punch than a new popup's
+                        return;
+                    }
             var t = UiKit.Text("Popup", popupLayer, text, size, color, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(500, size * 1.3f));
             t.outlineWidth = 0.22f;
             t.outlineColor = new Color32(30, 20, 34, 255);
             t.rectTransform.anchorMin = t.rectTransform.anchorMax = Vector2.zero;
-            popups.Add(new Popup { Text = t, World = world, Dur = dur, Rise = 70f });
+            popups.Add(new Popup { Text = t, World = world, Dur = dur, Rise = 70f, Size = PopupSize(t, text), Key = key });
+        }
+
+        static Vector2 PopupSize(TextMeshProUGUI t, string text)
+        {
+            var v = t.GetPreferredValues(text);
+            return new Vector2(Mathf.Min(v.x, 500f) + t.fontSize * 0.25f, v.y + t.fontSize * 0.1f);
         }
 
         void UpdatePopups(float dt)
@@ -270,14 +304,86 @@ namespace OneMoreFloor
             {
                 var p = popups[i];
                 p.T += dt / p.Dur;
-                if (p.T >= 1f || !p.Text) { if (p.Text) Destroy(p.Text.gameObject); popups.RemoveAt(i); continue; }
+                if (p.T >= 1f || !p.Text) { if (p.Text) Destroy(p.Text.gameObject); popups.RemoveAt(i); }
+            }
+            // oldest first: each popup sits where it would be, then is lifted until it clears every older one
+            for (int i = 0; i < popups.Count; i++)
+            {
+                var p = popups[i];
                 var screen = worldCam.WorldToScreenPoint(p.World);
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);
-                p.Text.rectTransform.anchoredPosition = local + canvasRt.rect.size * 0.5f + Vector2.up * (p.Rise * Ease.OutCubic(p.T) + 20f);
-                float s = p.T < 0.15f ? Ease.OutBack(p.T / 0.15f, 3f) : 1f;
+                p.Risen = Mathf.Max(p.Risen, p.Rise * Ease.OutCubic(p.T));
+                var basePos = local + canvasRt.rect.size * 0.5f + Vector2.up * (p.Risen + 20f);
+                p.PopT = Mathf.Min(1f, p.PopT + dt / (0.15f * p.Dur));
+                float s = p.PopT < 1f ? Ease.OutBack(p.PopT, 3f) : 1f;
+                p.Box = p.Size * Mathf.Max(1f, s);   // room for the pop-in overshoot too
+                // jump up at once (so it never overlaps), drift back down once the way is clear, but never into another
+                float clear = LiftClear(i, basePos, 0f);
+                float eased = clear >= p.Lift ? clear : Mathf.MoveTowards(p.Lift, clear, 240f * dt);
+                p.Lift = LiftClear(i, basePos, eased);
+                p.Pos = basePos + Vector2.up * p.Lift;
+                p.Text.rectTransform.anchoredPosition = p.Pos;
                 p.Text.rectTransform.localScale = Vector3.one * s;
                 p.Text.alpha = p.T > 0.7f ? 1f - (p.T - 0.7f) / 0.3f : 1f;
             }
+            MeasurePopupOverlap();
+        }
+
+        /// <summary>The smallest lift, at or above <paramref name="from"/>, that clears every popup older than popup i.</summary>
+        float LiftClear(int i, Vector2 basePos, float from)
+        {
+            var p = popups[i];
+            // and never below the bottom of the screen (the close-up can put the car's floor there)
+            float need = Mathf.Max(from, PopupGap + p.Box.y * 0.5f - basePos.y);
+            for (int pass = 0; pass <= i; pass++)
+            {
+                bool moved = false;
+                for (int j = 0; j < i; j++)
+                {
+                    var o = popups[j];
+                    var at = basePos + Vector2.up * need;
+                    float halfW = (p.Box.x + o.Box.x) * 0.5f, halfH = (p.Box.y + o.Box.y) * 0.5f + PopupGap;
+                    if (Mathf.Abs(at.x - o.Pos.x) >= halfW || Mathf.Abs(at.y - o.Pos.y) >= halfH) continue;
+                    need = o.Pos.y + halfH - basePos.y;
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            return need;
+        }
+
+        /// <summary>Self-test: the worst overlap seen between two clearly visible popups' drawn text, in canvas
+        /// units (the smaller of the x and y overlaps, so a value means the glyph boxes really cross).</summary>
+        public float WorstPopupOverlap { get; set; }
+        public int PopupCount => popups.Count;
+        public string WorstPopupPair { get; private set; }
+
+        void MeasurePopupOverlap()
+        {
+            for (int i = 0; i < popups.Count; i++)
+            {
+                var a = popups[i];
+                if (a.Text.alpha < 0.35f) continue;
+                var ra = DrawnRect(a);
+                for (int j = i + 1; j < popups.Count; j++)
+                {
+                    var b = popups[j];
+                    if (b.Text.alpha < 0.35f) continue;
+                    var rb = DrawnRect(b);
+                    float ox = Mathf.Min(ra.xMax, rb.xMax) - Mathf.Max(ra.xMin, rb.xMin);
+                    float oy = Mathf.Min(ra.yMax, rb.yMax) - Mathf.Max(ra.yMin, rb.yMin);
+                    float o = Mathf.Min(ox, oy);
+                    if (o > WorstPopupOverlap) { WorstPopupOverlap = o; WorstPopupPair = a.Text.text + " / " + b.Text.text; }
+                }
+            }
+        }
+
+        static Rect DrawnRect(Popup p)
+        {
+            var b = p.Text.textBounds;
+            float s = p.Text.rectTransform.localScale.x;
+            var c = p.Pos + (Vector2)b.center * s;
+            return new Rect(c - (Vector2)b.size * s * 0.5f, (Vector2)b.size * s);
         }
 
         // ---------------------------------------------------------------- frame
