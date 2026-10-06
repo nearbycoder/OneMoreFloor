@@ -208,19 +208,30 @@ cd OneMoreFloor-v0.1.0-linux-x86_64
 ```
 
 It needs 64-bit Linux with a Vulkan- or OpenGL 4.5-capable GPU. Saves go to
-`~/.config/unity3d/Nearby/One More Floor/`. There are no Windows or macOS builds yet, but the Unity project builds
-for them (see below).
+`~/.config/unity3d/Nearby/One More Floor/`.
+
+**macOS:** the project now builds a universal (Intel and Apple silicon) app, but it hasn't been released or run on a
+Mac. It's unsigned and un-notarized, so macOS blocks it at first (the zip's README.txt explains how to open it
+anyway). **Windows:** the build entry point exists (`Tools/unity.sh build-windows`), but no Windows build has been
+made.
 
 ## Build from source
 
-**Requirements:** Unity **6000.6.2f1** (Unity 6.6) with Linux Build Support, Blender **4.5 LTS** on your `PATH`
-(only to regenerate models and audio), and `ffmpeg` (only for the trailer and media).
+**Requirements:** Unity **6000.6.2f1** (Unity 6.6) with Linux Build Support (and Mac or Windows Build Support for
+those targets), Blender **4.5 LTS** on your `PATH` (only to regenerate models and audio), and `ffmpeg` (only for
+the trailer and media).
 
 ```sh
 git clone https://github.com/nearbycoder/OneMoreFloor.git && cd OneMoreFloor
 Tools/unity.sh build-linux        # batch build -> Builds/Linux/OneMoreFloor.x86_64
 Tools/play.sh                     # run it (1600x900 window, native Wayland when available)
+Tools/unity.sh build-mac          # universal macOS app -> Builds/Mac/OneMoreFloor.app (unsigned)
+Tools/unity.sh build-windows      # Builds/Windows/OneMoreFloor.exe (needs Windows Build Support)
+Tools/release.sh                  # build Linux then macOS, and write versioned zips + .sha256 to Builds/Release
 ```
+
+`Tools/release.sh` takes the version from the project settings, never overwrites an existing zip and uploads
+nothing. Set `OUT=dir` to package somewhere else, and `SKIP_BUILD=1` to package the builds you already have.
 
 `Tools/unity.sh` looks for the editor at `~/Unity/Hub/Editor/6000.6.2f1/Editor/Unity`; set `UNITY=/path/to/Unity`
 to point it elsewhere. Or open the folder in Unity Hub and use **File → Build Profiles**. The `Main` scene holds a
@@ -359,7 +370,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Small guests at full zoom-out.** With nine floors on screen, guests are about 50–60 px tall at 1080p. The
   close-up zoom roughly doubles that.
-- **Linux only** for now. The project should build for Windows and macOS, but those builds haven't been made or
-  tested.
+- **Linux is the only released platform.** A universal macOS app builds (both architectures confirmed with `file`,
+  bundle id `com.nearbycoder.onemorefloor`), but it has never been run on a Mac, and it's unsigned and
+  un-notarized. No Windows build has been made: this machine's editor doesn't have Windows Build Support.
 - **No license yet.** One hasn't been chosen, so the default "all rights reserved" applies until a `LICENSE` file
   is added. The fonts keep their own OFL licenses.
