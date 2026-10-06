@@ -210,3 +210,55 @@ Still open: Daily Overtime (#10), Relaxed mode (#11), larger guests by art layou
 module), WebGL (#14), a listening pass (#15) and a license (#16). Still for the owner: signing/notarizing and
 publishing the macOS zip, and a version bump before any new release (`Tools/release.sh` uses the project's
 `bundleVersion`, still 0.1.0, and won't overwrite the published 0.1.0 zip).
+
+## Round 2 scope (2026-10-06, branch `improvements-2`)
+
+Picked from the open list (#10, #11, #12) plus two things round 1 left short. Every item ends with the full check
+suite passing: `sim.sh fuzz`, `unity.sh test`, `build-linux`, and `autopilot.sh` including the `ui` flow checks.
+Screenshots go to `docs/media/improvements/round2/`, and automation output goes to the gitignored `Logs/` (not the
+shared `/tmp`).
+
+### S1. Finish R3: label size and window size
+
+Round 1 measured label caps at about 16 px against an 18 px target. R3's scope also promised to clamp the windowed
+size to the display, and that **was not done**. Round 1's report missed it.
+- Labels: larger type and a slightly wider gutter. Long names may shrink a little, but caps stay at 18 px or more for
+  names up to 10 letters at 1920×1080.
+- Window: the windowed size is clamped to 90% of the display, keeping 16:9, both at startup and when leaving
+  fullscreen.
+- **Verify:** a crop of a short and a long label from a 1920×1080 Graveyard capture, with caps measured in pixels.
+  An EditMode test for the size rule on 1366×768, 1280×800, 1920×1080 and 3840×2160. Tower and labels don't
+  overlap the HUD at 1440×900.
+
+### S2. Relaxed shifts (#11)
+
+An assist toggle in Settings for players who keep getting fired.
+- Guests' patience lasts 1.5× longer, and five complaints don't end the shift. Overtime ignores it, because it only
+  ends at five complaints.
+- Relaxed runs show a RELAXED stamp on the time card and don't save stars or best scores. Reaching the 1★ score in
+  a relaxed run opens the next shift (a "relaxed clear", shown on the roster), the same way a star does.
+- The intro card says when Relaxed is on. After a second firing on the same shift, the time card suggests it.
+- **Verify:** EditMode tests (a relaxed sim is never fired, patience is 1.5×, relaxed clears unlock, stars aren't
+  saved). A `sim.sh relaxed` table: modelled new players are never fired, and their relaxed 1★ rate is reported. An
+  autopilot `ui` check that plays a relaxed shift in the built game. Screenshots of the intro, time card and roster.
+
+### S3. Daily Overtime (#10)
+
+A date-seeded Overtime with its own best, for a reason to come back.
+- Once Overtime is open, its intro card gets a **TODAY'S SHIFT** button. Every run that day uses the same seed: the
+  same building, deck and opening guests. Later spawns depend on how you play.
+- The save keeps today's best and your best day. The time card shows "Today's shift · Oct 6" and today's best.
+- **Verify:** EditMode tests (the seed is stable for a date and differs between dates; two sims with today's seed
+  match tick for tick under the same bot; the daily record saves). An autopilot `ui` check plays the daily twice
+  and compares the opening building and first guests. Screenshots.
+
+### S4. Bigger guests at full zoom-out (#12), only if it holds up
+
+Scale guest models up (about 12–15%) without changing the floor art, and check queues, the car with four riders,
+the Mirror Mover's two spaces and the door frame.
+- **Verify:** autopilot captures of Graveyard at rush hour and a full car, with guest height measured against round 1.
+  If guests clip each other, the car or the doors in a way that reads badly, this is reverted and reported, not
+  landed half-done.
+
+Not this round: Windows (module), WebGL, the audio listening pass, signing, hosting and the license (owner), and
+regenerating the trailer and README screenshots (heavy, and they're still honest about showing 0.1.0).
