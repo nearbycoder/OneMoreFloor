@@ -38,6 +38,10 @@ namespace OneMoreFloor
             QualitySettings.vSyncCount = 0;
             double hz = Screen.currentResolution.refreshRateRatio.value;
             Application.targetFrameRate = Mathf.Clamp((int)System.Math.Round(hz > 1 ? hz : 60), 60, 240);
+            // recordings and self-tests run unattended, often without focus
+            AutoPause = System.Array.IndexOf(args, "-omfAutopilot") < 0 && System.Array.IndexOf(args, "-omfDemo") < 0
+                        && System.Array.IndexOf(args, "-omfTrailer") < 0 && !(Application.isEditor && Application.isBatchMode);
+            InputSystem.onDeviceChange += OnDeviceChange;
             Controls.Ensure(gameObject);
             BuildWorld();
             BuildUi();
@@ -180,12 +184,40 @@ namespace OneMoreFloor
             save.Save();
         }
 
-        public void Pause()
+        public void Pause() => Pause("");
+
+        void Pause(string reason)
         {
             if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible) return;
             Runner.Paused = true;
+            pause.Reason = reason;
             pause.Show();
             SaveZoom();
+        }
+
+        /// <summary>
+        /// Pause a running shift when the window loses focus or the controller being played with goes away, so
+        /// patience never drains while the player can't act. Recordings and the autopilot turn it off.
+        /// </summary>
+        public bool AutoPause { get; set; }
+
+        void OnApplicationFocus(bool focus)
+        {
+            if (!focus) AutoPauseFor("Paused while you were away");
+        }
+
+        void OnDestroy() => InputSystem.onDeviceChange -= OnDeviceChange;
+
+        void OnDeviceChange(InputDevice device, InputDeviceChange change)
+        {
+            if (device is Gamepad && Controls.Pad && (change == InputDeviceChange.Removed || change == InputDeviceChange.Disconnected))
+                AutoPauseFor("Controller disconnected");
+        }
+
+        public void AutoPauseFor(string reason)
+        {
+            if (!AutoPause || Runner == null || Runner.Attract || results.Visible) return;
+            Pause(reason);
         }
 
         public void Resume()

@@ -82,6 +82,8 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, restart, settings, quit to roster) |
 
+The shift also pauses itself if the window loses focus or the controller you're playing with disconnects.
+
 ### Gamepad (or arrow keys)
 
 | Pad | Keys | Action |

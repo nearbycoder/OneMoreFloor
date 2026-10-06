@@ -359,6 +359,15 @@ namespace OneMoreFloor
 
     public sealed class PauseScreen : UiScreen
     {
+        TextMeshProUGUI reason;
+
+        /// <summary>Why the game paused on its own ("" when the player paused).</summary>
+        public string Reason
+        {
+            get => reason.text;
+            set => reason.text = string.IsNullOrEmpty(value) ? "" : value.ToUpperInvariant();
+        }
+
         public static PauseScreen Create(Transform parent, GameRoot game)
         {
             var rt = UiKit.Stretch("Pause", parent);
@@ -367,6 +376,8 @@ namespace OneMoreFloor
             Dim(rt, 0.7f);
             var card = Card(rt, new Vector2(560, 600), Vector2.zero);
             Heading(card, "Paused", 214, 460, 80);
+            s.reason = Deco.Label("Reason", card, "", 17, new Vector2(480, 26), new Vector2(0, 268), TextAlignmentOptions.Center);
+            s.reason.characterSpacing = 6f;
             var resume = UiButton.Create(card, "RESUME", new Vector2(0, 86), new Vector2(420, 86), () => game.Resume(), true, 34);
             UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -12), new Vector2(420, 68), () => game.RestartShift(), false, 25);
             UiButton.Create(card, "SETTINGS", new Vector2(0, -94), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);

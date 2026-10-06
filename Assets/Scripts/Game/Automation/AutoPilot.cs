@@ -213,6 +213,32 @@ namespace OneMoreFloor
             yield return Wait(1.2f);
             Shot("ui_roster_late_pass");
             Check("the title offers Wednesday next", save.NextShift() == 2, "ui");
+
+            // auto-pause: losing focus, then the controller going away
+            var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
+            root.AutoPause = true;
+            root.StartShift(0, 77);
+            runner = root.Runner;
+            runner.AutoBot = Bot.Decent(5);
+            yield return Wait(3f);
+            root.SendMessage("OnApplicationFocus", false);
+            yield return null;
+            float t0 = runner.Sim.Time;
+            yield return Wait(1.5f);
+            Check("losing focus pauses the shift and stops the clock", pause.Visible && runner.Paused && runner.Sim.Time == t0, "ui");
+            Shot("ui_pause_focus");
+            root.Resume();
+            yield return Wait(0.6f);
+            Check("resume carries on from the same moment", !runner.Paused && runner.Sim.Time > t0, "ui");
+            yield return Pad("rb");
+            PadSim.Unplug();
+            yield return Wait(0.6f);
+            Check("unplugging the controller in use pauses", pause.Visible && runner.Paused && pause.Reason.Contains("CONTROLLER"), "ui");
+            Shot("ui_pause_pad");
+            root.Resume();
+            root.AutoPause = false;
+            root.QuitShift();
+            yield return Wait(1f);
         }
 
         IEnumerator Pad(string script, float gap = 0.35f)

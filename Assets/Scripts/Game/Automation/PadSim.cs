@@ -32,6 +32,14 @@ namespace OneMoreFloor
             return instance;
         }
 
+        /// <summary>Pull the virtual pad out (a controller disconnect). The next Play plugs a new one in.</summary>
+        public static void Unplug()
+        {
+            if (instance == null) return;
+            DestroyImmediate(instance.gameObject);
+            instance = null;
+        }
+
         public static void Play(string script, float gap = 0.3f)
         {
             var s = Get();
