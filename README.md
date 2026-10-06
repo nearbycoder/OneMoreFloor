@@ -155,6 +155,9 @@ star on the Graveyard Shift).
 Hover a guest to see who they are and where they're going. Hover a floor to preview the trip: every stop on the way
 when a kid is aboard, where sunlight will hit a vampire or sun a plant, and how many guests get off.
 
+Labels beside the tower name every floor, with its slot number, how many guests are waiting there and, when it's
+leaving the building, how many stops it has left. They follow the floors as the building shuffles.
+
 ### Music that panics
 
 The gameplay track is five stems that play in sync: a bossa bed, a vibraphone melody, nervous strings with a
@@ -368,8 +371,11 @@ gamepad support), and it passes its automated checks. Honest caveats:
   names.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
-- **Small guests at full zoom-out.** With nine floors on screen, guests are about 50–60 px tall at 1080p. The
-  close-up zoom roughly doubles that.
+- **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
+  floors it's about 25% bigger than in 0.1.0 (floors 116 px apart at 1080p, up from 92, or 112 px with the gamepad
+  prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
+  checked at 1920×1080, 1440×900 and 2560×1080, not on other screens. The README's older screenshots and the
+  trailer show the 0.1.0 framing.
 - **Linux is the only released platform.** A universal macOS app builds (both architectures confirmed with `file`,
   bundle id `com.nearbycoder.onemorefloor`), but it has never been run on a Mac, and it's unsigned and
   un-notarized. No Windows build has been made: this machine's editor doesn't have Windows Build Support.

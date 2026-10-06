@@ -64,13 +64,14 @@ namespace OneMoreFloor
         void Shot(string name)
         {
             Directory.CreateDirectory(outDir);
-            Shots.Capture(Path.Combine(outDir, $"{shots++:00}_{name}.png"), 1920, 1080);
+            // at the window's own size, so other aspect ratios are captured as players see them
+            Shots.Capture(Path.Combine(outDir, $"{shots++:00}_{name}.png"), Screen.width, Screen.height);
         }
 
         IEnumerator Start()
         {
             var root = GameRoot.Instance;
-            Debug.Log("[AutoPilot] start -> " + outDir);
+            Debug.Log($"[AutoPilot] start -> {outDir} ({Screen.width}x{Screen.height})");
             // unlock everything in the ephemeral save so every shift can be visited
             var save = SaveData.Current;
             for (int k = 0; k < ShiftCatalog.All.Count; k++) save.Stars[k] = 0;
@@ -238,8 +239,9 @@ namespace OneMoreFloor
             // auto-pause: losing focus, then the controller going away
             var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
             root.AutoPause = true;
-            root.StartShift(0, 77);
+            root.StartShift(8, 77); // nine floors: the tightest fit for the prompt strip
             runner = root.Runner;
+            runner.Rig.Zoom = 0f; // the whole tower, as the prompt-strip framing is meant to be checked
             runner.AutoBot = Bot.Decent(5);
             yield return Wait(3f);
             root.SendMessage("OnApplicationFocus", false);

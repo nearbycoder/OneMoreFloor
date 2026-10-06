@@ -102,9 +102,11 @@ namespace OneMoreFloor
 
             Panel = PanelUi.Create(transform, runner);
             Cursor = HudCursor.Create(transform, runner, worldCam, canvasRt);
+            FloorLabels = FloorLabels.Create(transform, runner, worldCam, canvasRt);
         }
 
         public HudCursor Cursor { get; private set; }
+        public FloorLabels FloorLabels { get; private set; }
         /// <summary>Recordings: no popups, banners or flying coins while the simulation is skipped ahead.</summary>
         public bool Quiet;
 
@@ -550,6 +552,7 @@ namespace OneMoreFloor
             UpdateCoins(dt);
             UpdateRoutePreview();
             UpdateTooltip();
+            FloorLabels.Tick(dt);
             Cursor.Tick();
             Panel.Tick(dt);
         }
