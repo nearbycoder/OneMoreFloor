@@ -643,3 +643,60 @@ Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (
 (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
 trailer, poster and teaser GIF (still 0.1.0). Nobody has played rounds 4–6. In particular, whether the forecast tags
 help or clutter the labels, and whether STOP? reads as a what-if, need a person.
+
+## Round 7 scope (2026-10-07, branch `improvements-7`)
+
+The ranked list's remaining items (#12–#16) still wait on the owner or on human ears, and guest scale stays
+untouched. These come from a fresh look at `a515756`: `build-linux` passes and the full autopilot passes (numbers in
+Round 7 results). Three things a player meets that nobody has covered yet:
+
+- **Frame rate.** Round 6 left it open: full autopilot runs averaged 23–32 fps under shared GPU load. The game
+  renders at native resolution with 4× MSAA, a 4096 px soft shadow map and bloom, and nothing can be turned down. This
+  machine's display is 3072×1728, so fullscreen draws 2.6× the pixels of the 1920×1080 window the autopilot uses.
+- **The payout is hidden at its best moment.** At a group drop, the flying coins burst from where the tip pops up and
+  draw over it (`triple-drop.jpg`: "+$2,605" is barely legible). Round 3 noted this and left it.
+- **Arrow-key play and most menus are only checked by hand or by unit tests.** Round 6's arrow-key controls panel is
+  unit-tested only, nothing has pressed a real Esc key, and round 4 left the click hit test covering only the pause
+  card, guide and roster.
+
+Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow
+checks) passing, and the real `save.json` and `prefs` hashing the same before and after every run. Screenshots go to
+`docs/media/improvements/round7/`. Load average is noted with every timing.
+
+### K1. A GRAPHICS setting
+
+Settings gets a **GRAPHICS** row: HIGH (today's look, the default), BALANCED (2× MSAA, 2048 px shadows) and LOW (no
+MSAA, 1024 px hard shadows, no bloom, 0.8 render scale). It's saved, applied at once, and works with mouse, arrow keys
+and pad. It changes a runtime copy of the pipeline asset, so the project's asset is never modified.
+- **Acceptance:** LOW renders the same 30 s Graveyard bot run at least 1.4× faster than HIGH (PerfProbe, same window,
+  same load band) at 1920×1080 and at the display's full 3072×1728. HIGH matches the old frame time within noise. In
+  the built game, LOW really changes the running pipeline and HIGH puts it back. The setting survives a save round
+  trip, and an old save loads as HIGH. If the 0.8 render scale blurs the HUD text, LOW keeps full resolution and says
+  so.
+- **Verify:** EditMode tests (save round trip, clamping, presets only get cheaper), an autopilot `ui` check in the
+  built game, PerfProbe tables, and real-frame captures of each level compared side by side.
+
+### K2. Coins never hide the tip
+
+The flying coins move to their own layer under the popups, so they pass behind the tip's text instead of over it.
+- **Acceptance:** on every shift of the full autopilot, the frames where a coin crosses popup text are counted, and on
+  none of them is a coin drawn on top.
+- **Verify:** the per-frame check, and the README's `triple-drop.jpg` regenerated from the same seed and frame
+  (before/after).
+
+### K3. Arrow keys and every menu, checked in the built game
+
+A virtual keyboard (`KeySim`, like `PadSim`) plays a shift: Up/Down picks floors, Enter sends the car, **Esc** pauses,
+the controls panel reads ARROW KEYS, Down + Enter opens the guide, Esc closes it, and Esc resumes. The click hit test
+is extended to the title, the intro card, the settings card (with the new GRAPHICS row) and the time card.
+- **Acceptance:** all of these pass in the full autopilot. A real bug found this way gets fixed, not worked around in
+  the test.
+- **Verify:** the autopilot `ui` output and a capture of the pause card in arrow-key mode.
+
+### K4. README, status and results
+
+The README's settings line and tests section, "Status and known issues" and this file get updated to match.
+`triple-drop.jpg` is regenerated if K2 changes it. Frame rate is reported per graphics level, with the load.
+
+Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
+signing, hosting, releases and the trailer.
