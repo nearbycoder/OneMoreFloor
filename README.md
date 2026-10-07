@@ -293,14 +293,15 @@ Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands ag
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
                            # then drives the menus with a virtual gamepad and a virtual keyboard and runs the flow
-                           # checks (late pass, time card, auto-pause, pad glyphs, arrow keys and Esc, settings and
+                           # checks (late pass, time card, auto-pause, pad glyphs, arrow keys, WASD and Esc, settings and
                            # the graphics level, patience badges, guest guide, restart and quit confirmation, the
                            # pause card's controls panel, STOP markers, a click at the centre of every control on
                            # every menu); every frame of every shift is also checked: reward popups never overlap
                            # (and flying coins never draw over them), the HUD's star
                            # track agrees with the score, the forecast tags agree with the rules (and floors land
-                           # where they said), and the coach tip never covers a floor label (tips are reset
-                           # before each shift so every shift's tips get measured)
+                           # where they said), the coach tip never covers a floor label (tips are reset
+                           # before each shift so every shift's tips get measured), and a shift banner (ON THE
+                           # CLOCK!, RUSH HOUR!...) never covers the HUD card or the panel
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 
@@ -409,10 +410,10 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 7 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+- **Rounds 4 to 8 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
   labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
-  press-twice restart and quit and the GRAPHICS setting were checked by the autopilot, unit tests and screenshots,
-  not by a person. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
+  press-twice restart and quit, the GRAPHICS setting, the menus' restored text shadows and outlines, the repositioned
+  shift banners and WASD were checked by the autopilot, unit tests and screenshots, not by a person. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
   hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
   window averaged 103 and 104 fps in round 7 (load 0.5–31); round 6's runs, with other games sharing the GPU, averaged 23–32.
@@ -425,7 +426,10 @@ gamepad support), and it passes its automated checks. Honest caveats:
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
   floors it's about 25% bigger than in 0.1.0 (floors 116 px apart at 1080p, up from 92, or 112 px with the gamepad
   prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
-  checked at 1920×1080, 1440×900 and 2560×1080, not on other screens. The screenshots above are from the current
+  checked at 1920×1080, 1440×900, 2560×1080, 1280×800 (Steam Deck size, in a window) and 1280×1024, not on real
+  screens of those sizes. On a 5:4 screen the tower is fitted to the narrower strip between the labels and the panel,
+  so floors are only about 53 px apart at 1280×1024; on the Deck size they're about 75 px apart and the smallest HUD
+  text (the star caption) has 8 px capitals. The screenshots above are from the current
   build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing. Drawing guests 15% bigger was
   tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
   nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer

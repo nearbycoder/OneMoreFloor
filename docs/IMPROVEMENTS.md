@@ -801,3 +801,42 @@ regenerated if P1 or P2 changes what they show, and checked against their captio
 
 Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
 LOW's softer text (owner's call), signing, hosting, releases and the trailer.
+
+## Round 8 results (2026-10-07)
+
+All four build items landed, plus the docs. Baseline on `5bb2d7c`: `build-linux` OK and the full autopilot passed
+152 checks at 103 fps average (load 0.5 rising to 26). Final checks on the final code (`7682cc2`; later commits change
+only docs and images): EditMode **58/58**, `sim.sh fuzz` OK (21,270 stops matched the forecast preview), and the full
+autopilot on the last build in a 1920×1080 window passes **167 checks** (all ten shifts to the bell, the pad pass and
+every `ui` check, now with banner and WASD checks) with no logged exceptions, at 63 fps average (load 17 to 30).
+Graveyard also passes at 1440×900, 2560×1080, 1280×800 and 1280×1024. The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot,
+PerfProbe and stills run. Screenshots are in `docs/media/improvements/round8/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| P1 text shadows and outlines | `929ed92` | 2 new EditMode tests (the variant test fails with the material removed: "Shadowed asks for 'UNDERLAY_ON', but the build only keeps: '', 'OUTLINE_ON UNDERLAY_ON', 'OUTLINE_ON'"); same-frame before/after crops from the baseline and new full runs | Met. The logo and the gilded headings (Paused, Settings, Guest Guide, Duty Roster, the intro card's shift name) now have their dark edge and shadow, and the HUD's clock, score and shift name, secondary buttons, panel names, roster and guide names and the title tagline have their soft shadow. Nothing moved or changed size. **Correction to the scope:** the time card's CLOCKED OUT isn't gilded type, so it's unchanged. |
+| P2 banners clear of the cards | `66c6f38` | Per-frame check on every shift of the full run, and on Monday and Graveyard at five window sizes | Met: 0.0 px everywhere, and nothing cut off by the strip. All four words were measured. YOU'RE FIRED! only shows when the bot is fired, so the last shift of each run shows it once to measure it. The banner still crosses the floor labels and the tower, as it always did. |
+| P3 WASD | `7682cc2` | 1 new EditMode test; autopilot `ui` (twice) | Met: W/S steer to the busiest other floor, D picks a guest there, Enter sends the car, Esc S Enter opens the guide from the pause card, Esc Esc resumes. AZERTY gets ZQSD (the Input System reads keys by position); not tried on a real AZERTY keyboard. |
+| P4 Steam Deck and 5:4 | (no code) | Graveyard autopilot at 1280×800 and 1280×1024, `p4-*` captures, pixel measurements | Every check passes at both sizes: popups, coins, coach tip, star track, banners, and the pause card with its controls panel. At 1280×800 floors are about 75 px apart, floor-label capitals are about 14 px and the smallest HUD text (the star caption) has 8 px capitals. **At 5:4 the tower is small:** it's fitted to the strip between the labels and the panel, so floors are only about 53 px apart and a third of the screen's height is street. Nothing overlaps, but a better 5:4 layout (a narrower panel, or labels over the tower) is a design decision, so it's reported, not changed. Both sizes were tested in a window, not on a real Deck or 5:4 monitor. |
+| P5 README and stills | (this commit) | Each image looked at against its caption | All ten stills regenerated with `make_trailer.sh stills`: every in-play shot now shows the HUD's shadows, the title the outlined logo, and `core-shuffle.jpg` ON THE CLOCK! clear of the HUD card. Each still matches its caption. `pause-controls.jpg` replaced with the same scene from the final full run. The trailer, poster and teaser GIF are unchanged. |
+
+**Frame rate.** The two full runs on the new build averaged 51 and 63 fps, against the baseline's 103, so P1 was
+checked for a cost: the same Graveyard PerfProbe run (30 s of bot play, vsync off, 1920×1080), interleaved three
+times between the final build (B) and the same build with the shadow material removed (A, which draws the old
+shadowless text). A ran at 91, 74 and 80 fps and B at 87, 87 and 101 (load 16 to 24). There's no measurable cost; the
+full runs' averages follow the shared machine's load, as in rounds 6 and 7.
+
+Found along the way:
+- The first WASD check passed with nothing to test: D was checked on a floor with no guests, and the check accepted
+  that. It now steers W/S to the floor with the most waiting guests and requires a pick.
+- The first capture of the keyboard controls panel wrapped "Q / E" across two lines ("Q" then "/ E"). Key pairs now
+  stay together (`<nobr>` in the panel only; the sheet's text is unchanged).
+- One build failed with "Internal build system error. Request cancelled while reading the binlog" next to a
+  licensing-token message from the shared editor. The retry built cleanly. Nothing licence-related was touched.
+
+Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (#14), a listening pass (#15), a license
+(#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
+trailer, poster and teaser GIF (still 0.1.0, and they predate rounds 7 and 8's text edges). Whether a 5:4 layout is
+worth doing, whether STOP? reads as a what-if, and whether LOW's softer text is acceptable need the owner or a
+player. Nobody has played rounds 4 to 8.
