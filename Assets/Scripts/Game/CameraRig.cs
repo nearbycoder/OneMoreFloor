@@ -126,6 +126,8 @@ namespace OneMoreFloor
             pushAmount = amount;
         }
         float pushAmount, pushK;
+        /// <summary>A scripted push-in (the ocean moment) has the camera in close.</summary>
+        public bool PushedIn => pushK > 0.05f;
 
         void LateUpdate()
         {

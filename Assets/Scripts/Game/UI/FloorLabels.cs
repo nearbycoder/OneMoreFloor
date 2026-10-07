@@ -120,7 +120,8 @@ namespace OneMoreFloor
             if (w > 1f && rig != null)
                 rig.PlayBand = new Vector2((HudRight + Gutter) / w, (w - PanelLeftInset) / w);
             if (rig != null) rig.RoomForPrompts = runner.CursorMode;
-            bool on = sim != null && !sim.Ended && !runner.Attract && rig != null && rig.ZoomShown < 0.35f;
+            // hidden in the close-up and in a scripted push-in, where the in-world plates are big enough
+            bool on = sim != null && !sim.Ended && !runner.Attract && rig != null && rig.ZoomShown < 0.35f && !rig.PushedIn;
             group.alpha = Mathf.MoveTowards(group.alpha, on ? 1f : 0f, dt * 5f);
             if (sim == null || runner.Building == null) return;
 
@@ -221,8 +222,9 @@ namespace OneMoreFloor
             l.Chip.localScale = Vector3.one * (1f + 0.25f * Ease.OutCubic(l.ChipPop));
         }
 
-        /// <summary>Whether the labels are on screen (they fade out in the close-up).</summary>
+        /// <summary>Whether the labels are on screen (they fade out in the close-up and the ocean push-in).</summary>
         public bool Showing => group.alpha > 0.02f;
+        public float Alpha => group.alpha;
 
         /// <summary>Canvas x of the resting labels' left edge, including the waiting badge that pokes out of a pill's
         /// corner (+infinity before any are up; the last value while every floor is mid-shuffle).</summary>

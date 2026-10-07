@@ -276,12 +276,15 @@ Tools/unity.sh batch OneMoreFloor.EditorTools.ProjectSetup.Apply
 
 ```sh
 Tools/unity.sh test        # EditMode tests: every rule, determinism, a random-input fuzz, every shift beatable
-Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands against every shift, invariants checked
+Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands against every shift, invariants checked,
+                           # and every stop lands the floors where the labels' forecast tags said
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
-Tools/autopilot.sh         # plays all ten shifts in the built game, then drives the menus with a virtual gamepad
-                           # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings,
-                           # patience badges, guest guide); every shift also fails if two reward popups ever
-                           # overlap or the HUD's star track disagrees with the score
+Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
+                           # then drives the menus with a virtual gamepad and runs the flow checks (late pass,
+                           # time card, auto-pause, pad glyphs, settings, patience badges, guest guide); every
+                           # frame of every shift is also checked: reward popups never overlap, the HUD's star
+                           # track agrees with the score, the forecast tags agree with the rules (and floors land
+                           # where they said), and the coach tip never covers a floor label
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 

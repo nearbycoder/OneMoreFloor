@@ -127,8 +127,11 @@ namespace OneMoreFloor
                 string tipWhy = "";
                 Time.timeScale = speed;
                 float played = 0f;
-                float limit = k == 0 ? 200f : 60f;  // Monday plays to the bell; others get a minute of game time
+                // timed shifts play to the bell (Monday's clock waits for the first drop-off, hence the slack);
+                // Overtime only ends on complaints, so it gets a minute before a fast-forward
+                float limit = def.Endless ? 60f : def.Duration * 2f;
                 float nextShot = 18f;
+                bool pauseShot = false;
                 while (!runner.Sim.Ended && played < limit)
                 {
                     yield return null;
@@ -207,7 +210,7 @@ namespace OneMoreFloor
                     {
                         var coach = root.Coach;
                         var lab = runner.Hud.FloorLabels;
-                        if (coach != null && coach.Showing && lab.Showing && !runner.Sim.Ended)
+                        if (coach != null && coach.Showing && lab.Alpha > 0.5f && !runner.Sim.Ended)
                         {
                             tipFrames++;
                             var tb = UiKit.ScreenRect(coach.Box, coach.GetComponentInParent<Canvas>().worldCamera);
@@ -243,17 +246,27 @@ namespace OneMoreFloor
                         yield return null;
                         Shot($"play_{def.Id}_{(int)nextShot}s");
                         Time.timeScale = speed;
-                        nextShot += k == 0 ? 40f : 30f;
+                        nextShot += 45f;
+                    }
+                    if (k == 2 && !pauseShot && played >= 33f)
+                    {
+                        pauseShot = true;
+                        root.Pause();
+                        yield return Wait(0.6f);
+                        Shot("pause");
+                        root.Resume();
                     }
                 }
                 Time.timeScale = 1f;
                 var sim = runner.Sim;
+                bool rang = sim.Ended;
+                if (!def.Endless)
+                    Check($"{def.Id}: played to the bell in {played:0} s of game time (rush hour {(sim.RushHour ? "ran" : "never came")})", rang && sim.RushHour, "bell");
                 if (!sim.Ended)
                 {
                     // end the shift early through the real flow: pause, then fast-forward the clock
                     root.Pause();
                     yield return Wait(0.6f);
-                    if (k == 2) Shot("pause");
                     root.Resume();
                     runner.FastForward(sim.Def.Endless ? 0f : sim.TimeLeft + 0.1f);
                     if (sim.Def.Endless) { runner.AutoBot = null; while (!sim.Ended) runner.FastForward(5f); }
