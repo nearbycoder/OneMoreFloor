@@ -550,3 +550,61 @@ Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (
 (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
 trailer, poster and teaser GIF (still 0.1.0). Nobody has played rounds 4 and 5. In particular, whether the forecast
 tags help or clutter the labels needs a person to judge.
+
+## Round 6 scope (2026-10-07, branch `improvements-6`)
+
+Picked from round 5's open items and a fresh look at the pause card on `72f16fb`. The ranked list's remaining
+items (#12–#16) still wait on the owner or on human ears, and guest scale stays untouched. Each item ends with
+`sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow checks) passing,
+and the real `save.json` and `prefs` hashing the same before and after. Screenshots go to
+`docs/media/improvements/round6/`.
+
+### Z1. Restart and quit ask before they throw a run away
+
+On the pause card, RESTART SHIFT sits two presses of "down" below RESUME, and QUIT TO ROSTER is one more. Either
+one ends the run at once, unscored. Round 4's own pad test landed on RESTART by mistake, and a player can too. Now
+the first press arms the button (it turns red and reads REALLY RESTART? / REALLY QUIT?, and the hint line says the
+run won't count); a second press does it. Moving the focus or the mouse to another button, or closing the card,
+disarms it.
+- **Acceptance:** with the virtual pad, Start, down, down, A leaves the shift paused at the same sim time with the
+  button armed; A again restarts (a fresh sim at time 0). A mouse click on QUIT TO ROSTER arms it, moving to
+  RESUME disarms it, and two clicks quit. The pause card's click hit test still passes.
+- **Verify:** autopilot `ui`/pad checks and a screenshot of the armed button.
+
+### Z2. A controls card beside the pause card
+
+The game's only controls reference is the README. The coach teaches a few inputs once, and right-click (let a rider
+off here), Space (let everyone in) or the number keys are easy to miss. The pause card now has a CONTROLS panel
+next to it, written for the input in use: mouse and keyboard, arrow keys, or the gamepad with the names of the
+controller being held (Xbox, PlayStation or Nintendo, as the prompt strip does).
+- **Acceptance:** the panel lists every input in the README's tables for that scheme, names the right buttons for
+  each pad family, and doesn't overlap the pause card or leave the screen at 1920×1080, 1440×900 and 2560×1080.
+- **Verify:** autopilot checks (text per scheme and family; rectangles inside the canvas and clear of the card)
+  and screenshots for mouse and a PlayStation pad.
+
+### Z3. The forecast tags say which stop they describe
+
+Round 5's tags follow the floor you're hovering or have picked, else the car's target, and nothing on screen says
+which. Now the label of the floor the tags assume you stop at carries a marker in the tag's place: a brass
+**STOP** when it's where the car is going, and **STOP?** when it's a floor you're hovering or have picked (a
+what-if). JAM still wins on a floor the card names. No marker when the tags assume no particular stop.
+- **Acceptance:** on every frame of every autopilot shift, the marker is on exactly the previewed floor (STOP for
+  the car's target, none without one) and the other tags still match the preview. A flow check hovers a floor
+  while the car heads elsewhere and reads STOP? on it, with tags matching that floor's preview.
+- **Verify:** the per-frame autopilot check, the flow check, and captures.
+
+### Z4. One-time tips measured on every shift
+
+With the autopilot's save carrying over between shifts, every one-time tip had been seen by Wednesday, so the
+coach-tip check had nothing to measure on later shifts. The full run now clears the seen tips before each shift,
+and the check fails a shift where no tip showed.
+- **Acceptance:** the full autopilot reports tip frames > 0 and 0 px overlap on every shift.
+- **Verify:** the full autopilot output.
+
+### Z5. README screenshots and status
+
+Regenerate the README stills if Z3 changes what they show, check each against its caption, add the pause card
+with its controls panel, and update "Status and known issues" and this file.
+
+Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
+signing, hosting, releases and the trailer.
