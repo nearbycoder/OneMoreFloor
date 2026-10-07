@@ -108,6 +108,8 @@ namespace OneMoreFloor
             {
                 var def = ShiftCatalog.Get(k);
                 for (int u = 0; u < k; u++) if (save.Stars[u] == 0) save.Stars[u] = 1;
+                // one-time tips would all be used up by Wednesday: forget them so every shift's tips get measured
+                save.SeenHints = new string[0];
                 root.ShowIntro(k);
                 yield return Wait(1.0f);
                 if (k <= 1 || k == 5 || k == 8) Shot($"intro_{def.Id}");
@@ -291,7 +293,7 @@ namespace OneMoreFloor
                 Check($"{def.Id}: floors landed where the chips said at {chipStops - chipStopBad}/{chipStops} stops ({chipJams} JAM chips)" + (chipStopBad > 0 ? $" miss: {chipWhy}" : ""),
                       chipStopBad == 0 && chipStops > 0, "forecast");
                 Check($"{def.Id}: the coach tip cleared the resting floor labels on {tipFrames - tipBad}/{tipFrames} frames (worst {tipWorst:0.0} px, narrowest box {(tipFrames > 0 ? tipNarrowest : 0f):0})"
-                      + (tipBad > 0 ? $" last: {tipWhy}" : "") + (tipSpill > 0 ? $"; text spilled on {tipSpill} frames" : ""), tipBad == 0 && tipSpill == 0, "tips");
+                      + (tipBad > 0 ? $" last: {tipWhy}" : "") + (tipSpill > 0 ? $"; text spilled on {tipSpill} frames" : ""), tipBad == 0 && tipSpill == 0 && tipFrames > 0, "tips");
                 Check($"{def.Id}: after the bell the track shows {runner.Hud.StarsDrawnLit} stars for {sim.StarCount}", runner.Hud.StarsDrawnLit == sim.StarCount, "stars");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }
