@@ -381,6 +381,11 @@ namespace OneMoreFloor
             Check($"a floor where everyone's patient shows calm badges (slot {calmSlot + 1})", BadgeIs(calmSlot, WaitBadge.Calm), "ui");
             if (warnSlot >= 0) Check($"a floor with a guest at 40% shows amber badges (slot {warnSlot + 1})", BadgeIs(warnSlot, Palette.Warn), "ui");
             Shot("ui_patience_badges");
+            // the amber case on the red floor too, so it's checked even when no third floor has guests waiting
+            SetPatience(lowSlot, 0.4f);
+            yield return Wait(0.6f);
+            Check($"raising that guest to 40% turns its floor's badges amber (slot {lowSlot + 1})", BadgeIs(lowSlot, Palette.Warn), "ui");
+            Shot("ui_patience_badges_amber");
             runner.Paused = false;
             root.QuitShift();
             yield return Wait(1f);
