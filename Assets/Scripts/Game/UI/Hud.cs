@@ -325,10 +325,33 @@ namespace OneMoreFloor
                         return;
                     }
             var t = UiKit.Text("Popup", popupLayer, text, size, color, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(500, size * 1.3f));
-            t.outlineWidth = 0.22f;
-            t.outlineColor = new Color32(30, 20, 34, 255);
+            t.fontSharedMaterial = PopupMaterial();
             t.rectTransform.anchorMin = t.rectTransform.anchorMax = Vector2.zero;
             popups.Add(new Popup { Text = t, World = world, Dur = dur, Rise = 70f, Size = PopupSize(t, text), Key = key });
+        }
+
+        static Material popupMat;
+
+        /// <summary>
+        /// One material for every popup, with a dark edge and halo so a gold amount reads over gold coins, sunny floors
+        /// and the cream lobby. The signage font uses TMP's mobile SDF shader, which only draws an outline or underlay
+        /// with its OUTLINE_ON / UNDERLAY_ON keywords (setting outlineWidth on the text doesn't turn them on), and the
+        /// build keeps that pair because TMP's "Drop Shadow" material uses it.
+        /// </summary>
+        static Material PopupMaterial()
+        {
+            if (popupMat) return popupMat;
+            popupMat = new Material(UiKit.Signage.material) { name = "Popup (outline + halo)" };
+            popupMat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            popupMat.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            popupMat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.3f);
+            popupMat.SetColor(ShaderUtilities.ID_OutlineColor, new Color32(30, 20, 34, 255));
+            popupMat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0.03f, 0.01f, 0.05f, 0.8f));
+            popupMat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.35f);
+            popupMat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.5f);
+            popupMat.SetFloat(ShaderUtilities.ID_UnderlayDilate, 0.4f);
+            ShaderUtilities.UpdateShaderRatios(popupMat);
+            return popupMat;
         }
 
         static Vector2 PopupSize(TextMeshProUGUI t, string text)
@@ -682,6 +705,8 @@ namespace OneMoreFloor
                 Deco.Shadowed(banner, 0.75f, 1f, 0.45f);
                 banner.outlineWidth = 0.18f;
                 banner.outlineColor = new Color32(30, 20, 34, 255);
+                // the mobile SDF shader draws neither without OUTLINE_ON, and the build only has underlay paired with it
+                banner.fontMaterial.EnableKeyword(ShaderUtilities.Keyword_Outline);
             }
             banner.text = text;
             banner.color = color;
