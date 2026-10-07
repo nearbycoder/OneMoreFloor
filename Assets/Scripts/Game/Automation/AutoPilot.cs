@@ -756,6 +756,28 @@ namespace OneMoreFloor
             Check("reduced motion toggles on, stills the camera and survives a save round trip",
                 motion != null && save.ReducedMotion && back.ReducedMotion && root.Rig.Still && root.Rig.ShakeScale == 0f, "ui");
             Check($"every control on the settings card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
+            // GRAPHICS: LOW changes the running pipeline, survives a save round trip, and HIGH puts the original look back
+            var gfx = settings.GetComponentInChildren<UiChoice>(true);
+            gfx?.Set(GraphicsQuality.Low);
+            yield return Wait(0.6f);
+            Shot("ui_settings_graphics_low");
+            var rp = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
+            bool lowOk = gfx != null && save.Graphics == GraphicsQuality.Low && back.Graphics == GraphicsQuality.Low && GraphicsQuality.Applied == GraphicsQuality.Low
+                         && rp != null && rp.msaaSampleCount == 1 && rp.renderScale < 1f && root.Sun.shadows == LightShadows.Hard;
+            gfx?.Set(GraphicsQuality.High);
+            yield return Wait(0.3f);
+            rp = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            Check($"GRAPHICS LOW turns off MSAA, lowers the render scale and hardens shadows, survives a save round trip, and HIGH restores them (msaa {rp?.msaaSampleCount}, scale {rp?.renderScale})",
+                  lowOk && GraphicsQuality.Applied == GraphicsQuality.High && rp.msaaSampleCount == 4 && rp.renderScale == 1f && root.Sun.shadows == LightShadows.Soft, "ui");
+            // the focus ring reaches it with the arrow keys (as with the d-pad), and Right/Left step it
+            for (int k = 0; k < 9 && UiNav.Focus != (Component)gfx; k++) yield return Keys("up", 0.15f);
+            bool reached = gfx != null && UiNav.Focus == (Component)gfx;
+            yield return Keys("right");
+            bool stepped = save.Graphics == GraphicsQuality.Balanced && GraphicsQuality.Applied == GraphicsQuality.Balanced;
+            yield return Keys("left");
+            Check($"the arrow keys reach GRAPHICS and Right/Left step it HIGH -> BALANCED -> HIGH (reached {reached}, stepped {stepped})",
+                  reached && stepped && save.Graphics == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
             settings.Hide();
             save.ReducedMotion = false;
             root.ApplySettings();

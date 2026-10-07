@@ -100,7 +100,7 @@ namespace OneMoreFloor.Tests
         [Test]
         public void OutOfRangeValuesAreClamped()
         {
-            File.WriteAllText(Main, "{\"Version\":1,\"Stars\":[9,-2,3],\"Best\":[-50],\"Plays\":[-1],\"Master\":4.0,\"Music\":-1.0,\"Zoom\":2.0,\"DailyBest\":-7}");
+            File.WriteAllText(Main, "{\"Version\":1,\"Stars\":[9,-2,3],\"Best\":[-50],\"Plays\":[-1],\"Master\":4.0,\"Music\":-1.0,\"Zoom\":2.0,\"DailyBest\":-7,\"Graphics\":9}");
             var s = SaveData.LoadFrom(dir);
             Assert.AreEqual(3, s.Stars[0]);
             Assert.AreEqual(0, s.Stars[1]);
@@ -112,7 +112,38 @@ namespace OneMoreFloor.Tests
             Assert.AreEqual(0f, s.Music);
             Assert.AreEqual(1f, s.Zoom);
             Assert.AreEqual(0, s.DailyBest);
+            Assert.AreEqual(GraphicsQuality.Low, s.Graphics);
             Assert.IsNotNull(s.SeenHints);
+        }
+
+        [Test]
+        public void GraphicsLevelsRoundTripAndAnOldSaveIsHigh()
+        {
+            File.WriteAllText(Main, "{\"Version\":1,\"Master\":0.5}");   // a save from before the setting existed
+            Assert.AreEqual(GraphicsQuality.High, SaveData.LoadFrom(dir).Graphics);
+            var s = new SaveData { Graphics = GraphicsQuality.Balanced };
+            s.SaveTo(dir);
+            Assert.AreEqual(GraphicsQuality.Balanced, SaveData.LoadFrom(dir).Graphics);
+            File.WriteAllText(Main, "{\"Version\":1,\"Graphics\":-4}");
+            Assert.AreEqual(GraphicsQuality.High, SaveData.LoadFrom(dir).Graphics);
+        }
+
+        [Test]
+        public void GraphicsPresetsOnlyGetCheaperFromHighToLow()
+        {
+            var high = GraphicsQuality.For(GraphicsQuality.High);
+            Assert.AreEqual(4, high.Msaa, "HIGH is the look the game shipped with");
+            Assert.AreEqual(4096, high.ShadowRes);
+            Assert.AreEqual(1f, high.RenderScale);
+            Assert.IsTrue(high.SoftShadows && high.Bloom);
+            Assert.AreEqual(GraphicsQuality.Names.Length, GraphicsQuality.Low + 1);
+            for (int i = GraphicsQuality.High; i < GraphicsQuality.Low; i++)
+            {
+                GraphicsQuality.Preset a = GraphicsQuality.For(i), b = GraphicsQuality.For(i + 1);
+                Assert.LessOrEqual(b.Msaa, a.Msaa);
+                Assert.LessOrEqual(b.ShadowRes, a.ShadowRes);
+                Assert.LessOrEqual(b.RenderScale, a.RenderScale);
+            }
         }
     }
 }

@@ -6,9 +6,9 @@ using UnityEngine;
 namespace OneMoreFloor
 {
     /// <summary>
-    /// -omfPerf [shift] [-omfNoVsync]: plays a shift with the bot at normal speed for 30 seconds and
-    /// logs frame-time statistics, then quits. Vsync can be disabled so a throttled (occluded) window
-    /// doesn't hide the real cost of a frame.
+    /// -omfPerf [shift] [-omfNoVsync] [-omfGraphics 0|1|2] [-omfPerfShot file.png]: plays a shift with the bot at
+    /// normal speed for 30 seconds and logs frame-time statistics, then quits. Vsync can be disabled so a throttled
+    /// (occluded) window doesn't hide the real cost of a frame.
     /// </summary>
     public sealed class PerfProbe : MonoBehaviour
     {
@@ -44,9 +44,21 @@ namespace OneMoreFloor
             float avg = 0f;
             foreach (var x in times) avg += x;
             avg /= times.Count;
-            Debug.Log($"[Perf] shift {shift} vsync {QualitySettings.vSyncCount} {Screen.width}x{Screen.height} frames {times.Count} " +
+            Debug.Log($"[Perf] shift {shift} graphics {(GraphicsQuality.Applied >= 0 ? GraphicsQuality.Names[GraphicsQuality.Applied] : "?")} vsync {QualitySettings.vSyncCount} {Screen.width}x{Screen.height} frames {times.Count} " +
                       $"avg {1f / avg:0.0} fps | p50 {times[times.Count / 2] * 1000f:0.0} ms p95 {times[(int)(times.Count * 0.95f)] * 1000f:0.0} ms max {times[times.Count - 1] * 1000f:0.0} ms | " +
                       $"renderers {FindObjectsByType<Renderer>(FindObjectsSortMode.None).Length} lights {FindObjectsByType<Light>(FindObjectsSortMode.None).Length}");
+            // -omfPerfShot file.png: what the player really sees (the back buffer, after the pipeline's own MSAA,
+            // render scale and post), unlike Shots.Capture, which renders the cameras again into its own target
+            var args = System.Environment.GetCommandLineArgs();
+            int si = System.Array.IndexOf(args, "-omfPerfShot");
+            if (si >= 0 && si + 1 < args.Length)
+            {
+                yield return new WaitForEndOfFrame();
+                var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                System.IO.File.WriteAllBytes(args[si + 1], tex.EncodeToPNG());
+                Destroy(tex);
+                Debug.Log("[Perf] frame saved to " + args[si + 1]);
+            }
             Application.Quit(0);
         }
     }

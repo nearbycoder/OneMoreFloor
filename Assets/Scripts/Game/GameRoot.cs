@@ -41,6 +41,8 @@ namespace OneMoreFloor
             // recordings and self-tests run unattended, often without focus
             AutoPause = System.Array.IndexOf(args, "-omfAutopilot") < 0 && System.Array.IndexOf(args, "-omfDemo") < 0
                         && System.Array.IndexOf(args, "-omfTrailer") < 0 && !(Application.isEditor && Application.isBatchMode);
+            int gq = System.Array.IndexOf(args, "-omfGraphics");
+            if (gq >= 0 && gq + 1 < args.Length && int.TryParse(args[gq + 1], out int level)) GraphicsOverride = Mathf.Clamp(level, GraphicsQuality.High, GraphicsQuality.Low);
             InputSystem.onDeviceChange += OnDeviceChange;
             Controls.Ensure(gameObject);
             BuildWorld();
@@ -316,6 +318,7 @@ namespace OneMoreFloor
             Rig.ShakeScale = save.ScreenShake && !save.ReducedMotion ? 1f : 0f;
             Rig.Still = save.ReducedMotion;
             if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
+            GraphicsQuality.Apply(GraphicsOverride >= 0 ? GraphicsOverride : save.Graphics, Sun, Post);
             if (!Application.isEditor)
             {
                 var mode = save.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
@@ -333,6 +336,9 @@ namespace OneMoreFloor
                 }
             }
         }
+
+        /// <summary>Automation (-omfGraphics N): play at this GRAPHICS level without touching the save (-1 = the save's).</summary>
+        public static int GraphicsOverride = -1;
 
         /// <summary>The windowed size: 1600x900, shrunk to 90% of the display when that's smaller, always 16:9.</summary>
         public static Vector2Int WindowSize(int displayW, int displayH)

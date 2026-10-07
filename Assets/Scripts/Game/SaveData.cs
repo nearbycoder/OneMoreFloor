@@ -25,6 +25,8 @@ namespace OneMoreFloor
         public bool ShowForecast = true;
         /// <summary>No camera drift, push-ins or shake, floors settle without overshoot, and the UI holds still.</summary>
         public bool ReducedMotion;
+        /// <summary>The GRAPHICS setting: 0 HIGH, 1 BALANCED, 2 LOW (see <see cref="GraphicsQuality"/>).</summary>
+        public int Graphics;
         /// <summary>Daily Overtime: the date of the runs below ("2026-10-06"), today's best and tries, and the best day.</summary>
         public string DailyDate = "";
         public int DailyBest, DailyPlays, DailyRecord;
@@ -152,6 +154,7 @@ namespace OneMoreFloor
             Music = Unit(Music, 0.8f);
             Sfx = Unit(Sfx, 0.9f);
             Zoom = Unit(Zoom, 0f);
+            Graphics = Mathf.Clamp(Graphics, GraphicsQuality.High, GraphicsQuality.Low);
             return this;
         }
 

@@ -6,7 +6,7 @@ namespace OneMoreFloor
     /// <summary>
     /// Gamepad and arrow-key navigation for the menus. Each frame it looks at the topmost visible screen,
     /// moves a focus ring between that screen's buttons, sliders and toggles by their on-screen positions,
-    /// and activates the focused one on A / Enter. Left/right adjusts a focused slider or toggle. B goes back.
+    /// and activates the focused one on A / Enter. Left/right adjusts a focused slider, toggle or choice. B goes back.
     /// With the mouse in use the screens keep their own default-button glow, and Enter runs that default.
     /// </summary>
     public sealed class UiNav : MonoBehaviour
@@ -86,6 +86,7 @@ namespace OneMoreFloor
             foreach (var b in s.GetComponentsInChildren<UiButton>()) if (b.Interactable && b.isActiveAndEnabled) widgets.Add(b);
             foreach (var sl in s.GetComponentsInChildren<UiSlider>()) if (sl.isActiveAndEnabled) widgets.Add(sl);
             foreach (var t in s.GetComponentsInChildren<UiToggle>()) if (t.isActiveAndEnabled) widgets.Add(t);
+            foreach (var c in s.GetComponentsInChildren<UiChoice>()) if (c.isActiveAndEnabled) widgets.Add(c);
         }
 
         Component Default()
@@ -135,6 +136,11 @@ namespace OneMoreFloor
                 AudioDirector.Instance?.Sfx("ui_click", 0.4f, 1f + s.Value * 0.3f);
                 return true;
             }
+            if (w is UiChoice c)
+            {
+                if (c.Step(dx)) AudioDirector.Instance?.Sfx("ui_click", 0.7f);
+                return true;   // at an end, left/right still belongs to the choice rather than jumping to another row
+            }
             if (w is UiToggle t && (dx > 0) != t.On)
             {
                 t.Set(dx > 0);
@@ -150,6 +156,7 @@ namespace OneMoreFloor
             {
                 case UiButton b: if (b.Interactable) b.Click(); break;
                 case UiToggle t: t.Set(!t.On); AudioDirector.Instance?.Sfx("ui_click", 0.7f); break;
+                case UiChoice c: c.Set(c.Index + 1 < c.Options.Length ? c.Index + 1 : 0); AudioDirector.Instance?.Sfx("ui_click", 0.7f); break;
             }
         }
 
@@ -160,6 +167,7 @@ namespace OneMoreFloor
                 case UiButton b: b.NavFocus = on; break;
                 case UiSlider s: s.NavFocus = on; break;
                 case UiToggle t: t.NavFocus = on; break;
+                case UiChoice c: c.NavFocus = on; break;
             }
         }
     }

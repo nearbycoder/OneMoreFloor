@@ -469,6 +469,7 @@ namespace OneMoreFloor
         GameRoot game;
         UiSlider master, music, sfx;
         UiToggle full, shake, forecast, motion, relaxed;
+        UiChoice graphics;
 
         public static SettingsScreen Create(Transform parent, GameRoot game)
         {
@@ -477,20 +478,21 @@ namespace OneMoreFloor
             s.Init("Settings");
             s.game = game;
             Dim(rt, 0.75f);
-            var card = Card(rt, new Vector2(900, 900), Vector2.zero);
-            Heading(card, "Settings", 356, 600, 80);
+            var card = Card(rt, new Vector2(900, 940), Vector2.zero);
+            Heading(card, "Settings", 376, 600, 80);
             var save = SaveData.Current;
-            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 262), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 210), save.Master, v => { save.Master = v; game.ApplySettings(); });
-            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 144), save.Music, v => { save.Music = v; game.ApplySettings(); });
-            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 78), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
-            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, 10), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
-            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -38), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -100), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
-            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -162), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
-            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -224), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
+            Deco.Label("Audio", card, "SOUND", 18, new Vector2(720, 26), new Vector2(0, 286), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.master = UiSlider.Create(card, "MASTER", new Vector2(0, 236), save.Master, v => { save.Master = v; game.ApplySettings(); });
+            s.music = UiSlider.Create(card, "MUSIC", new Vector2(0, 174), save.Music, v => { save.Music = v; game.ApplySettings(); });
+            s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 112), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
+            Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, 50), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
+            s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, 4), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
+            s.graphics = UiChoice.Create(card, "GRAPHICS", new Vector2(0, -54), GraphicsQuality.Names, save.Graphics, v => { save.Graphics = v; game.ApplySettings(); });
+            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -112), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
+            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -170), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
+            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -228), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
             s.relaxed = UiToggle.Create(card, "RELAXED SHIFTS", new Vector2(0, -286), save.Relaxed, v => { save.Relaxed = v; game.ApplySettings(); });
-            var done = UiButton.Create(card, "DONE", new Vector2(0, -382), new Vector2(300, 74), () => s.Close(), true, 30);
+            var done = UiButton.Create(card, "DONE", new Vector2(0, -386), new Vector2(300, 74), () => s.Close(), true, 30);
             done.Focused = true;
             s.Primary = () => s.Close();
             s.Back = () => s.Close();

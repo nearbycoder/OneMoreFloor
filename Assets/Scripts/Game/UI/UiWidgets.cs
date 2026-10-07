@@ -251,6 +251,80 @@ namespace OneMoreFloor
         }
     }
 
+    /// <summary>A setting with a few named values (◀ HIGH ▶): left/right or a click on an arrow steps through them.</summary>
+    public sealed class UiChoice : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+    {
+        float hover;
+        public void OnPointerEnter(PointerEventData e) => hover = 1f;
+        public void OnPointerExit(PointerEventData e) => hover = 0f;
+        public Action<int> Changed;
+        public int Index;
+        public string[] Options;
+        public bool NavFocus;
+        Image focusGlow, pill;
+        RectTransform left, right;
+        TextMeshProUGUI value;
+        const float PillX = 228f, PillW = 220f;
+
+        public static UiChoice Create(Transform parent, string label, Vector2 pos, string[] options, int index, Action<int> changed)
+        {
+            var root = UiKit.Rect("Choice_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 64));
+            Deco.Label("Label", root, label, 26, new Vector2(400, 50), new Vector2(-160, 0), TextAlignmentOptions.Left, Palette.Cream);
+            var hit = root.gameObject.AddComponent<Image>();
+            hit.color = new Color(0, 0, 0, 0);
+            var focusGlow = UiKit.Image("Focus", root, Deco.Shadow, new Color(1f, 0.78f, 0.35f, 0f), new Vector2(800, 104));
+            focusGlow.transform.SetAsFirstSibling();
+            var c = root.gameObject.AddComponent<UiChoice>();
+            c.pill = UiKit.Image("Pill", root, Deco.Recess, Color.white, new Vector2(PillW, 46), new Vector2(PillX, 0));
+            c.value = UiKit.Text("Value", c.pill.transform, "", 22, Deco.Gold, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(PillW - 70, 40));
+            c.left = UiKit.Image("Prev", c.pill.transform, UiKit.Triangle, Deco.Gold, new Vector2(18, 16), new Vector2(-PillW * 0.5f + 22, 0)).rectTransform;
+            c.left.localEulerAngles = new Vector3(0, 0, 90);
+            c.right = UiKit.Image("Next", c.pill.transform, UiKit.Triangle, Deco.Gold, new Vector2(18, 16), new Vector2(PillW * 0.5f - 22, 0)).rectTransform;
+            c.right.localEulerAngles = new Vector3(0, 0, -90);
+            c.Options = options;
+            c.Changed = changed;
+            c.focusGlow = focusGlow;
+            c.Set(index, false);
+            return c;
+        }
+
+        public void Set(int index, bool notify = true)
+        {
+            Index = Mathf.Clamp(index, 0, Options.Length - 1);
+            value.text = Options[Index];
+            left.gameObject.SetActive(Index > 0);
+            right.gameObject.SetActive(Index < Options.Length - 1);
+            if (notify) Changed?.Invoke(Index);
+        }
+
+        /// <summary>Move one step (clamped at the ends). False when already at that end.</summary>
+        public bool Step(int dx)
+        {
+            int next = Mathf.Clamp(Index + dx, 0, Options.Length - 1);
+            if (next == Index) return false;
+            Set(next);
+            return true;
+        }
+
+        void Update()
+        {
+            float f = NavFocus ? 1f : 0f;
+            float s = Mathf.Lerp(pill.rectTransform.localScale.x, 1f + 0.05f * Mathf.Max(hover, f), Ease.Damp(14f, UiTime.Dt));
+            pill.rectTransform.localScale = Vector3.one * s;
+            focusGlow.color = Color.Lerp(focusGlow.color, new Color(1f, 0.78f, 0.35f, 0.32f * f), Ease.Damp(14f, UiTime.Dt));
+        }
+
+        public void OnPointerClick(PointerEventData e)
+        {
+            // the left half of the pill steps back; anywhere else steps on, wrapping round to the first value
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(pill.rectTransform, e.position, e.pressEventCamera, out var local);
+            bool back = local.x < 0f && local.x > -PillW * 0.5f - 10f && Mathf.Abs(local.y) < 40f;
+            if (back) Step(-1);
+            else Set(Index + 1 < Options.Length ? Index + 1 : 0);
+            AudioDirector.Instance?.Sfx("ui_click", 0.7f);
+        }
+    }
+
     /// <summary>Base for full-screen menus: fade + slide in/out, Escape shortcut (Enter and pad via UiNav).</summary>
     public abstract class UiScreen : MonoBehaviour
     {
