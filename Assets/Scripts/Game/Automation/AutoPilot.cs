@@ -117,7 +117,7 @@ namespace OneMoreFloor
                 runner.Hud.WorstPopupOverlap = 0f;
                 int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0;
                 string starWhy = "";
-                int chipFrames = 0, chipBad = 0, chipSeen = 0, chipStops = 0, chipStopBad = 0, chipJams = 0, prevStops = runner.Sim.Stops;
+                int chipFrames = 0, chipBad = 0, chipSeen = 0, chipStops = 0, chipStopBad = 0, chipJams = 0, chipStopMarks = 0, prevStops = runner.Sim.Stops;
                 string chipWhy = "";
                 string[] prevChips = null;
                 FloorId[] prevSlots = null;
@@ -154,6 +154,7 @@ namespace OneMoreFloor
                         var lab = runner.Hud.FloorLabels;
                         var hover = runner.HoverFloor;
                         FloorId? dock = hover.HasValue && ss.B.Has(hover.Value) && (ss.Car.Target.HasValue || hover.Value != ss.DockedFloor) ? hover : ss.Car.Target;
+                        bool whatIf = dock.HasValue && dock == hover && dock != ss.Car.Target;
                         bool jam = false;
                         var after = SaveData.Current.ShowForecast && !ss.Ended ? ss.PreviewStop(dock, out jam) : null;
                         bool visible = !ss.Ended && runner.Rig.ZoomShown < 0.35f;
@@ -166,7 +167,7 @@ namespace OneMoreFloor
                                 var f = prevSlots[sl];
                                 if (!ss.B.Has(f)) continue; // left the building at the stop
                                 string c = sl < prevChips.Length ? prevChips[sl] : "";
-                                int want = c.Length > 0 && c != "JAM" ? int.Parse(c.Substring(1)) - 1 : sl;
+                                int want = c.Length > 0 && (c[0] == '+' || c[0] == '-') ? int.Parse(c.Substring(1)) - 1 : sl;
                                 if (c == "JAM") chipJams++;
                                 if (ss.B.SlotOf(f) != want) { missed = true; chipWhy = $"stop {ss.Stops}: {f} chip '{c}' but landed in {ss.B.SlotOf(f) + 1}"; }
                             }
@@ -181,8 +182,10 @@ namespace OneMoreFloor
                             {
                                 var f = ss.B.At(sl);
                                 int to = after != null ? after.SlotOf(f) : -1;
-                                string want = after != null && jam && dock == f ? "JAM" : to >= 0 && to != sl ? (to > sl ? "+" : "-") + (to + 1) : "";
+                                string want = after != null && jam && dock == f ? "JAM" : to >= 0 && to != sl ? (to > sl ? "+" : "-") + (to + 1)
+                                            : after != null && dock == f && to == sl ? (whatIf ? "STOP?" : "STOP") : "";
                                 string got = lab.ChipAt(sl);
+                                if (got == "STOP") chipStopMarks++;
                                 if (got.Length > 0) any = true;
                                 if (got != want) { right = false; chipWhy = $"slot {sl + 1} ({f}): chip '{got}', preview '{want}'"; }
                             }
@@ -283,8 +286,8 @@ namespace OneMoreFloor
                 Check($"{def.Id}: worst popup overlap {overlap:0.0} px" + (overlap > 0f ? $" ({runner.Hud.WorstPopupPair})" : ""), overlap <= 4f, "popups");
                 Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit)" + (starBad > 0 ? $" last miss: {starWhy}" : ""),
                       starBad == 0 && starFrames > 0, "stars");
-                Check($"{def.Id}: forecast chips matched the preview on {chipFrames - chipBad}/{chipFrames} frames (chips up on {chipSeen})" + (chipBad > 0 ? $" last miss: {chipWhy}" : ""),
-                      chipBad == 0 && chipSeen > 0, "forecast");
+                Check($"{def.Id}: forecast chips matched the preview on {chipFrames - chipBad}/{chipFrames} frames (chips up on {chipSeen}, STOP marks {chipStopMarks})" + (chipBad > 0 ? $" last miss: {chipWhy}" : ""),
+                      chipBad == 0 && chipSeen > 0 && chipStopMarks > 0, "forecast");
                 Check($"{def.Id}: floors landed where the chips said at {chipStops - chipStopBad}/{chipStops} stops ({chipJams} JAM chips)" + (chipStopBad > 0 ? $" miss: {chipWhy}" : ""),
                       chipStopBad == 0 && chipStops > 0, "forecast");
                 Check($"{def.Id}: the coach tip cleared the resting floor labels on {tipFrames - tipBad}/{tipFrames} frames (worst {tipWorst:0.0} px, narrowest box {(tipFrames > 0 ? tipNarrowest : 0f):0})"
@@ -500,6 +503,70 @@ namespace OneMoreFloor
             runner.Paused = false;
             root.QuitShift();
             yield return Wait(1f);
+
+            // the forecast tags mark the stop they describe: STOP on the car's target, STOP? on a floor being pointed at
+            {
+                root.StartShift(8, 77);
+                runner = root.Runner;
+                runner.Rig.Zoom = 0f;
+                runner.InputEnabled = false;
+                runner.ShowHoverFloor(null);
+                runner.AutoBot = Bot.Decent(5);
+                var lab = runner.Hud.FloorLabels;
+                float waited = 0f;
+                while (waited < 30f && !(runner.Sim.Car.Target.HasValue && !runner.Sim.Car.IsOpen && runner.Sim.Car.Target != runner.Sim.DockedFloor && lab.Alpha > 0.95f))
+                { yield return null; waited += Time.unscaledDeltaTime; }
+                Time.timeScale = 0f;
+                yield return null;
+                yield return null;
+                var ss = runner.Sim;
+                FloorId target = ss.Car.Target ?? FloorId.Lobby;
+                int tSlot = ss.B.SlotOf(target);
+                ss.PreviewStop(target, out bool tJam);
+                string atTarget = lab.ChipAt(tSlot);
+                Check($"heading for {target}: its label says {(tJam ? "JAM" : "STOP")} (got '{atTarget}')",
+                      ss.Car.Target.HasValue && atTarget == (tJam ? "JAM" : "STOP") && !lab.WhatIf && lab.PreviewedDock == target, "ui");
+                Shot("ui_forecast_stop");
+                // point at another floor the card leaves alone: STOP? there, and every tag follows that stop
+                int hSlot = -1;
+                for (int sl = ss.B.Count - 1; sl >= 0 && hSlot < 0; sl--)
+                {
+                    var f = ss.B.At(sl);
+                    if (f == target || f == ss.DockedFloor) continue;
+                    var a = ss.PreviewStop(f, out bool j);
+                    if (!j && a.SlotOf(f) == sl) hSlot = sl;
+                }
+                if (hSlot >= 0)
+                {
+                    var hover = ss.B.At(hSlot);
+                    runner.ShowHoverFloor(hover);
+                    yield return null;
+                    yield return null;
+                    var after = ss.PreviewStop(hover, out _);
+                    string why = "";
+                    for (int sl = 0; sl < ss.B.Count; sl++)
+                    {
+                        var f = ss.B.At(sl);
+                        int to = after.SlotOf(f);
+                        string want = to >= 0 && to != sl ? (to > sl ? "+" : "-") + (to + 1) : f == hover ? "STOP?" : "";
+                        if (lab.ChipAt(sl) != want) why += $" slot {sl + 1} '{lab.ChipAt(sl)}' want '{want}'";
+                    }
+                    Check($"pointing at {hover} while the car heads for {target}: STOP? on {hover} and the tags follow that stop{why}",
+                          why.Length == 0 && lab.WhatIf && lab.PreviewedDock == hover, "ui");
+                    Shot("ui_forecast_stop_if");
+                    // pointing at the floor the car is already heading for is no what-if
+                    runner.ShowHoverFloor(target);
+                    yield return null;
+                    yield return null;
+                    Check($"pointing at the car's own target shows STOP, not STOP? (got '{lab.ChipAt(tSlot)}')", lab.ChipAt(tSlot) == (tJam ? "JAM" : "STOP") && !lab.WhatIf, "ui");
+                }
+                else Check("found a floor to point at for the STOP? check", false, "ui");
+                runner.ShowHoverFloor(null);
+                runner.InputEnabled = true;
+                Time.timeScale = 1f;
+                root.QuitShift();
+                yield return Wait(1f);
+            }
 
             // daily Overtime: today's shift opens the same way every time, and today's best is kept
             int ot = GameRoot.OvertimeIndex;

@@ -148,7 +148,7 @@ namespace OneMoreFloor
 
         Tip ChipTip() => new Tip
         {
-            Id = "chips", Text = "The tags on the floor names show <b>where each floor lands</b> at your next stop.",
+            Id = "chips", Text = "The tags on the floor names show <b>where each floor lands</b> at your next stop. <b>STOP</b> marks the floor they expect you to stop at.",
             Ui = () => runner.Hud.FloorLabels.FirstChip, MinTime = 4f, MaxTime = 6f, Once = false,
         };
 

@@ -15,7 +15,8 @@ namespace OneMoreFloor
     /// Each label also carries the shuffle forecast: a cream chip (the colour of the panel's forecast cards) with
     /// the slot the floor lands in at the next stop, or JAM on a floor the next card names when the car is
     /// about to dock there. It follows the hovered or picked floor, else the car's target, else assumes the car
-    /// stops somewhere the card leaves alone.
+    /// stops somewhere the card leaves alone. The floor it assumes you dock at is marked in the chip's place:
+    /// a brass STOP for the car's target, a dark STOP? for a floor you're only pointing at.
     /// </summary>
     public sealed class FloorLabels : MonoBehaviour
     {
@@ -134,6 +135,8 @@ namespace OneMoreFloor
             FloorId? dock = PreviewDock(sim);
             if (SaveData.Current.ShowForecast && !sim.Ended) after = sim.PreviewStop(dock, out jam);
             PreviewedDock = dock;
+            // a floor the player is pointing at that the car isn't already heading for: a what-if
+            WhatIf = dock.HasValue && dock == runner.HoverFloor && dock != sim.Car.Target;
             for (int slot = 0; slot < n; slot++)
             {
                 var f = sim.B.At(slot);
@@ -179,6 +182,7 @@ namespace OneMoreFloor
                 int to = after != null ? after.SlotOf(f) : -1;
                 if (after != null && jam && dock == f) chip = "JAM";
                 else if (to >= 0 && to != slot) chip = (to > slot ? "+" : "-") + (to + 1);
+                else if (after != null && dock == f && to == slot) chip = WhatIf ? StopIf : Stop;
                 ShowChip(l, chip, dt);
             }
             for (int i = n; i < labels.Count; i++) labels[i].Rt.gameObject.SetActive(false);
@@ -195,6 +199,9 @@ namespace OneMoreFloor
             return sim.Car.Target;
         }
 
+        public const string Stop = "STOP", StopIf = "STOP?";
+        static readonly Color StopIfBg = Palette.Hex(0x3B2A40), Gold = Palette.Hex(0xFFC857);
+
         void ShowChip(Label l, string chip, float dt)
         {
             bool on = chip.Length > 0;
@@ -204,16 +211,17 @@ namespace OneMoreFloor
                 l.Chip.gameObject.SetActive(on);
                 if (on)
                 {
-                    bool isJam = chip == "JAM";
-                    l.ChipText.text = isJam ? chip : chip.Substring(1);
-                    l.ChipArrow.gameObject.SetActive(!isJam);
+                    // a move ("+9", "-2") gets an arrow and a slot number; JAM, STOP and STOP? are words
+                    bool move = chip[0] == '+' || chip[0] == '-';
+                    l.ChipText.text = move ? chip.Substring(1) : chip;
+                    l.ChipArrow.gameObject.SetActive(move);
                     l.ChipArrow.rectTransform.localRotation = Quaternion.Euler(0f, 0f, chip[0] == '-' ? 180f : 0f);
-                    l.ChipBg.color = isJam ? Palette.Bad : Palette.Cream;
-                    l.ChipText.color = isJam ? Color.white : Palette.Ink;
-                    float w = isJam ? l.ChipText.GetPreferredValues("JAM").x + 24f : ChipW;
+                    l.ChipBg.color = chip == "JAM" ? Palette.Bad : chip == Stop ? Palette.Brass : chip == StopIf ? StopIfBg : Palette.Cream;
+                    l.ChipText.color = chip == "JAM" ? Color.white : chip == StopIf ? Gold : Palette.Ink;
+                    float w = move ? ChipW : l.ChipText.GetPreferredValues(chip).x + 24f;
                     l.Chip.sizeDelta = new Vector2(w, ChipH);
-                    l.ChipText.rectTransform.sizeDelta = new Vector2(isJam ? w : 36f, ChipH);
-                    l.ChipText.rectTransform.anchoredPosition = new Vector2(isJam ? 0f : 11f, 0f);
+                    l.ChipText.rectTransform.sizeDelta = new Vector2(move ? 36f : w, ChipH);
+                    l.ChipText.rectTransform.anchoredPosition = new Vector2(move ? 11f : 0f, 0f);
                     l.ChipPop = SaveData.Current.ReducedMotion ? 0f : 1f;
                 }
             }
@@ -244,10 +252,11 @@ namespace OneMoreFloor
         const float BadgeOverhang = 11f;
         float restLeft = float.PositiveInfinity;
 
-        /// <summary>Self-test: the stop the chips were last worked out for.</summary>
+        /// <summary>Self-test: the stop the chips were last worked out for, and whether it's only being pointed at.</summary>
         public FloorId? PreviewedDock { get; private set; }
+        public bool WhatIf { get; private set; }
 
-        /// <summary>Self-test: the forecast chip on the label for a slot: "" for none, "JAM", or "+9" / "-2" (up or down to that slot).</summary>
+        /// <summary>Self-test: the forecast chip on the label for a slot: "" for none, "JAM", "STOP", "STOP?", or "+9" / "-2" (up or down to that slot).</summary>
         public string ChipAt(int slot) => slot >= 0 && slot < labels.Count && labels[slot].Rt.gameObject.activeSelf ? labels[slot].ChipShown : "";
 
         /// <summary>Self-test: the label's pill for a slot in screen pixels (null if hidden, or mid-shuffle when
@@ -264,7 +273,7 @@ namespace OneMoreFloor
         {
             get
             {
-                foreach (var l in labels) if (l.Rt.gameObject.activeSelf && l.ChipShown.Length > 0) return l.Chip;
+                foreach (var l in labels) if (l.Rt.gameObject.activeSelf && l.ChipShown.Length > 0 && !l.ChipShown.StartsWith(Stop)) return l.Chip;
                 return null;
             }
         }
