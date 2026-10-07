@@ -518,3 +518,35 @@ teaser GIF are left alone (owner).
 
 Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
 signing, hosting, releases and the trailer.
+
+## Round 5 results (2026-10-07)
+
+All four items landed. Final checks on the final code (`bc8e12b` and later; Y4 changed only docs and images):
+EditMode **51/51**, `sim.sh fuzz` OK (now with 21,270 random-input stops checked against the forecast preview), and the
+full autopilot on the last build in a 1920×1080 window passes **117 checks**: all ten shifts (every timed one to the
+bell), 12 pad and 25 `ui` checks, at 79 fps average (load average 19 at the start, 42 by the end, since the machine is
+shared). Graveyard also passes at 1440×900 and 2560×1080. The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot and
+stills run. Screenshots are in `docs/media/improvements/round5/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| Y1 forecast on the tower | `f3f6581` | 4 EditMode tests (jam, block move around the anchor, a floor leaving first, and every full stop of 3 bot runs on all ten shifts: 3,263 stops, 500 jams, 221 departures), the fuzz check, and two autopilot checks per shift | Met. On every shift of the full run, the chips matched the preview on every frame, and floors landed where the chips said at every stop (87–127 stops per timed shift). The chips follow hover and the pad's floor pick, so with a mouse resting on the tower they describe that floor's stop rather than the car's target. That's deliberate and matches the trip preview, but nobody has tried it. |
+| Y2 tip clear of labels | `8004798` | Per-frame rectangle check on every shift, Monday at 1920×1080, Graveyard at 1440×900 and 2560×1080, before/after crops | Met: 0 px overlap with resting labels, and the text always fits (boxes 324–370 wide, against 360 before). Labels of floors mid-shuffle (faded, sliding) can still pass under the box, as they already did under the HUD card. |
+| Y3 autopilot to the bell | `bc8e12b` | Full autopilot | Met: every timed shift rang the bell with rush hour, and the star track lit 3 stars during play wherever the bot earned them. The run takes about 11 minutes (was 7); the script's timeout is now 40. |
+| Y4 README screenshots | `e61b1cf` | Each image looked at against its caption | All ten regenerated. They show the star track, and `graveyard-flip.jpg` shows a JAM tag. The other shots happen to land on a Calm card or a close-up, so they show no forecast chips. The trailer, poster and teaser GIF are unchanged. |
+
+Found along the way:
+- **The ocean moment's push-in carried the floor labels outward**, so for about 3 s the labels spread past the tip box
+  and toward the HUD card. The first full Y3 run caught it on Saturday (the tip touched a label by 0.5 px). Labels now
+  fade during a scripted push-in, as they already did in the close-up zoom (in `bc8e12b`).
+- With an ephemeral save that carries over between shifts, one-time tips have all been seen by Wednesday, so the tip
+  check had no tip frames to measure on Wednesday, Graveyard and Overtime in the full run. Graveyard's tips were
+  measured in the single-shift runs at three window sizes.
+- The README's tests section now describes the per-frame checks. `Tools/autopilot.sh`'s usage line says it takes
+  `pad`/`ui` too.
+
+Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (#14), a listening pass (#15), a license
+(#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
+trailer, poster and teaser GIF (still 0.1.0). Nobody has played rounds 4 and 5. In particular, whether the forecast
+tags help or clutter the labels needs a person to judge.
