@@ -117,6 +117,7 @@ namespace OneMoreFloor
                 var runner = root.Runner;
                 runner.AutoBot = Bot.Decent((ulong)(k + 11));
                 runner.Hud.WorstPopupOverlap = 0f;
+                runner.Hud.CoinCrossFrames = runner.Hud.CoinOverTextFrames = 0;
                 int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0;
                 string starWhy = "";
                 int chipFrames = 0, chipBad = 0, chipSeen = 0, chipStops = 0, chipStopBad = 0, chipJams = 0, chipStopMarks = 0, prevStops = runner.Sim.Stops;
@@ -286,6 +287,9 @@ namespace OneMoreFloor
                 // popups never draw over each other (a few px of glyph-box contact is allowed)
                 float overlap = runner.Hud.WorstPopupOverlap;
                 Check($"{def.Id}: worst popup overlap {overlap:0.0} px" + (overlap > 0f ? $" ({runner.Hud.WorstPopupPair})" : ""), overlap <= 4f, "popups");
+                // flying coins burst from where the tip pops up: they may pass behind its text, never over it
+                Check($"{def.Id}: flying coins crossed popup text on {runner.Hud.CoinCrossFrames} frames and drew over it on {runner.Hud.CoinOverTextFrames}",
+                      runner.Hud.CoinOverTextFrames == 0, "popups");
                 Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit)" + (starBad > 0 ? $" last miss: {starWhy}" : ""),
                       starBad == 0 && starFrames > 0, "stars");
                 Check($"{def.Id}: forecast chips matched the preview on {chipFrames - chipBad}/{chipFrames} frames (chips up on {chipSeen}, STOP marks {chipStopMarks})" + (chipBad > 0 ? $" last miss: {chipWhy}" : ""),

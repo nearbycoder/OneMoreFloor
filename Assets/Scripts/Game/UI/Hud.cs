@@ -11,7 +11,7 @@ namespace OneMoreFloor
     {
         ShiftRunner runner;
         Camera worldCam;
-        RectTransform canvasRt, bubbleLayer, popupLayer, top;
+        RectTransform canvasRt, bubbleLayer, coinLayer, popupLayer, top;
         TextMeshProUGUI score, streak, clock, clockLabel, shiftName, shiftDay;
         Image streakBadge;
         Image[] complaintSlots = new Image[Tuning.MaxComplaints];
@@ -59,6 +59,8 @@ namespace OneMoreFloor
         void Build()
         {
             bubbleLayer = UiKit.Stretch("Bubbles", transform);
+            // flying coins burst from where a tip pops up, so they draw under the popups and never hide the amount
+            coinLayer = UiKit.Stretch("Coins", transform);
             popupLayer = UiKit.Stretch("Popups", transform);
             top = UiKit.Stretch("Top", transform);
 
@@ -366,6 +368,24 @@ namespace OneMoreFloor
             MeasurePopupOverlap();
         }
 
+        void MeasureCoinsOverPopups()
+        {
+            if (flying.Count == 0 || popups.Count == 0) return;
+            bool cross = false;
+            foreach (var c in flying)
+            {
+                if (!c.Rt.gameObject.activeSelf) continue;
+                var half = Vector2.one * 13f * c.Rt.localScale.x;
+                var cr = new Rect(c.Rt.anchoredPosition - half, half * 2f);
+                foreach (var p in popups)
+                    if (p.Text && p.Text.alpha >= 0.35f && DrawnRect(p).Overlaps(cr)) { cross = true; break; }
+                if (cross) break;
+            }
+            if (!cross) return;
+            CoinCrossFrames++;
+            if (coinLayer.GetSiblingIndex() > popupLayer.GetSiblingIndex()) CoinOverTextFrames++;
+        }
+
         /// <summary>The smallest lift, at or above <paramref name="from"/>, that clears every popup older than popup i.</summary>
         float LiftClear(int i, Vector2 basePos, float from)
         {
@@ -392,6 +412,9 @@ namespace OneMoreFloor
         /// <summary>Self-test: the worst overlap seen between two clearly visible popups' drawn text, in canvas
         /// units (the smaller of the x and y overlaps, so a value means the glyph boxes really cross).</summary>
         public float WorstPopupOverlap { get; set; }
+        /// <summary>Self-test: frames where a flying coin crossed a popup's text, and how many of those drew a coin on top of it.</summary>
+        public int CoinCrossFrames { get; set; }
+        public int CoinOverTextFrames { get; set; }
         public int PopupCount => popups.Count;
         public string WorstPopupPair { get; private set; }
 
@@ -439,7 +462,7 @@ namespace OneMoreFloor
             var from = local + canvasRt.rect.size * 0.5f;
             for (int i = 0; i < count; i++)
             {
-                var img = UiKit.Image("Coin", popupLayer, UiKit.Circle, Palette.Hex(0xFFC83D), new Vector2(26, 26));
+                var img = UiKit.Image("Coin", coinLayer, UiKit.Circle, Palette.Hex(0xFFC83D), new Vector2(26, 26));
                 UiKit.Image("In", img.transform, UiKit.Circle, Palette.Hex(0xE8A317), new Vector2(15, 15));
                 img.rectTransform.anchorMin = img.rectTransform.anchorMax = Vector2.zero;
                 var jitter = new Vector2(Random.Range(-40f, 40f), Random.Range(-20f, 30f));
@@ -746,6 +769,7 @@ namespace OneMoreFloor
             UpdatePopups(dt);
             UpdateBanner(dt);
             UpdateCoins(dt);
+            MeasureCoinsOverPopups();
             UpdateRoutePreview();
             UpdateTooltip();
             FloorLabels.Tick(dt);
