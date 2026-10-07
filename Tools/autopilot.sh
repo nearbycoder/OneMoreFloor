@@ -5,6 +5,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$ROOT/Logs/autopilot}"
+# the player runs from its own folder, so a relative -logFile would land under Builds/Linux
+OUT="$(realpath -m "$OUT")"
 rm -rf "$OUT"; mkdir -p "$OUT"
 extra=()
 [ -n "${2:-}" ] && extra=(-omfAutopilotShift "$2")
