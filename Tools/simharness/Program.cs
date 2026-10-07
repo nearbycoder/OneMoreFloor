@@ -205,7 +205,7 @@ static class Program
 
     static int Fuzz()
     {
-        int failures = 0;
+        int failures = 0, previewed = 0;
         foreach (var def in ShiftCatalog.All)
         {
             for (ulong seed = 1; seed <= 60; seed++)
@@ -222,7 +222,13 @@ static class Program
                         else if (r == 1) sim.BoardAll();
                         else if (r == 2 && sim.All.Count > 0) sim.Board(sim.All[rng.Range(0, sim.All.Count)].Id);
                         else if (r == 3 && sim.Car.Riders.Count > 0 && rng.Chance(0.1f)) sim.DropHere(sim.Car.Riders[0].Id);
+                        // the floor labels' forecast: the building after a full stop is what PreviewStop predicted
+                        Building pred = sim.Car.Target.HasValue ? sim.PreviewStop(sim.Car.Target.Value, out _) : null;
+                        int stops = sim.Stops;
                         sim.Tick(dt);
+                        if (pred != null && sim.Stops != stops && !pred.Slots.SequenceEqual(sim.B.Slots))
+                            throw new Exception($"stop {sim.Stops}: preview {string.Join(",", pred.Slots)} but got {string.Join(",", sim.B.Slots)}");
+                        if (pred != null && sim.Stops != stops) previewed++;
                         sim.Events.Clear();
                         Check(sim);
                     }
@@ -235,7 +241,7 @@ static class Program
                 }
             }
         }
-        Console.WriteLine(failures == 0 ? "fuzz OK" : $"fuzz FAILURES {failures}");
+        Console.WriteLine(failures == 0 ? $"fuzz OK ({previewed} stops matched the forecast preview)" : $"fuzz FAILURES {failures}");
         return failures == 0 ? 0 : 1;
     }
 

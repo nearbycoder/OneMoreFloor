@@ -389,6 +389,32 @@ namespace OneMoreFloor.Core
             RefillForecast();
         }
 
+        /// <summary>
+        /// The building as it will stand right after the next full stop, if the car docks at <paramref name="dock"/>
+        /// (null: assume it docks at a floor the card leaves alone). Mirrors <see cref="FullStop"/>: floors due to
+        /// leave go first, then the next card is played with the docked floor as its anchor. Changes nothing.
+        /// </summary>
+        public Building PreviewStop(FloorId? dock, out bool jammed)
+        {
+            var b = new Building(B);
+            jammed = false;
+            int slot = dock.HasValue ? b.SlotOf(dock.Value) : -1;
+            var ticking = new bool[Defs.FloorCount];
+            for (int f = 0; f < Defs.FloorCount; f++) ticking[f] = b.Leaving[f] >= 0 && b.Has((FloorId)f);
+            for (int f = 0; f < Defs.FloorCount; f++)
+            {
+                var id = (FloorId)f;
+                if (!ticking[f] || b.Leaving[f] < 0 || !b.Has(id)) continue;
+                if (--b.Leaving[f] > 0) continue;
+                b.Leaving[f] = 0;
+                if (dock.HasValue && id == dock.Value && !forceDepart[f]) continue;
+                if (b.Replace(id, id == FloorId.Ocean ? oceanDisplaced : null) == id) b.Leaving[f] = -1;
+            }
+            if (Forecast.Count == 0) return b;
+            jammed = !b.Apply(Forecast[0], slot >= 0 ? b.At(slot) : (FloorId?)null, null);
+            return b;
+        }
+
         void TickDepartures(FloorId here)
         {
             // Only floors already counting down when we stopped; one that arrives during this stop

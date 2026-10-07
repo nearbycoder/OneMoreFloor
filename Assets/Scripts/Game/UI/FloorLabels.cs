@@ -12,6 +12,10 @@ namespace OneMoreFloor
     /// tall with nine floors on screen, so these carry the names at full zoom-out. They follow each floor through
     /// shuffles and fade out in the close-up, where the plates are big enough. This also tells the camera how
     /// much room the HUD, the gutter and the panel leave for the tower.
+    /// Each label also carries the shuffle forecast: a cream chip (the colour of the panel's forecast cards) with
+    /// the slot the floor lands in at the next stop, or JAM on a floor the next card names when the car is
+    /// about to dock there. It follows the hovered or picked floor, else the car's target, else assumes the car
+    /// stops somewhere the card leaves alone.
     /// </summary>
     public sealed class FloorLabels : MonoBehaviour
     {
@@ -19,6 +23,7 @@ namespace OneMoreFloor
         public const float Gutter = 300f;
         // the HUD card ends at x = 28 + 360 (Hud.Build); the panel is 400 wide, 30 in from the right (PanelUi.Create)
         const float HudRight = 400f, PanelLeftInset = 440f;
+        const float ChipW = 72f, ChipH = 30f;
 
         ShiftRunner runner;
         Camera worldCam;
@@ -34,6 +39,11 @@ namespace OneMoreFloor
             public WaitBadge Badge;
             public TextMeshProUGUI Name, Number, TagText;
             public FloorId Shown = (FloorId)(-1);
+            public RectTransform Chip;
+            public Image ChipBg, ChipArrow;
+            public TextMeshProUGUI ChipText;
+            public string ChipShown = "";
+            public float ChipPop;
         }
 
         public static FloorLabels Create(Transform parent, ShiftRunner runner, Camera worldCam, RectTransform canvasRt)
@@ -86,7 +96,17 @@ namespace OneMoreFloor
                 tag.rectTransform.anchoredPosition = new Vector2(-8, 4);
                 var tt = UiKit.Text("Left", tag.transform, "", 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(120, 24));
                 Deco.Fill(tt.rectTransform);
-                labels.Add(new Label { Group = rt.gameObject.AddComponent<CanvasGroup>(), Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, TagText = tt });
+                // the forecast: a chip sitting on the pill's top edge above the slot disc
+                var chip = UiKit.Rect("Forecast", rt, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f), new Vector2(-2f, -10f), new Vector2(ChipW, ChipH));
+                var chipBg = UiKit.Image("Bg", chip, UiKit.Pill, Palette.Cream, new Vector2(ChipW, ChipH));
+                chipBg.type = Image.Type.Sliced;
+                Deco.Fill(chipBg.rectTransform);
+                var arrow = UiKit.Image("Arrow", chip, UiKit.Triangle, Palette.Ink, new Vector2(17, 14), new Vector2(-15f, 0f));
+                arrow.rectTransform.anchorMin = arrow.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                var ct = UiKit.Text("Slot", chip, "", 22, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(36, ChipH), new Vector2(11f, 0f));
+                chip.gameObject.SetActive(false);
+                labels.Add(new Label { Group = rt.gameObject.AddComponent<CanvasGroup>(), Rt = rt, Bg = bg, Disc = disc, Icon = icon, Badge = badge, Tag = tag, Name = name, Number = num, TagText = tt,
+                                       Chip = chip, ChipBg = chipBg, ChipArrow = arrow, ChipText = ct });
             }
             return labels[i];
         }
@@ -106,6 +126,12 @@ namespace OneMoreFloor
             var size = canvasRt.rect.size;
             var cam = CanvasCam;
             int n = sim.B.Count;
+            // where the next card puts every floor, for the stop the player is looking at
+            Building after = null;
+            bool jam = false;
+            FloorId? dock = PreviewDock(sim);
+            if (SaveData.Current.ShowForecast && !sim.Ended) after = sim.PreviewStop(dock, out jam);
+            PreviewedDock = dock;
             for (int slot = 0; slot < n; slot++)
             {
                 var f = sim.B.At(slot);
@@ -145,8 +171,75 @@ namespace OneMoreFloor
                         l.Tag.rectTransform.sizeDelta = new Vector2(l.TagText.GetPreferredValues(t).x + 20f, 24f);
                     }
                 }
+
+                string chip = "";
+                int to = after != null ? after.SlotOf(f) : -1;
+                if (after != null && jam && dock == f) chip = "JAM";
+                else if (to >= 0 && to != slot) chip = (to > slot ? "+" : "-") + (to + 1);
+                ShowChip(l, chip, dt);
             }
             for (int i = n; i < labels.Count; i++) labels[i].Rt.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// The stop the forecast chips describe: the floor being hovered or picked (unless it's the one the car is
+        /// already docked at), else the car's target, else none.
+        /// </summary>
+        FloorId? PreviewDock(ShiftSim sim)
+        {
+            var h = runner.HoverFloor;
+            if (h.HasValue && sim.B.Has(h.Value) && (sim.Car.Target.HasValue || h.Value != sim.DockedFloor)) return h;
+            return sim.Car.Target;
+        }
+
+        void ShowChip(Label l, string chip, float dt)
+        {
+            bool on = chip.Length > 0;
+            if (chip != l.ChipShown)
+            {
+                l.ChipShown = chip;
+                l.Chip.gameObject.SetActive(on);
+                if (on)
+                {
+                    bool isJam = chip == "JAM";
+                    l.ChipText.text = isJam ? chip : chip.Substring(1);
+                    l.ChipArrow.gameObject.SetActive(!isJam);
+                    l.ChipArrow.rectTransform.localRotation = Quaternion.Euler(0f, 0f, chip[0] == '-' ? 180f : 0f);
+                    l.ChipBg.color = isJam ? Palette.Bad : Palette.Cream;
+                    l.ChipText.color = isJam ? Color.white : Palette.Ink;
+                    float w = isJam ? l.ChipText.GetPreferredValues("JAM").x + 24f : ChipW;
+                    l.Chip.sizeDelta = new Vector2(w, ChipH);
+                    l.ChipText.rectTransform.sizeDelta = new Vector2(isJam ? w : 36f, ChipH);
+                    l.ChipText.rectTransform.anchoredPosition = new Vector2(isJam ? 0f : 11f, 0f);
+                    l.ChipPop = SaveData.Current.ReducedMotion ? 0f : 1f;
+                }
+            }
+            if (!on) return;
+            l.ChipPop = Mathf.MoveTowards(l.ChipPop, 0f, dt * 5f);
+            l.Chip.localScale = Vector3.one * (1f + 0.25f * Ease.OutCubic(l.ChipPop));
+        }
+
+        /// <summary>Self-test: the stop the chips were last worked out for.</summary>
+        public FloorId? PreviewedDock { get; private set; }
+
+        /// <summary>Self-test: the forecast chip on the label for a slot: "" for none, "JAM", or "+9" / "-2" (up or down to that slot).</summary>
+        public string ChipAt(int slot) => slot >= 0 && slot < labels.Count && labels[slot].Rt.gameObject.activeSelf ? labels[slot].ChipShown : "";
+
+        /// <summary>Self-test: the label's pill for a slot in screen pixels (null if hidden).</summary>
+        public Rect? ScreenRectAt(int slot)
+        {
+            if (slot < 0 || slot >= labels.Count || !labels[slot].Rt.gameObject.activeInHierarchy) return null;
+            return UiKit.ScreenRect(labels[slot].Bg.rectTransform, CanvasCam);
+        }
+
+        /// <summary>Self-test: the first visible forecast chip (for the coach to point at).</summary>
+        public RectTransform FirstChip
+        {
+            get
+            {
+                foreach (var l in labels) if (l.Rt.gameObject.activeSelf && l.ChipShown.Length > 0) return l.Chip;
+                return null;
+            }
         }
 
         /// <summary>Self-test: the waiting badge on the label for a slot (null if that label isn't built).</summary>

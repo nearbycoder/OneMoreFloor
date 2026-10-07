@@ -114,7 +114,10 @@ names. Menus have a focus ring that the d-pad, stick and arrow keys move.
 Every stop plays a card from the forecast queue on your panel. The first shifts only **swap** pairs of floors (and
 sometimes stay **calm**). Wednesday adds **Rise** (a floor jumps to the top) and **Sink**, Thursday adds **Roll** (a
 block of three rotates) and the Graveyard Shift adds **Flip** (a block of four or five reverses). The floor you're
-docked at stays put, so a card that names it **jams** with sparks and a grinding noise. Floors also **leave the
+docked at stays put, so a card that names it **jams** with sparks and a grinding noise. The floor labels beside
+the tower show the next card too: a cream tag with an arrow and the slot each floor will land in, or a red **JAM**
+on a named floor the car is about to dock at. Once the car is on its way the tags are exact; before that they
+follow the floor you're hovering or have picked. Floors also **leave the
 building** on a countdown, drifting off into the clouds while another floor slides in, and the **Ocean** visits for
 a few stops.
 

@@ -157,5 +157,21 @@ namespace OneMoreFloor
             rt.anchorMin = anchor;
             rt.anchorMax = anchor;
         }
+
+        static readonly Vector3[] corners = new Vector3[4];
+
+        /// <summary>A rect's drawn bounds in screen pixels (scale and rotation included), for layout self-tests.</summary>
+        public static UnityEngine.Rect ScreenRect(RectTransform rt, Camera canvasCam)
+        {
+            rt.GetWorldCorners(corners);
+            Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = new Vector2(float.MinValue, float.MinValue);
+            foreach (var c in corners)
+            {
+                var sp = RectTransformUtility.WorldToScreenPoint(canvasCam, c);
+                min = Vector2.Min(min, sp);
+                max = Vector2.Max(max, sp);
+            }
+            return UnityEngine.Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        }
     }
 }

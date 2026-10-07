@@ -138,6 +138,12 @@ namespace OneMoreFloor
             Ui = () => runner.Hud.Panel.ForecastAnchor, MinTime = 4.5f, MaxTime = 6.5f, Once = false,
         };
 
+        Tip ChipTip() => new Tip
+        {
+            Id = "chips", Text = "The tags on the floor names show <b>where each floor lands</b> at your next stop.",
+            Ui = () => runner.Hud.FloorLabels.FirstChip, MinTime = 4f, MaxTime = 6f, Once = false,
+        };
+
         Tip Simple(string id, string text, Func<Vector3?> world = null, float dur = 5.5f, string pad = null, string keys = null) => new Tip
         {
             Id = id, Text = text, World = world, MinTime = 3.5f, MaxTime = dur, Pad = pad, Keys = keys,
@@ -173,7 +179,12 @@ namespace OneMoreFloor
                     if (monday && step == "send") step = "shuffle-wait";
                     break;
                 case Ev.Shuffled:
-                    if (monday && step == "shuffle-wait") { step = "tips"; Push(ShuffleTip()); }
+                    if (monday && step == "shuffle-wait")
+                    {
+                        step = "tips";
+                        Push(ShuffleTip());
+                        if (SaveData.Current.ShowForecast) Push(ChipTip());
+                    }
                     break;
                 case Ev.Delivered:
                     if (monday && step == "tips")

@@ -26,7 +26,7 @@ namespace OneMoreFloor
         bool padOnly, uiOnly;
         int frames;
         float frameTime, worst;
-        bool popupShot;
+        bool popupShot, jamShot;
 
         public static void TryStart(GameRoot root)
         {
@@ -117,6 +117,11 @@ namespace OneMoreFloor
                 runner.Hud.WorstPopupOverlap = 0f;
                 int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0;
                 string starWhy = "";
+                int chipFrames = 0, chipBad = 0, chipSeen = 0, chipStops = 0, chipStopBad = 0, chipJams = 0, prevStops = runner.Sim.Stops;
+                string chipWhy = "";
+                string[] prevChips = null;
+                FloorId[] prevSlots = null;
+                FloorId? prevDock = null;
                 Time.timeScale = speed;
                 float played = 0f;
                 float limit = k == 0 ? 200f : 60f;  // Monday plays to the bell; others get a minute of game time
@@ -136,6 +141,64 @@ namespace OneMoreFloor
                         starPeak = Mathf.Max(starPeak, runner.Hud.StarsDrawnLit);
                         if (right) starLag = 0;
                         else if (++starLag > 1) { starBad++; starWhy = $"score {ss.Score}, drawn {runner.Hud.StarsDrawnLit}, '{runner.Hud.StarCaption}'"; }
+                    }
+                    // the forecast chips on the floor labels: the sim's preview every frame, and where floors really land
+                    {
+                        var ss = runner.Sim;
+                        var lab = runner.Hud.FloorLabels;
+                        var hover = runner.HoverFloor;
+                        FloorId? dock = hover.HasValue && ss.B.Has(hover.Value) && (ss.Car.Target.HasValue || hover.Value != ss.DockedFloor) ? hover : ss.Car.Target;
+                        bool jam = false;
+                        var after = SaveData.Current.ShowForecast && !ss.Ended ? ss.PreviewStop(dock, out jam) : null;
+                        bool visible = !ss.Ended && runner.Rig.ZoomShown < 0.35f;
+                        if (ss.Stops != prevStops && prevChips != null && prevDock.HasValue && prevDock.Value == ss.DockedFloor)
+                        {
+                            chipStops++;
+                            bool missed = false;
+                            for (int sl = 0; sl < prevSlots.Length; sl++)
+                            {
+                                var f = prevSlots[sl];
+                                if (!ss.B.Has(f)) continue; // left the building at the stop
+                                string c = sl < prevChips.Length ? prevChips[sl] : "";
+                                int want = c.Length > 0 && c != "JAM" ? int.Parse(c.Substring(1)) - 1 : sl;
+                                if (c == "JAM") chipJams++;
+                                if (ss.B.SlotOf(f) != want) { missed = true; chipWhy = $"stop {ss.Stops}: {f} chip '{c}' but landed in {ss.B.SlotOf(f) + 1}"; }
+                            }
+                            if (missed) chipStopBad++;
+                        }
+                        prevStops = ss.Stops;
+                        if (visible)
+                        {
+                            chipFrames++;
+                            bool any = false, right = true;
+                            for (int sl = 0; sl < ss.B.Count; sl++)
+                            {
+                                var f = ss.B.At(sl);
+                                int to = after != null ? after.SlotOf(f) : -1;
+                                string want = after != null && jam && dock == f ? "JAM" : to >= 0 && to != sl ? (to > sl ? "+" : "-") + (to + 1) : "";
+                                string got = lab.ChipAt(sl);
+                                if (got.Length > 0) any = true;
+                                if (got != want) { right = false; chipWhy = $"slot {sl + 1} ({f}): chip '{got}', preview '{want}'"; }
+                            }
+                            if (!right) chipBad++;
+                            if (any) chipSeen++;
+                            bool jamUp = false;
+                            for (int sl = 0; sl < ss.B.Count; sl++) jamUp |= lab.ChipAt(sl) == "JAM";
+                            if (!jamShot && jamUp && k >= 3)
+                            {
+                                // the anchor rule on the labels: the car's next stop is a floor the next card names
+                                jamShot = true;
+                                Time.timeScale = 0f;
+                                yield return null;
+                                Shot($"forecast_jam_{def.Id}");
+                                Time.timeScale = speed;
+                            }
+                            prevChips = new string[ss.B.Count];
+                            for (int sl = 0; sl < ss.B.Count; sl++) prevChips[sl] = lab.ChipAt(sl);
+                            prevSlots = ss.B.Slots.ToArray();
+                            prevDock = lab.PreviewedDock;
+                        }
+                        else prevChips = null;
                     }
                     if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
                     if (!popupShot && k >= 3 && runner.Hud.PopupCount >= 4)
@@ -178,6 +241,10 @@ namespace OneMoreFloor
                 Check($"{def.Id}: worst popup overlap {overlap:0.0} px" + (overlap > 0f ? $" ({runner.Hud.WorstPopupPair})" : ""), overlap <= 4f, "popups");
                 Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit)" + (starBad > 0 ? $" last miss: {starWhy}" : ""),
                       starBad == 0 && starFrames > 0, "stars");
+                Check($"{def.Id}: forecast chips matched the preview on {chipFrames - chipBad}/{chipFrames} frames (chips up on {chipSeen})" + (chipBad > 0 ? $" last miss: {chipWhy}" : ""),
+                      chipBad == 0 && chipSeen > 0, "forecast");
+                Check($"{def.Id}: floors landed where the chips said at {chipStops - chipStopBad}/{chipStops} stops ({chipJams} JAM chips)" + (chipStopBad > 0 ? $" miss: {chipWhy}" : ""),
+                      chipStopBad == 0 && chipStops > 0, "forecast");
                 Check($"{def.Id}: after the bell the track shows {runner.Hud.StarsDrawnLit} stars for {sim.StarCount}", runner.Hud.StarsDrawnLit == sim.StarCount, "stars");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }
