@@ -34,7 +34,7 @@ namespace OneMoreFloor
         /// <summary>Camera zoom during play (0 = whole tower, 1 = close-up following the car).</summary>
         public float Zoom;
 
-        static string PathName => System.IO.Path.Combine(Application.persistentDataPath, "save.json");
+        public const string FileName = "save.json";
         static SaveData current;
 
         public static SaveData Current => current ?? (current = Load());
@@ -42,44 +42,120 @@ namespace OneMoreFloor
         /// <summary>Use a throwaway save (autopilot/tests) so a player's progress is never touched.</summary>
         public static bool Ephemeral;
 
-        static SaveData Load()
-        {
-            try
-            {
-                if (!Ephemeral && File.Exists(PathName))
-                {
-                    var s = JsonUtility.FromJson<SaveData>(File.ReadAllText(PathName));
-                    if (s != null)
-                    {
-                        if (s.Best == null || s.Best.Length < 16) Array.Resize(ref s.Best, 16);
-                        if (s.Stars == null || s.Stars.Length < 16) Array.Resize(ref s.Stars, 16);
-                        if (s.Plays == null || s.Plays.Length < 16) Array.Resize(ref s.Plays, 16);
-                        if (s.RelaxedClear == null || s.RelaxedClear.Length < 16) Array.Resize(ref s.RelaxedClear, 16);
-                        if (s.FiredCount == null || s.FiredCount.Length < 16) Array.Resize(ref s.FiredCount, 16);
-                        if (s.SeenHints == null) s.SeenHints = new string[0];
-                        if (s.DailyDate == null) s.DailyDate = "";
-                        if (s.DailyRecordDate == null) s.DailyRecordDate = "";
-                        return s;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[Save] could not read save: " + ex.Message);
-            }
-            return new SaveData();
-        }
+        static SaveData Load() => Ephemeral ? new SaveData() : LoadFrom(Application.persistentDataPath);
 
         /// <summary>
         /// Writes persistentDataPath/save.json: the player's real save, shared by the editor and the built game. Tests
-        /// and automation must set <see cref="Ephemeral"/> first (Record and MarkHint save too).
+        /// and automation must set <see cref="Ephemeral"/> first (Record and MarkHint save too), or call
+        /// <see cref="SaveTo"/> with a throwaway folder.
         /// </summary>
         public void Save()
         {
             if (Ephemeral) return;
-            try { File.WriteAllText(PathName, JsonUtility.ToJson(this, true)); }
+            SaveTo(Application.persistentDataPath);
+        }
+
+        /// <summary>
+        /// Reads <paramref name="dir"/>/save.json, falling back to save.json.bak when the main file is missing or
+        /// can't be read. An unreadable save.json is renamed to save.unreadable-&lt;time&gt;.json first, so the next
+        /// save neither overwrites it nor pushes the good backup out. Values are clamped to sane ranges.
+        /// </summary>
+        public static SaveData LoadFrom(string dir)
+        {
+            string path = Path.Combine(dir, FileName), bak = path + ".bak";
+            var s = TryRead(path, out bool unreadable);
+            if (unreadable)
+            {
+                string aside = Path.Combine(dir, "save.unreadable-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json");
+                try
+                {
+                    File.Move(path, aside);
+                    Debug.LogWarning("[Save] save.json couldn't be read; kept it as " + Path.GetFileName(aside));
+                }
+                catch (Exception ex) { Debug.LogWarning("[Save] couldn't move the unreadable save aside: " + ex.Message); }
+            }
+            if (s == null)
+            {
+                s = TryRead(bak, out _);
+                if (s != null) Debug.LogWarning("[Save] loaded the backup, save.json.bak");
+            }
+            return s != null ? s.Sanitized() : new SaveData();
+        }
+
+        /// <summary>The parsed file, or null. <paramref name="unreadable"/> is set when the file exists but isn't a save.</summary>
+        static SaveData TryRead(string path, out bool unreadable)
+        {
+            unreadable = false;
+            try
+            {
+                if (!File.Exists(path)) return null;
+                string text = File.ReadAllText(path);
+                var s = string.IsNullOrWhiteSpace(text) ? null : JsonUtility.FromJson<SaveData>(text);
+                if (s == null) unreadable = true;
+                return s;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Save] could not read " + Path.GetFileName(path) + ": " + ex.Message);
+                unreadable = true;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Writes <paramref name="dir"/>/save.json without ever leaving a half-written file behind: the JSON goes to
+        /// save.json.tmp (flushed to disk), which then replaces save.json in one step, keeping the old one as save.json.bak.
+        /// </summary>
+        public void SaveTo(string dir)
+        {
+            string path = Path.Combine(dir, FileName), tmp = path + ".tmp", bak = path + ".bak";
+            try
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(this, true));
+                using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    fs.Write(bytes, 0, bytes.Length);
+                    fs.Flush(true);
+                }
+                if (!File.Exists(path)) { File.Move(tmp, path); return; }
+                try { File.Replace(tmp, path, bak); }
+                catch (Exception ex) when (ex is PlatformNotSupportedException || ex is IOException)
+                {
+                    // no atomic replace here: keep a backup first, then swap (a crash in between leaves .bak and .tmp)
+                    File.Copy(path, bak, true);
+                    File.Delete(path);
+                    File.Move(tmp, path);
+                }
+            }
             catch (Exception ex) { Debug.LogWarning("[Save] could not write save: " + ex.Message); }
         }
+
+        /// <summary>Fills missing arrays and clamps every value to its range (a hand-edited or damaged save).</summary>
+        SaveData Sanitized()
+        {
+            if (Best == null || Best.Length < 16) Array.Resize(ref Best, 16);
+            if (Stars == null || Stars.Length < 16) Array.Resize(ref Stars, 16);
+            if (Plays == null || Plays.Length < 16) Array.Resize(ref Plays, 16);
+            if (RelaxedClear == null || RelaxedClear.Length < 16) Array.Resize(ref RelaxedClear, 16);
+            if (FiredCount == null || FiredCount.Length < 16) Array.Resize(ref FiredCount, 16);
+            if (SeenHints == null) SeenHints = new string[0];
+            if (DailyDate == null) DailyDate = "";
+            if (DailyRecordDate == null) DailyRecordDate = "";
+            for (int i = 0; i < Stars.Length; i++) Stars[i] = Mathf.Clamp(Stars[i], 0, 3);
+            for (int i = 0; i < Best.Length; i++) Best[i] = Mathf.Max(0, Best[i]);
+            for (int i = 0; i < Plays.Length; i++) Plays[i] = Mathf.Max(0, Plays[i]);
+            for (int i = 0; i < FiredCount.Length; i++) FiredCount[i] = Mathf.Max(0, FiredCount[i]);
+            DailyBest = Mathf.Max(0, DailyBest);
+            DailyPlays = Mathf.Max(0, DailyPlays);
+            DailyRecord = Mathf.Max(0, DailyRecord);
+            Master = Unit(Master, 1f);
+            Music = Unit(Music, 0.8f);
+            Sfx = Unit(Sfx, 0.9f);
+            Zoom = Unit(Zoom, 0f);
+            return this;
+        }
+
+        static float Unit(float v, float fallback) => float.IsNaN(v) || float.IsInfinity(v) ? fallback : Mathf.Clamp01(v);
 
         public bool Unlocked(int shift) => Progress.Unlocked(shift, Stars, Plays, RelaxedClear);
 
