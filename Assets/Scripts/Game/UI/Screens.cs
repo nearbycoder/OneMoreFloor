@@ -232,6 +232,16 @@ namespace OneMoreFloor
                     howText.enableAutoSizing = true;
                     howText.fontSizeMin = 12;
                     howText.fontSizeMax = 17;
+                    // on a small screen the floor keeps this from shrinking to fit one line, so it wraps onto a second
+                    TextFloor.Refresh(howText);
+                    if (TextFloor.Raised(howText))
+                    {
+                        howText.textWrappingMode = TextWrappingModes.Normal;
+                        howText.alignment = TextAlignmentOptions.Top;
+                        howText.lineSpacing = -12f;
+                        howText.rectTransform.sizeDelta = new Vector2(250, 42);
+                        howText.rectTransform.anchoredPosition = new Vector2(0, -142);
+                    }
                 }
             }
             GameRoot.SetLayerRecursive(gameObject, GameRoot.UiLayer);

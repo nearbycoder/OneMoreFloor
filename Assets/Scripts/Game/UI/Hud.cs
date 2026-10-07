@@ -86,6 +86,7 @@ namespace OneMoreFloor
             clockLabel.enableAutoSizing = true;
             clockLabel.fontSizeMin = 11;
             clockLabel.fontSizeMax = 15;
+            TextFloor.Refresh(clockLabel);
             clock = Deco.Shadowed(UiKit.Text("Clock", col, "2:00", 72, Palette.Cream, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(300, 80), new Vector2(X, Y(186))));
             clock.rectTransform.pivot = new Vector2(0, 0.5f);
             Deco.Divider(col, W - 56f, new Vector2(0, Y(236)), 0.7f);
@@ -264,7 +265,7 @@ namespace OneMoreFloor
             b.BadgeIcon.sprite = iconSprite;
             b.BadgeIcon.gameObject.SetActive(iconSprite != null);
             b.BadgeText.text = badge;
-            b.BadgeText.fontSize = 17;
+            TextFloor.SetSize(b.BadgeText, 17);
             if (p.Fuming) b.Disc.color = Palette.Bad;
 
             var anchor = v.BubbleAnchor;
@@ -318,7 +319,7 @@ namespace OneMoreFloor
                     {
                         other.Text.text = text;
                         other.Text.color = color;
-                        other.Text.fontSize = size;
+                        TextFloor.SetSize(other.Text, size);
                         other.Size = PopupSize(other.Text, text);
                         other.T = 0f;          // a full life from the latest update
                         other.Dur = dur;
@@ -838,7 +839,11 @@ namespace OneMoreFloor
 
             UpdateStarTrack(sim, dt);
 
-            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? "CLOCK STARTS ON YOUR FIRST DROP" : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
+            // on a small screen the floor draws this label bigger, and the long line wouldn't fit the card
+            bool tight = TextFloor.Raised(clockLabel);
+            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? (tight ? "CLOCK STARTS AT FIRST DROP" : "CLOCK STARTS ON YOUR FIRST DROP")
+                            : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
+            clockLabel.characterSpacing = tight && !sim.ClockRunning ? 2f : 6f;
             if (sim.Def.Endless)
             {
                 int secs = Mathf.FloorToInt(sim.Time);

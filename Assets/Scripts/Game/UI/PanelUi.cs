@@ -11,7 +11,9 @@ namespace OneMoreFloor
     {
         ShiftRunner runner;
         RectTransform root;
-        TextMeshProUGUI dialNumber, dialName;
+        TextMeshProUGUI dialNumber, dialName, nextLabel;
+        // the forecast's heading, and the shorter words it uses when the text floor draws it bigger on a small screen
+        const string NextLong = "NEXT STOP, THE BUILDING WILL...", NextShort = "NEXT STOP, THE BUILDING...";
         RectTransform needle;
         float needleAngle;
         readonly ForecastCard[] cards = new ForecastCard[2];
@@ -80,7 +82,7 @@ namespace OneMoreFloor
             dialName = UiKit.Text("Name", root, "LOBBY", 24, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(250, 40), new Vector2(0, 86));
 
             // forecast
-            UiKit.Text("NextLbl", root, "NEXT STOP, THE BUILDING WILL...", 15, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(340, 24), new Vector2(0, 44));
+            nextLabel = UiKit.Text("NextLbl", root, NextLong, 15, Palette.Brass, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(340, 24), new Vector2(0, 44));
             for (int i = 0; i < 2; i++)
             {
                 var c = new ForecastCard();
@@ -179,6 +181,8 @@ namespace OneMoreFloor
         {
             var sim = runner.Sim;
             if (sim == null) return;
+            string heading = TextFloor.Raised(nextLabel) ? NextShort : NextLong;
+            if (nextLabel.text != heading) nextLabel.text = heading;
             var b = sim.B;
 
             // dial follows the car

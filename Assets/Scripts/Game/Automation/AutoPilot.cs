@@ -23,7 +23,7 @@ namespace OneMoreFloor
         int shots;
         float speed = 3f;
         int onlyShift = -1;
-        bool padOnly, uiOnly;
+        bool padOnly, uiOnly, textOnly;
         int frames;
         float frameTime, worst;
         bool popupShot, jamShot, bannerShot;
@@ -44,6 +44,7 @@ namespace OneMoreFloor
             {
                 if (args[s + 1] == "pad") ap.padOnly = true;
                 else if (args[s + 1] == "ui") ap.uiOnly = true;
+                else if (args[s + 1] == "text") ap.textOnly = true;
                 else int.TryParse(args[s + 1], out ap.onlyShift);
             }
             int sp = System.Array.IndexOf(args, "-omfAutopilotSpeed");
@@ -91,6 +92,13 @@ namespace OneMoreFloor
             if (uiOnly)
             {
                 yield return UiChecks(root);
+                yield return Finish();
+                yield break;
+            }
+
+            if (textOnly)
+            {
+                yield return TextChecks(root);
                 yield return Finish();
                 yield break;
             }
@@ -949,6 +957,123 @@ namespace OneMoreFloor
             root.ShowTitle();
             yield return Wait(1f);
             Check($"every control on the title takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
+        }
+
+        /// <summary>
+        /// The text audit (see <see cref="TextAudit"/>) on every screen a player meets: each visible text's capitals in
+        /// screen pixels against a 9 px floor, and any text that runs out of its box.
+        /// </summary>
+        IEnumerator TextChecks(GameRoot root)
+        {
+            const float floorPx = 9f;
+            var save = SaveData.Current;
+            void Audit(string screen)
+            {
+                var list = TextAudit.Measure(root.Canvas.transform, root.UiCam);
+                Debug.Log("[TextAudit] " + TextAudit.Report($"{screen} at {Screen.width}x{Screen.height}", list, floorPx, out float smallest, out int under, out int spills));
+                Check($"{screen}: smallest capitals {(list.Count > 0 ? smallest : 0f):0.0} px over {list.Count} texts, {under} under {floorPx:0} px, {spills} spilling",
+                      list.Count > 0 && under == 0 && spills == 0, "text");
+            }
+            IEnumerator Still(string screen, string shot)
+            {
+                Time.timeScale = 0f;
+                yield return null;
+                yield return null;
+                Audit(screen);
+                Shot(shot);
+                Time.timeScale = 1f;
+            }
+
+            root.ShowTitle();
+            yield return Wait(1.5f);
+            yield return Still("title", "text_title");
+
+            // partway through the week: stars, bests, a try towards a late pass, a relaxed clear and locked shifts
+            System.Array.Clear(save.Stars, 0, save.Stars.Length);
+            save.Stars[0] = 3; save.Stars[1] = 1; save.Best[0] = 31250; save.Best[1] = 18400;
+            save.Plays[0] = 2; save.Plays[1] = 3; save.Plays[2] = 1; save.Best[2] = 9800;
+            root.ShowRoster();
+            yield return Wait(1.2f);
+            yield return Still("roster", "text_roster");
+
+            for (int k = 0; k < 8; k++) save.Stars[k] = Mathf.Max(save.Stars[k], 1);
+            save.EndingSeen = true;
+            root.ShowIntro(4);
+            yield return Wait(1.2f);
+            yield return Still("intro card", "text_intro");
+
+            // Monday's first minute: the coach tip, the HUD card, the labels and the panel
+            save.SeenHints = new string[0];
+            root.StartShift(0, 5);
+            var runner = root.Runner;
+            runner.Rig.Zoom = 0f;
+            runner.InputEnabled = false;
+            runner.AutoBot = Bot.Decent(3);
+            for (float w = 0f; w < 25f && !(root.Coach.Showing && root.Coach.Box.gameObject.activeInHierarchy); w += Time.unscaledDeltaTime) yield return null;
+            yield return Wait(0.5f);
+            yield return Still($"play: Monday with a coach tip ({(root.Coach.Showing ? "showing" : "none came")})", "text_play_monday");
+            root.QuitShift();
+            yield return Wait(1f);
+
+            // a busy Graveyard Shift: nine labels with forecast tags, badges, riders, and the card for a hovered guest
+            root.StartShift(8, 91);
+            runner = root.Runner;
+            runner.Rig.Zoom = 0f;
+            runner.InputEnabled = false;
+            runner.AutoBot = Bot.Decent(5);
+            runner.FastForward(25f);
+            yield return Wait(1.5f);
+            int pid = -1;
+            foreach (var g in runner.Sim.All) if (g.State == PState.Waiting) { pid = g.Id; break; }
+            runner.ShowHover(pid);
+            yield return Wait(0.6f);
+            yield return Still("play: Graveyard with the mouse, hovering a guest", "text_play_graveyard_mouse");
+            runner.ShowHover(-1);
+            // with a controller: the floor brackets and the prompt strip
+            Controls.ForcePad = true;
+            int busiest = 0;
+            for (int sl = 0; sl < runner.Sim.B.Count; sl++)
+                if (runner.Sim.Waiting[(int)runner.Sim.B.At(sl)].Count > runner.Sim.Waiting[(int)runner.Sim.B.At(busiest)].Count) busiest = sl;
+            runner.ScriptCursor(busiest, -1);
+            yield return Wait(0.8f);
+            yield return Still("play: Graveyard with a controller", "text_play_graveyard_pad");
+            var pause = FindAnyObjectByType<PauseScreen>(FindObjectsInactive.Include);
+            root.Pause();
+            yield return Wait(0.8f);
+            yield return Still("pause card and controls panel (controller)", "text_pause_pad");
+            UiButton Button(Component screen, string label)
+            {
+                foreach (var b in screen.GetComponentsInChildren<UiButton>(true)) if (b.name == "Btn_" + label) return b;
+                return null;
+            }
+            Button(pause, "GUEST GUIDE")?.Click();
+            yield return Wait(0.8f);
+            yield return Still("guest guide", "text_guide");
+            FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include).Back();
+            yield return Wait(0.6f);
+            Button(pause, "SETTINGS")?.Click();
+            yield return Wait(0.8f);
+            yield return Still("settings", "text_settings");
+            FindAnyObjectByType<SettingsScreen>(FindObjectsInactive.Include).Hide();
+            yield return Wait(0.4f);
+            Controls.ReleaseForcedPad();
+            root.Resume();
+            yield return null;
+            root.Pause();
+            yield return Wait(0.8f);
+            yield return Still("pause card and controls panel (mouse)", "text_pause_mouse");
+            root.Resume();
+            // the close-up: alerts at the screen's edge for floors out of view
+            runner.Rig.Zoom = 1f;
+            yield return Wait(2.5f);
+            yield return Still("play: Graveyard close-up with edge alerts", "text_play_closeup");
+            runner.Rig.Zoom = 0f;
+            // the time card of a rough shift: the complaints by cause and a tip
+            runner.AutoBot = null;
+            runner.FastForward(runner.Sim.TimeLeft + 0.1f);
+            yield return Wait(6.5f);
+            yield return Still("time card", "text_results");
+            runner.InputEnabled = true;
         }
 
         /// <summary>The pause card and its controls panel are on screen, apart, and every row fits ("" when all's well).</summary>

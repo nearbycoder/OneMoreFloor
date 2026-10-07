@@ -132,6 +132,7 @@ namespace OneMoreFloor
             t.raycastTarget = false;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
+            TextFloor.Track(t);
             return t;
         }
 

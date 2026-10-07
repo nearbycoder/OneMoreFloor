@@ -220,7 +220,7 @@ namespace OneMoreFloor
                     p.ShownKey = key;
                     p.ShownLabel = label;
                     p.Key.text = key;
-                    p.Key.fontSize = key.Length > 2 ? 15 : 19;
+                    TextFloor.SetSize(p.Key, key.Length > 2 ? 15 : 19);
                     p.Label.text = label;
                     p.Width = p.Label.GetPreferredValues(label).x;
                 }

@@ -440,9 +440,10 @@ namespace OneMoreFloor
             Canvas.planeDistance = 10f;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.matchWidthOrHeight = 0.6f;
+            scaler.referenceResolution = TextFloor.Reference;
+            scaler.matchWidthOrHeight = TextFloor.Match;
             canvasGo.AddComponent<GraphicRaycaster>();
+            canvasGo.AddComponent<TextFloor>();
 
             if (FindAnyObjectByType<EventSystem>() == null)
             {
