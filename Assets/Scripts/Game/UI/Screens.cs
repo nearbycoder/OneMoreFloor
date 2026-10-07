@@ -373,6 +373,7 @@ namespace OneMoreFloor
     {
         TextMeshProUGUI reason, hint;
         UiButton restart, quit, armed;
+        ControlsCard controls;
         Component armedFocus;
         float armedAt;
         const string Idle = "ESC TO RESUME";
@@ -390,6 +391,8 @@ namespace OneMoreFloor
         public UiButton QuitButton => quit;
         public UiButton Armed => armed;
         public string Hint => hint.text;
+        public ControlsCard ControlsPanel => controls;
+        public RectTransform CardRect { get; private set; }
 
         public static PauseScreen Create(Transform parent, GameRoot game)
         {
@@ -397,7 +400,10 @@ namespace OneMoreFloor
             var s = rt.gameObject.AddComponent<PauseScreen>();
             s.Init("Pause");
             Dim(rt, 0.7f);
-            var card = Card(rt, new Vector2(560, 680), Vector2.zero);
+            // the card and, beside it, what every input does
+            var card = Card(rt, new Vector2(560, 680), new Vector2(-272, 0));
+            s.CardRect = card;
+            s.controls = ControlsCard.Create(rt, new Vector2(520, 680), new Vector2(292, 0));
             Heading(card, "Paused", 254, 460, 80);
             s.reason = Deco.Label("Reason", card, "", 17, new Vector2(480, 26), new Vector2(0, 308), TextAlignmentOptions.Center);
             s.reason.characterSpacing = 6f;
@@ -440,12 +446,13 @@ namespace OneMoreFloor
             hint.color = Deco.Muted;
         }
 
-        public override void Show() { Disarm(); base.Show(); }
+        public override void Show() { Disarm(); controls.Refresh(); base.Show(); }
         public override void Hide() { Disarm(); base.Hide(); }
 
         protected override void Update()
         {
             base.Update();
+            controls.Refresh();
             if (armed == null) return;
             // moving the focus ring or the mouse to another button, or waiting, calls it off
             bool off = UiNav.Focus != armedFocus || UiTime.Now - armedAt > 6f;

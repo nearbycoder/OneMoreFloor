@@ -248,12 +248,14 @@ namespace OneMoreFloor
                         Time.timeScale = speed;
                         nextShot += 45f;
                     }
-                    if (k == 2 && !pauseShot && played >= 33f)
+                    if ((k == 2 || onlyShift >= 0) && !pauseShot && played >= 33f)
                     {
                         pauseShot = true;
                         root.Pause();
                         yield return Wait(0.6f);
                         Shot("pause");
+                        string lay = ControlsLayout(FindAnyObjectByType<PauseScreen>());
+                        Check($"{def.Id}: the pause card and its controls panel fit side by side at {Screen.width}x{Screen.height}{(lay.Length > 0 ? ":" + lay : "")}", lay.Length == 0, "ui");
                         root.Resume();
                     }
                 }
@@ -589,16 +591,48 @@ namespace OneMoreFloor
             Check("a DualShock 4 shows PlayStation prompts", PadGlyphs.Family == PadFamily.PlayStation && PadGlyphs.Face(GamepadButton.South).Symbol != null
                 && PadGlyphs.Words("Press <b>A</b> (<b>LB/RB</b> picks one, hold <b>RT</b> to zoom)") == "Press <b>Cross</b> (<b>L1/R1</b> picks one, hold <b>R2</b> to zoom)", "ui");
             Shot("ui_prompts_playstation");
+            root.Pause();
+            yield return Wait(0.6f);
+            {
+                string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
+                Check($"with a DualShock 4 the controls panel uses PlayStation names{(lay.Length > 0 ? ":" + lay : "")}",
+                      ct.StartsWith("PLAYSTATION CONTROLLER\n") && ct.Contains("\nCROSS: Send") && ct.Contains("\nTRIANGLE: Let everyone in") && ct.Contains("\nSQUARE: Let the picked rider")
+                      && ct.Contains("\nCIRCLE: Unpick") && ct.Contains("L1 / R1") && ct.Contains("\nR2 / L2: Zoom") && ct.Contains("\nOPTIONS: Pause") && lay.Length == 0, "ui");
+            }
+            Shot("ui_pause_controls_playstation");
+            root.Resume();
+            yield return Wait(0.4f);
             var nx = InputSystem.AddDevice<SwitchProControllerHID>();
             nx.MakeCurrent();
             yield return Wait(0.8f);
             Check("a Switch Pro Controller shows Nintendo prompts (B on the bottom)", PadGlyphs.Family == PadFamily.Nintendo
                 && PadGlyphs.Name(GamepadButton.South) == "B" && PadGlyphs.Name(GamepadButton.RightTrigger) == "ZR", "ui");
             Shot("ui_prompts_nintendo");
+            root.Pause();
+            yield return Wait(0.6f);
+            {
+                string ct = pause.ControlsPanel.Text;
+                Check("with a Switch Pro Controller the controls panel uses Nintendo names (B sends the car)",
+                      ct.StartsWith("NINTENDO CONTROLLER\n") && ct.Contains("\nB: Send") && ct.Contains("\nA: Unpick") && ct.Contains("\nX: Let everyone in")
+                      && ct.Contains("\nZR / ZL: Zoom") && ct.Contains("\n+: Pause") && pause.ControlsPanel.Overflow.Length == 0, "ui");
+            }
+            root.Resume();
+            yield return Wait(0.4f);
             InputSystem.RemoveDevice(ds);
             InputSystem.RemoveDevice(nx);
             Controls.ReleaseForcedPad();
             runner.InputEnabled = true;
+            root.Pause();
+            yield return Wait(0.6f);
+            {
+                string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
+                Check($"with the mouse the controls panel lists mouse and keyboard{(lay.Length > 0 ? ":" + lay : "")}",
+                      ct.StartsWith("MOUSE AND KEYBOARD\n") && ct.Contains("\nRIGHT-CLICK A RIDER: Let them off") && ct.Contains("\nSPACE: Let everyone in")
+                      && ct.Contains("CLICK A FLOOR, 1-9") && lay.Length == 0, "ui");
+            }
+            Shot("ui_pause_controls_mouse");
+            root.Resume();
+            yield return Wait(0.4f);
             Check("a plain gamepad shows Xbox prompts", PadGlyphs.Family == PadFamily.Xbox && PadGlyphs.Name(GamepadButton.South) == "A", "ui");
             root.QuitShift();
             yield return Wait(1f);
@@ -641,6 +675,19 @@ namespace OneMoreFloor
             Check("closing the guide returns to the roster", rosterScreen.Visible && !guideScreen.Visible, "ui");
             root.ShowTitle();
             yield return Wait(1f);
+        }
+
+        /// <summary>The pause card and its controls panel are on screen, apart, and every row fits ("" when all's well).</summary>
+        static string ControlsLayout(PauseScreen pause)
+        {
+            var cam = GameRoot.Instance.UiCam;
+            var panel = UiKit.ScreenRect(pause.ControlsPanel.Rt, cam);
+            var card = UiKit.ScreenRect(pause.CardRect, cam);
+            string bad = "";
+            foreach (var (name, r) in new[] { ("panel", panel), ("card", card) })
+                if (r.xMin < 0f || r.yMin < 0f || r.xMax > Screen.width || r.yMax > Screen.height) bad += $" {name} off screen ({r.xMin:0},{r.yMin:0})-({r.xMax:0},{r.yMax:0})";
+            if (panel.Overlaps(card)) bad += $" panel overlaps the card by {card.xMax - panel.xMin:0} px";
+            return bad + pause.ControlsPanel.Overflow;
         }
 
         int hitMisses;
@@ -716,6 +763,12 @@ namespace OneMoreFloor
             yield return Pad("start");
             Check("Start pauses", pause.Visible && runner.Paused);
             Check($"every control on the pause card takes a click at its centre{HitMisses()}", hitMisses == 0);
+            {
+                string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
+                Check($"the controls panel beside the pause card names the controller's buttons{(lay.Length > 0 ? ":" + lay : "")}",
+                      ct.StartsWith("CONTROLLER\n") && ct.Contains("\nA: Send the car") && ct.Contains("LB / RB") && ct.Contains("\nRT / LT: Zoom")
+                      && ct.Contains("\nSTART: Pause") && lay.Length == 0);
+            }
             // the guest guide from the pause card: Start already put the ring on RESUME, one step down is GUEST GUIDE
             var guide = FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include);
             float tPaused = runner.Sim.Time;
