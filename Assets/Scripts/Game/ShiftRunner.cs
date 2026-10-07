@@ -21,6 +21,12 @@ namespace OneMoreFloor
         public CameraRig Rig;
         public Camera Cam;
         public bool Paused;
+        /// <summary>
+        /// Seconds left of the count after a resume (3, 2, 1): the clock, the car and the bot hold while it runs, so a
+        /// player coming back from the pause card has a beat to find their place. Input still works.
+        /// </summary>
+        public float Holding;
+        public const float ResumeCount = 1.2f;
         public bool InputEnabled = true;
         /// <summary>Title-screen attract mode: the bot plays silently with no HUD and no input.</summary>
         public bool Attract;
@@ -73,6 +79,7 @@ namespace OneMoreFloor
             endTimer = -1f;
             endFired = false;
             Paused = false;
+            Holding = 0f;
             CursorSlot = CursorPid = -1;
             Drain();
             Car.Sync(Sim, 0.016f);
@@ -83,7 +90,9 @@ namespace OneMoreFloor
         {
             if (Sim == null) return;
             float dt = Time.deltaTime;
-            if (!Paused && !Sim.Ended)
+            if (Holding > 0f && !Paused) Holding = Mathf.Max(0f, Holding - Time.unscaledDeltaTime);
+            bool running = !Paused && Holding <= 0f;
+            if (running && !Sim.Ended)
             {
                 acc += Mathf.Min(dt, 0.25f) * TimeScale;
                 int guard = 0;
@@ -105,7 +114,7 @@ namespace OneMoreFloor
             if (InputEnabled && !Paused && !Attract) HandleInput();
             if (!Paused && !Attract && AutoBot == null) Log.Tick(Rig.Zoom);
             SyncViews(dt);
-            Car.Sync(Sim, Paused ? 0f : dt);
+            Car.Sync(Sim, running ? dt : 0f);
             UpdateFollow();
             Hud.Tick(dt);
             if (Mathf.Abs(Sim.Car.Vel) > 0.1f) lastCarDir = Mathf.Sign(Sim.Car.Vel);

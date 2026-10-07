@@ -222,6 +222,7 @@ namespace OneMoreFloor
         {
             if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible || settings.Visible || guide.Visible) return;   // already paused underneath
             Runner.Paused = true;
+            Runner.Holding = 0f;
             pause.Reason = reason;
             pause.Show();
             SaveZoom();
@@ -263,6 +264,8 @@ namespace OneMoreFloor
             if (settings.Visible) settings.Hide();
             if (guide.Visible) guide.Hide();
             Runner.Paused = false;
+            // a beat to find your place before the clock runs again
+            if (InShift && Runner.Sim != null && !Runner.Sim.Ended && !Runner.Attract) Runner.Holding = ShiftRunner.ResumeCount;
         }
 
         public void QuitShift()

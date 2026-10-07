@@ -666,15 +666,43 @@ namespace OneMoreFloor
             runner.Rig.Zoom = 0f; // the whole tower, as the prompt-strip framing is meant to be checked
             runner.AutoBot = Bot.Decent(5);
             yield return Wait(3f);
+            runner.FastForward(12f); // guests waiting, for the resume count's patience check and the keyboard checks below
             root.SendMessage("OnApplicationFocus", false);
             yield return null;
             float t0 = runner.Sim.Time;
             yield return Wait(1.5f);
             Check("losing focus pauses the shift and stops the clock", pause.Visible && runner.Paused && runner.Sim.Time == t0, "ui");
             Shot("ui_pause_focus");
-            root.Resume();
-            yield return Wait(0.6f);
-            Check("resume carries on from the same moment", !runner.Paused && runner.Sim.Time > t0, "ui");
+            // resuming gives a beat to find your place: the clock, patience and the bot hold through a 3-2-1 count
+            {
+                root.Resume();
+                yield return null;
+                float tHold = runner.Sim.Time;
+                Passenger watch = null;
+                foreach (var g in runner.Sim.All) if (g.State != PState.Done) { watch = g; break; }   // waiting or riding, patience drains either way
+                float pHold = watch != null ? watch.Patience : 0f;
+                string first = runner.Hud.CountShown;
+                yield return Wait(0.5f);
+                Time.timeScale = 0f;
+                yield return null;
+                Shot("ui_resume_count");
+                Time.timeScale = 1f;
+                bool held = !runner.Paused && runner.Sim.Time == tHold && (watch == null || watch.Patience == pHold);
+                string mid = runner.Hud.CountShown;
+                // Esc during the count pauses again at once, the clock still where it was
+                KeySim.Play("esc", 0.05f);
+                yield return null;
+                while (KeySim.Busy) yield return null;
+                yield return null;
+                bool again = pause.Visible && runner.Paused && runner.Sim.Time == tHold && runner.Hud.CountShown.Length == 0;
+                Check($"resuming holds the clock and patience through a 3-2-1 count (showed '{first}' then '{mid}', clock {tHold:0.00} -> {runner.Sim.Time:0.00} s, "
+                      + $"watched a guest's patience: {watch != null}), and Esc during it pauses again ({again})",
+                      first == "3" && mid.Length > 0 && mid != "3" && held && watch != null && again, "ui");
+                root.Resume();
+                yield return Wait(ShiftRunner.ResumeCount + 0.5f);
+                Check($"after the count the clock runs on from the same moment ({tHold:0.00} -> {runner.Sim.Time:0.00} s)",
+                      !runner.Paused && runner.Sim.Time > tHold && runner.Hud.CountShown.Length == 0, "ui");
+            }
             yield return Pad("rb");
             // a nudged mouse becomes the active input, but the player is still holding the controller
             var nudge = InputSystem.AddDevice<Mouse>("OMF Virtual Mouse");
@@ -779,8 +807,8 @@ namespace OneMoreFloor
             Check("Down, Enter on the pause card opens the guest guide, shift still paused", guideK.Visible && !pause.Visible && runner.Paused, "ui");
             yield return Keys("esc");
             Check("Esc closes the guide back to the pause card", pause.Visible && !guideK.Visible && runner.Paused, "ui");
-            yield return Keys("esc");
-            Check("Esc on the pause card resumes", !pause.Visible && !runner.Paused, "ui");
+            yield return Keys("esc", 0.35f, runner);
+            Check($"Esc on the pause card resumes, into the count ({resumedHolding:0.00} s of it as the card closed)", !pause.Visible && !runner.Paused && resumedHolding > 0.5f, "ui");
 
             // WASD does what the arrow keys do: W/S pick floors, D picks a guest, S moves a menu's focus ring
             {
@@ -922,20 +950,35 @@ namespace OneMoreFloor
             return $" ({ok} hit{(hitMisses > 0 ? "," + sb : "")})";
         }
 
-        IEnumerator Keys(string script, float gap = 0.35f)
+        /// <summary>The resume count left on the frame a watched shift came off pause during the last Keys/Pad script (-1 if it didn't).</summary>
+        float resumedHolding = -1f;
+
+        IEnumerator Keys(string script, float gap = 0.35f, ShiftRunner watch = null)
         {
             KeySim.Play(script, gap);
-            yield return null;
-            while (KeySim.Busy) yield return null;
-            yield return Wait(0.4f);
+            yield return Watch(() => KeySim.Busy, watch);
         }
 
-        IEnumerator Pad(string script, float gap = 0.35f)
+        IEnumerator Pad(string script, float gap = 0.35f, ShiftRunner watch = null)
         {
             PadSim.Play(script, gap);
+            yield return Watch(() => PadSim.Busy, watch);
+        }
+
+        IEnumerator Watch(System.Func<bool> busy, ShiftRunner watch)
+        {
+            resumedHolding = -1f;
+            bool wasPaused = watch != null && watch.Paused;
+            void Look()
+            {
+                if (watch == null || resumedHolding >= 0f) return;
+                if (wasPaused && !watch.Paused) resumedHolding = watch.Holding;
+                wasPaused = watch.Paused;
+            }
             yield return null;
-            while (PadSim.Busy) yield return null;
-            yield return Wait(0.4f);
+            Look();
+            while (busy()) { yield return null; Look(); }
+            for (float t = 0f; t < 0.4f; t += Time.unscaledDeltaTime) { yield return null; Look(); }
         }
 
         /// <summary>Drives the menus and a shift with a virtual gamepad through the Input System.</summary>
@@ -988,8 +1031,8 @@ namespace OneMoreFloor
             Shot("pad_guide");
             yield return Pad("b");
             Check("B closes the guide back to the pause card", pause.Visible && !guide.Visible && runner.Paused);
-            yield return Pad("start");
-            Check("Start resumes", !pause.Visible && !runner.Paused);
+            yield return Pad("start", 0.35f, runner);
+            Check($"Start resumes, into the count ({resumedHolding:0.00} s of it as the card closed)", !pause.Visible && !runner.Paused && resumedHolding > 0.5f);
             yield return Pad("hold:lt hold:lt");
             Check("LT zooms back out", runner.Rig.Zoom < 0.05f);
 

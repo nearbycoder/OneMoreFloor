@@ -708,10 +708,7 @@ namespace OneMoreFloor
             if (Quiet) return;
             if (banner == null)
             {
-                bannerStrip = UiKit.Stretch("BannerStrip", transform);
-                bannerStrip.offsetMin = new Vector2(FloorLabels.HudRight, 0f);
-                bannerStrip.offsetMax = new Vector2(-FloorLabels.PanelLeftInset, 0f);
-                bannerStrip.gameObject.AddComponent<RectMask2D>();
+                EnsureBannerStrip();
                 banner = UiKit.Text("Banner", bannerStrip, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1000, 180), new Vector2(0, 120));
                 banner.textWrappingMode = TextWrappingModes.NoWrap;
                 banner.enableAutoSizing = true;
@@ -723,6 +720,53 @@ namespace OneMoreFloor
             banner.color = color;
             bannerT = 0f;
             FitBanner();
+        }
+
+        /// <summary>The strip between the HUD card and the panel that banners and the resume count are centred in and clipped to.</summary>
+        void EnsureBannerStrip()
+        {
+            if (bannerStrip != null) return;
+            bannerStrip = UiKit.Stretch("BannerStrip", transform);
+            bannerStrip.offsetMin = new Vector2(FloorLabels.HudRight, 0f);
+            bannerStrip.offsetMax = new Vector2(-FloorLabels.PanelLeftInset, 0f);
+            bannerStrip.gameObject.AddComponent<RectMask2D>();
+        }
+
+        TextMeshProUGUI count;
+        int countShown;
+
+        /// <summary>Self-test: the digit of the resume count showing ("" when none).</summary>
+        public string CountShown => count != null && count.gameObject.activeSelf ? count.text : "";
+
+        /// <summary>The count after a resume (3, 2, 1) over the tower while <see cref="ShiftRunner.Holding"/> runs, with a tick on each digit.</summary>
+        void UpdateCount()
+        {
+            float h = runner.Holding;
+            if (h <= 0f || runner.Paused)
+            {
+                if (count != null) count.gameObject.SetActive(false);
+                countShown = 0;
+                return;
+            }
+            if (count == null)
+            {
+                EnsureBannerStrip();
+                count = UiKit.Text("Count", bannerStrip, "", 150, Palette.Cream, UiKit.Display, TextAlignmentOptions.Center, new Vector2(300, 200));
+                Deco.Outlined(Deco.Shadowed(count, 0.75f, 1f, 0.45f), 0.18f, new Color32(30, 20, 34, 255));
+            }
+            float beat = ShiftRunner.ResumeCount / 3f;
+            int n = Mathf.Clamp(Mathf.CeilToInt(h / beat), 1, 3);
+            if (n != countShown)
+            {
+                countShown = n;
+                AudioDirector.Instance?.Sfx("tick", 0.9f, n == 1 ? 1.25f : 1f, 0f, 0f);
+            }
+            count.gameObject.SetActive(true);
+            count.text = n.ToString();
+            float k = 1f - (h - (n - 1) * beat) / beat;   // 0 -> 1 through this digit's beat
+            bool still = SaveData.Current.ReducedMotion;
+            count.rectTransform.localScale = Vector3.one * (still ? 1f : Mathf.Lerp(1.35f, 1f, Ease.OutCubic(Mathf.Clamp01(k * 3f))));
+            count.alpha = k > 0.8f ? 1f - (k - 0.8f) / 0.2f * 0.6f : 1f;
         }
 
         void FitBanner() => banner.rectTransform.sizeDelta = new Vector2(Mathf.Max(100f, bannerStrip.rect.width / BannerGrowth), 180f);
@@ -823,6 +867,7 @@ namespace OneMoreFloor
 
             UpdatePopups(dt);
             UpdateBanner(dt);
+            UpdateCount();
             UpdateCoins(dt);
             MeasureCoinsOverPopups();
             UpdateRoutePreview();
