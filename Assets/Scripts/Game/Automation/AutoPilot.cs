@@ -122,6 +122,9 @@ namespace OneMoreFloor
                 string[] prevChips = null;
                 FloorId[] prevSlots = null;
                 FloorId? prevDock = null;
+                int tipFrames = 0, tipBad = 0, tipSpill = 0;
+                float tipWorst = 0f, tipNarrowest = float.MaxValue;
+                string tipWhy = "";
                 Time.timeScale = speed;
                 float played = 0f;
                 float limit = k == 0 ? 200f : 60f;  // Monday plays to the bell; others get a minute of game time
@@ -200,6 +203,30 @@ namespace OneMoreFloor
                         }
                         else prevChips = null;
                     }
+                    // the coach tip never covers a floor label, and its text fits its box
+                    {
+                        var coach = root.Coach;
+                        var lab = runner.Hud.FloorLabels;
+                        if (coach != null && coach.Showing && lab.Showing && !runner.Sim.Ended)
+                        {
+                            tipFrames++;
+                            var tb = UiKit.ScreenRect(coach.Box, coach.GetComponentInParent<Canvas>().worldCamera);
+                            tipNarrowest = Mathf.Min(tipNarrowest, coach.Box.rect.width);
+                            float o = 0f;
+                            for (int sl = 0; sl < runner.Sim.B.Count; sl++)
+                            {
+                                var r = lab.ScreenRectAt(sl, resting: true);
+                                if (!r.HasValue) continue;
+                                float ox = Mathf.Min(tb.xMax, r.Value.xMax) - Mathf.Max(tb.xMin, r.Value.xMin);
+                                float oy = Mathf.Min(tb.yMax, r.Value.yMax) - Mathf.Max(tb.yMin, r.Value.yMin);
+                                if (ox > 0f && oy > 0f && Mathf.Min(ox, oy) > o) { o = Mathf.Min(ox, oy); tipWhy = $"slot {sl + 1} by {ox:0.0} x {oy:0.0} px"; }
+                            }
+                            if (o > 0f) tipBad++;
+                            tipWorst = Mathf.Max(tipWorst, o);
+                            var tt = coach.Text;
+                            if (tt.GetPreferredValues(tt.text, tt.rectTransform.rect.width, 0f).y > tt.rectTransform.rect.height + 1f) tipSpill++;
+                        }
+                    }
                     if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
                     if (!popupShot && k >= 3 && runner.Hud.PopupCount >= 4)
                     {
@@ -245,6 +272,8 @@ namespace OneMoreFloor
                       chipBad == 0 && chipSeen > 0, "forecast");
                 Check($"{def.Id}: floors landed where the chips said at {chipStops - chipStopBad}/{chipStops} stops ({chipJams} JAM chips)" + (chipStopBad > 0 ? $" miss: {chipWhy}" : ""),
                       chipStopBad == 0 && chipStops > 0, "forecast");
+                Check($"{def.Id}: the coach tip cleared the resting floor labels on {tipFrames - tipBad}/{tipFrames} frames (worst {tipWorst:0.0} px, narrowest box {(tipFrames > 0 ? tipNarrowest : 0f):0})"
+                      + (tipBad > 0 ? $" last: {tipWhy}" : "") + (tipSpill > 0 ? $"; text spilled on {tipSpill} frames" : ""), tipBad == 0 && tipSpill == 0, "tips");
                 Check($"{def.Id}: after the bell the track shows {runner.Hud.StarsDrawnLit} stars for {sim.StarCount}", runner.Hud.StarsDrawnLit == sim.StarCount, "stars");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }

@@ -19,6 +19,14 @@ namespace OneMoreFloor
         CanvasGroup group;
         RectTransform canvasRt;
 
+        // the box's left edge lines up with the HUD card's (Hud.Build); it's at most as wide as before (38..398)
+        const float Left = 28f, MaxRight = 398f, MinWidth = 280f, MinHeight = 196f, LabelGap = 22f;
+
+        /// <summary>Self-test: the tip box, its text, and whether a tip is clearly showing.</summary>
+        public RectTransform Box => box;
+        public TextMeshProUGUI Text => text;
+        public bool Showing => group.alpha > 0.35f;
+
         sealed class Tip
         {
             public string Id, Text;
@@ -283,8 +291,17 @@ namespace OneMoreFloor
             else anchorPos = new Vector2(size.x * 0.5f, size.y * 0.78f);
 
             float bob = Mathf.Sin(UiTime.Now * 5f) * 8f;
-            // the tip lives in the free space of the left column, clear of the HUD card; only the marker goes on the target
-            var boxPos = new Vector2(218f, Mathf.Min(size.y * 0.43f, size.y - Hud.CardBottom - 28f));
+            // the tip lives in the free space of the left column, clear of the HUD card and of the floor labels beside
+            // the tower (narrower when a long label reaches into the column, taller to fit its text); only the
+            // marker goes on the target
+            var labels = runner.Hud.FloorLabels;
+            float right = MaxRight;
+            if (labels != null && labels.Showing) right = Mathf.Min(right, labels.LeftEdge - LabelGap);
+            float width = Mathf.Max(MinWidth, right - Left);
+            text.rectTransform.sizeDelta = new Vector2(-48, -70);
+            float textH = text.GetPreferredValues(text.text, width - 48f, 0f).y;
+            box.sizeDelta = new Vector2(width, Mathf.Max(MinHeight, textH + 76f));
+            var boxPos = new Vector2(Left + width * 0.5f, Mathf.Min(size.y * 0.43f, size.y - Hud.CardBottom - 28f));
             box.anchoredPosition = boxPos + new Vector2(0, bob * 0.15f);
             arrow.gameObject.SetActive(hasArrow);
             arrow.anchoredPosition = anchorPos + (side != 0f ? new Vector2(-side * bob * 0.6f, 0f) : new Vector2(0, bob * 0.6f));

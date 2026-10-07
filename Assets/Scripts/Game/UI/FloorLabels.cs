@@ -43,6 +43,7 @@ namespace OneMoreFloor
             public Image ChipBg, ChipArrow;
             public TextMeshProUGUI ChipText;
             public string ChipShown = "";
+            public bool Moving;
             public float ChipPop;
         }
 
@@ -150,6 +151,7 @@ namespace OneMoreFloor
                 l.Number.text = (slot + 1).ToString();
                 // floors crossing in a shuffle drag their labels through each other: fade them until they land
                 l.Group.alpha = Mathf.MoveTowards(l.Group.alpha, view.Moving ? 0.25f : 1f, dt * 6f);
+                l.Moving = view.Moving;
 
                 // right edge of the label just left of the floor's left wall, at mid-height, wherever the floor is now
                 var anchor = view.Content.position + new Vector3(-Layout.HalfWidth - 0.9f, Layout.SlotHeight * 0.45f, Layout.FrontZ);
@@ -219,16 +221,39 @@ namespace OneMoreFloor
             l.Chip.localScale = Vector3.one * (1f + 0.25f * Ease.OutCubic(l.ChipPop));
         }
 
+        /// <summary>Whether the labels are on screen (they fade out in the close-up).</summary>
+        public bool Showing => group.alpha > 0.02f;
+
+        /// <summary>Canvas x of the resting labels' left edge, including the waiting badge that pokes out of a pill's
+        /// corner (+infinity before any are up; the last value while every floor is mid-shuffle).</summary>
+        public float LeftEdge
+        {
+            get
+            {
+                // labels of floors mid-shuffle slide about faded; the resting ones all share the tower's wall
+                float x = float.PositiveInfinity;
+                foreach (var l in labels)
+                    if (l.Rt.gameObject.activeSelf && !l.Moving) x = Mathf.Min(x, l.Rt.anchoredPosition.x - l.Rt.rect.width - BadgeOverhang);
+                if (!float.IsPositiveInfinity(x)) restLeft = x;
+                return restLeft;
+            }
+        }
+        // the badge's ring (26 + 12 across) is centred 8 in from the pill's left edge
+        const float BadgeOverhang = 11f;
+        float restLeft = float.PositiveInfinity;
+
         /// <summary>Self-test: the stop the chips were last worked out for.</summary>
         public FloorId? PreviewedDock { get; private set; }
 
         /// <summary>Self-test: the forecast chip on the label for a slot: "" for none, "JAM", or "+9" / "-2" (up or down to that slot).</summary>
         public string ChipAt(int slot) => slot >= 0 && slot < labels.Count && labels[slot].Rt.gameObject.activeSelf ? labels[slot].ChipShown : "";
 
-        /// <summary>Self-test: the label's pill for a slot in screen pixels (null if hidden).</summary>
-        public Rect? ScreenRectAt(int slot)
+        /// <summary>Self-test: the label's pill for a slot in screen pixels (null if hidden, or mid-shuffle when
+        /// <paramref name="resting"/>).</summary>
+        public Rect? ScreenRectAt(int slot, bool resting = false)
         {
             if (slot < 0 || slot >= labels.Count || !labels[slot].Rt.gameObject.activeInHierarchy) return null;
+            if (resting && labels[slot].Moving) return null;
             return UiKit.ScreenRect(labels[slot].Bg.rectTransform, CanvasCam);
         }
 
