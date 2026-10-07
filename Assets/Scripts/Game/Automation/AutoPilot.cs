@@ -391,6 +391,7 @@ namespace OneMoreFloor
             Check($"weak Graveyard time card: '{results.CausesText}' / '{results.AdviceText}'",
                 results.Visible && sim.Complaints > 0 && biggest.HasValue && results.AdviceText == Advice.Tip(biggest.Value), "ui");
             Shot("ui_results_causes");
+            Check($"every control on the time card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
 
             // relaxed shifts: a weak player's Wednesday runs to the bell and saves no stars or best
             System.Array.Clear(save.Stars, 0, save.Stars.Length);
@@ -402,6 +403,7 @@ namespace OneMoreFloor
             root.ShowIntro(2);
             yield return Wait(1.2f);
             Shot("ui_intro_relaxed");
+            Check($"every control on the intro card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
             root.StartShift(2, 2024);
             runner = root.Runner;
             runner.AutoBot = Bot.Human(5, 0f);
@@ -707,12 +709,43 @@ namespace OneMoreFloor
             root.Resume();
             yield return Wait(0.4f);
             Check("a plain gamepad shows Xbox prompts", PadGlyphs.Family == PadFamily.Xbox && PadGlyphs.Name(GamepadButton.South) == "A", "ui");
+
+            // arrow keys, with a virtual keyboard: pick a floor and send the car, then Esc and the pause card
+            runner.AutoBot = null;
+            yield return Keys("down");   // switches to arrow-key play (floor brackets and the prompt strip)
+            int fromSlot = runner.CursorSlot;
+            int dir = fromSlot + 2 < runner.Sim.B.Count ? 1 : -1;
+            yield return Keys(dir > 0 ? "up up" : "down down");
+            int picked = runner.CursorSlot;
+            Check($"Up/Down picks floors with the arrow keys (slot {fromSlot + 1} -> {picked + 1})", runner.CursorMode && Controls.KeyNav && !Controls.Pad && picked == fromSlot + 2 * dir, "ui");
+            var pickedFloor = runner.Sim.B.At(picked);
+            yield return Keys("enter");
+            Check($"Enter sends the car to the picked floor ({pickedFloor})", runner.Sim.Car.Target == pickedFloor || runner.Sim.Car.DockedSlot == picked, "ui");
+            float tk = runner.Sim.Time;
+            yield return Keys("esc");
+            Check($"Esc pauses the shift and stays paused (clock {tk:0.0} -> {runner.Sim.Time:0.0} s)", pause.Visible && runner.Paused, "ui");
+            {
+                string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
+                Check($"with the arrow keys the controls panel lists the keys{(lay.Length > 0 ? ":" + lay : "")}",
+                      ct.StartsWith("ARROW KEYS\n") && ct.Contains("\nUP / DOWN: Pick a floor") && ct.Contains("\nENTER: Send the car") && ct.Contains("\nF: Let the picked rider")
+                      && ct.Contains("\nBACKSPACE: Unpick") && lay.Length == 0, "ui");
+            }
+            Shot("ui_pause_controls_keys");
+            var guideK = FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include);
+            yield return Keys("down enter");
+            Check("Down, Enter on the pause card opens the guest guide, shift still paused", guideK.Visible && !pause.Visible && runner.Paused, "ui");
+            yield return Keys("esc");
+            Check("Esc closes the guide back to the pause card", pause.Visible && !guideK.Visible && runner.Paused, "ui");
+            yield return Keys("esc");
+            Check("Esc on the pause card resumes", !pause.Visible && !runner.Paused, "ui");
             root.QuitShift();
             yield return Wait(1f);
 
             // reduced motion, switched on from the settings screen
             var settings = FindAnyObjectByType<SettingsScreen>(FindObjectsInactive.Include);
-            root.ShowSettings(null);
+            // from the roster, as a player opens it (the screen underneath is hidden, so only the card takes clicks)
+            var rosterUnder = FindAnyObjectByType<RosterScreen>(FindObjectsInactive.Include);
+            root.ShowSettings(rosterUnder.Visible ? rosterUnder : null);
             yield return Wait(0.6f);
             UiToggle motion = null;
             foreach (var tg in settings.GetComponentsInChildren<UiToggle>(true)) if (tg.name.Contains("REDUCED")) motion = tg;
@@ -722,6 +755,7 @@ namespace OneMoreFloor
             var back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
             Check("reduced motion toggles on, stills the camera and survives a save round trip",
                 motion != null && save.ReducedMotion && back.ReducedMotion && root.Rig.Still && root.Rig.ShakeScale == 0f, "ui");
+            Check($"every control on the settings card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
             settings.Hide();
             save.ReducedMotion = false;
             root.ApplySettings();
@@ -748,6 +782,7 @@ namespace OneMoreFloor
             Check("closing the guide returns to the roster", rosterScreen.Visible && !guideScreen.Visible, "ui");
             root.ShowTitle();
             yield return Wait(1f);
+            Check($"every control on the title takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
         }
 
         /// <summary>The pause card and its controls panel are on screen, apart, and every row fits ("" when all's well).</summary>
@@ -795,6 +830,14 @@ namespace OneMoreFloor
                 else { hitMisses++; sb.Append($" MISS {b.name} (hit {(top ? top.name : "none")})"); }
             }
             return $" ({ok} hit{(hitMisses > 0 ? "," + sb : "")})";
+        }
+
+        IEnumerator Keys(string script, float gap = 0.35f)
+        {
+            KeySim.Play(script, gap);
+            yield return null;
+            while (KeySim.Busy) yield return null;
+            yield return Wait(0.4f);
         }
 
         IEnumerator Pad(string script, float gap = 0.35f)
