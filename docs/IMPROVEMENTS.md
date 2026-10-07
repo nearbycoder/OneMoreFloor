@@ -384,3 +384,55 @@ Still open: bigger guests (#12, see above), Windows (#13, needs the module), Web
 a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and
 re-cutting the trailer, poster and teaser GIF, which still show 0.1.0. Nobody has played these changes yet: the
 badge colours and popup layout were checked by measurement and screenshots only.
+
+## Round 4 scope (2026-10-06, branch `improvements-4`)
+
+The ranked list is nearly used up: what's left (#12–#16) is blocked on the owner or on human ears. These items come
+from a fresh look at what a player meets on a normal run, on a baseline at `b070a46`: `build-linux` passes,
+EditMode 39/39, `sim.sh fuzz` OK, and the full autopilot (results below in Round 4 results). Every item ends with
+`sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow checks) passing, and
+the real `save.json` and `prefs` hashing the same before and after. Screenshots go to
+`docs/media/improvements/round4/`.
+
+### V1. Star progress during the shift
+
+Stars decide whether the next shift opens, but nothing in play says how close you are: the star targets are on
+the intro card and the time card only. The HUD card gets a star track under the tips: three stars that light
+(with the star sound) as the score passes each target, and a line saying how much more the next star needs.
+Overtime shows the best score as its target instead, and a relaxed shift shows the one target that opens the
+next shift.
+- **Acceptance:** at every frame of every autopilot shift, the lit stars on the HUD equal `Sim.StarCount`, and the
+  caption names the next target. The card only grows downward, so it stays clear of the floor labels (which start at
+  400 px). No overlap with labels or the tower at 1920×1080, 1440×900 and 2560×1080.
+- **Verify:** a per-frame autopilot check on every shift, captures at the three aspect ratios, `uicheck.sh`.
+
+### V2. Saves that survive a crash or a bad file
+
+`SaveData.Save` truncates `save.json` and writes it in place. A crash or power cut mid-write leaves a broken file,
+the next launch silently starts from nothing, and the first save then overwrites what was left. Now the save goes
+to a temp file that replaces `save.json` in one step, keeping the previous version as `save.json.bak`. Loading
+falls back to the backup, and a file that can't be read is kept aside as `save.unreadable-<time>.json` instead of
+being overwritten. Loaded values are clamped (stars 0–3, no negative counts).
+- **Acceptance:** EditMode tests, all in a throwaway folder under the project's `Temp/`, never
+  `persistentDataPath`: a save round-trips, a truncated `save.json` loads from the backup, a garbage file with no
+  backup starts fresh and keeps the garbage aside, and out-of-range values are clamped.
+- **Verify:** the tests, and the real save's hashes around every run.
+
+### V3. A guest guide you can open mid-shift
+
+Eight guests and six shuffle cards are introduced one per day, and the only reminders are the hover card and
+one-time tips. A **GUEST GUIDE** button on the pause card and the roster opens a page of every guest and card met
+so far (from the shifts that are open), with its icon and rule, and locked silhouettes for the rest.
+- **Acceptance:** it opens and closes from the pause card and the roster with mouse, keys and pad. It lists exactly
+  the guests and cards from open shifts. The shift stays paused underneath.
+- **Verify:** an autopilot `ui` check that opens it with the virtual pad from the pause screen, counts the entries
+  against the save, and closes it. Screenshots with a fresh save and a full save. `uicheck.sh` hit test.
+
+### V4. The amber patience badge, checked in the built game
+
+Round 3 left the amber badge unverified: the seeded check only ran it when a third floor had guests waiting, and none
+did. The check now reuses the red floor: it raises that guest to 40% and reads amber on the label and the panel.
+- **Verify:** the `ui` flow check passes, not skipped.
+
+Not this round: bigger guests (#12, waiting on the owner), Windows (#13), WebGL (#14), the listening pass (#15), the
+license (#16), signing, hosting, releases and the trailer.
