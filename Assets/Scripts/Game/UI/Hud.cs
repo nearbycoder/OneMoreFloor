@@ -71,6 +71,7 @@ namespace OneMoreFloor
             col.anchorMin = col.anchorMax = new Vector2(0, 1);
             col.pivot = new Vector2(0, 1);
             col.anchoredPosition = new Vector2(28, -CardTop);
+            CardRect = col;
             const float X = -W * 0.5f + 28f;
 
             shiftDay = Deco.Label("Day", col, "MONDAY", 18, new Vector2(300, 24), new Vector2(0, Y(36)));
@@ -693,28 +694,61 @@ namespace OneMoreFloor
         RectTransform tipWell;
 
         TextMeshProUGUI banner;
+        RectTransform bannerStrip;
         float bannerT = 1f;
+        /// <summary>A banner grows slowly after it lands (see UpdateBanner), up to this much.</summary>
+        const float BannerGrowth = 1.08f;
 
-        /// <summary>A big word that slams in across the middle of the screen and fades.</summary>
+        /// <summary>
+        /// A big word that slams in and fades. It's centred in the strip between the HUD card and the panel, shrinks to
+        /// fit it, and is clipped to it, so not even the slam-in covers the clock, the score or the panel.
+        /// </summary>
         public void Banner(string text, Color color)
         {
             if (Quiet) return;
             if (banner == null)
             {
-                banner = UiKit.Text("Banner", transform, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 180), new Vector2(-180, 120));
+                bannerStrip = UiKit.Stretch("BannerStrip", transform);
+                bannerStrip.offsetMin = new Vector2(FloorLabels.HudRight, 0f);
+                bannerStrip.offsetMax = new Vector2(-FloorLabels.PanelLeftInset, 0f);
+                bannerStrip.gameObject.AddComponent<RectMask2D>();
+                banner = UiKit.Text("Banner", bannerStrip, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1000, 180), new Vector2(0, 120));
+                banner.textWrappingMode = TextWrappingModes.NoWrap;
+                banner.enableAutoSizing = true;
+                banner.fontSizeMin = 48;
+                banner.fontSizeMax = 120;
                 Deco.Outlined(Deco.Shadowed(banner, 0.75f, 1f, 0.45f), 0.18f, new Color32(30, 20, 34, 255));
             }
             banner.text = text;
             banner.color = color;
             bannerT = 0f;
+            FitBanner();
         }
+
+        void FitBanner() => banner.rectTransform.sizeDelta = new Vector2(Mathf.Max(100f, bannerStrip.rect.width / BannerGrowth), 180f);
+
+        /// <summary>Self-test: the banner showing (null when none), whether it has landed after its slam-in, its text's
+        /// drawn bounds in screen pixels, and the HUD card's and panel's.</summary>
+        public TextMeshProUGUI ShownBanner => banner != null && banner.gameObject.activeSelf ? banner : null;
+        public bool BannerLanded => bannerT >= 0.12f;
+        public Rect BannerScreenRect(Camera canvasCam)
+        {
+            var b = banner.textBounds;
+            var rt = banner.rectTransform;
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(canvasCam, rt.TransformPoint(b.min));
+            Vector2 c = RectTransformUtility.WorldToScreenPoint(canvasCam, rt.TransformPoint(b.max));
+            return Rect.MinMaxRect(Mathf.Min(a.x, c.x), Mathf.Min(a.y, c.y), Mathf.Max(a.x, c.x), Mathf.Max(a.y, c.y));
+        }
+        public RectTransform CardRect { get; private set; }
+        public RectTransform BannerStrip => bannerStrip;
 
         void UpdateBanner(float dt)
         {
             if (banner == null) return;
             bannerT = Mathf.Min(1f, bannerT + dt / 1.6f);
             float t = bannerT;
-            float s = t < 0.12f ? Mathf.Lerp(2.2f, 1f, Ease.OutBack(t / 0.12f, 2f)) : 1f + (t - 0.12f) * 0.08f;
+            if (t < 1f) FitBanner();
+            float s = t < 0.12f ? Mathf.Lerp(2.2f, 1f, Ease.OutBack(t / 0.12f, 2f)) : 1f + (t - 0.12f) * (BannerGrowth - 1f);
             banner.rectTransform.localScale = Vector3.one * s;
             banner.alpha = t < 0.08f ? t / 0.08f : t > 0.7f ? 1f - (t - 0.7f) / 0.3f : 1f;
             banner.gameObject.SetActive(t < 1f);

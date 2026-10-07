@@ -26,7 +26,7 @@ namespace OneMoreFloor
         bool padOnly, uiOnly;
         int frames;
         float frameTime, worst;
-        bool popupShot, jamShot;
+        bool popupShot, jamShot, bannerShot;
 
         public static void TryStart(GameRoot root)
         {
@@ -128,6 +128,11 @@ namespace OneMoreFloor
                 int tipFrames = 0, tipBad = 0, tipSpill = 0;
                 float tipWorst = 0f, tipNarrowest = float.MaxValue;
                 string tipWhy = "";
+                int bannerFrames = 0, bannerBad = 0;
+                float bannerWorst = 0f;
+                string bannerWhy = "";
+                bool firedBanner = false;
+                var bannersSeen = new SortedSet<string>();
                 Time.timeScale = speed;
                 float played = 0f;
                 // timed shifts play to the bell (Monday's clock waits for the first drop-off, hence the slack);
@@ -236,6 +241,41 @@ namespace OneMoreFloor
                             if (tt.GetPreferredValues(tt.text, tt.rectTransform.rect.width, 0f).y > tt.rectTransform.rect.height + 1f) tipSpill++;
                         }
                     }
+                    // a banner, once it has landed, stays between the HUD card and the panel and isn't cut off
+                    {
+                        var hud = runner.Hud;
+                        // YOU'RE FIRED! only shows when the bot gets fired, so the last shift shows it once to measure it
+                        if (k == last && !firedBanner && played >= 45f) { firedBanner = true; hud.Banner("YOU'RE FIRED!", Palette.Bad); }
+                        var b = hud.ShownBanner;
+                        if (b != null && hud.BannerLanded && b.alpha > 0.35f)
+                        {
+                            bannerFrames++;
+                            bannersSeen.Add(b.text);
+                            var cam = b.canvas.rootCanvas.worldCamera;
+                            var br = hud.BannerScreenRect(cam);
+                            float o = 0f;
+                            foreach (var (what, rt) in new[] { ("HUD card", hud.CardRect), ("panel", hud.Panel.Root), })
+                            {
+                                var r = UiKit.ScreenRect(rt, cam);
+                                float ox = Mathf.Min(br.xMax, r.xMax) - Mathf.Max(br.xMin, r.xMin);
+                                float oy = Mathf.Min(br.yMax, r.yMax) - Mathf.Max(br.yMin, r.yMin);
+                                if (ox > 0f && oy > 0f && Mathf.Min(ox, oy) > o) { o = Mathf.Min(ox, oy); bannerWhy = $"'{b.text}' over the {what} by {ox:0.0} x {oy:0.0} px"; }
+                            }
+                            var strip = UiKit.ScreenRect(hud.BannerStrip, cam);
+                            float spill = Mathf.Max(0f, Mathf.Max(strip.xMin - br.xMin, br.xMax - strip.xMax));
+                            if (spill > o) { o = spill; bannerWhy = $"'{b.text}' cut off by {spill:0.0} px"; }
+                            if (o > 0f) bannerBad++;
+                            bannerWorst = Mathf.Max(bannerWorst, o);
+                            if (!bannerShot)
+                            {
+                                bannerShot = true;
+                                Time.timeScale = 0f;
+                                yield return null;
+                                Shot($"banner_{def.Id}");
+                                Time.timeScale = speed;
+                            }
+                        }
+                    }
                     if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
                     if (!popupShot && k >= 3 && runner.Hud.PopupCount >= 4)
                     {
@@ -298,6 +338,8 @@ namespace OneMoreFloor
                       chipStopBad == 0 && chipStops > 0, "forecast");
                 Check($"{def.Id}: the coach tip cleared the resting floor labels on {tipFrames - tipBad}/{tipFrames} frames (worst {tipWorst:0.0} px, narrowest box {(tipFrames > 0 ? tipNarrowest : 0f):0})"
                       + (tipBad > 0 ? $" last: {tipWhy}" : "") + (tipSpill > 0 ? $"; text spilled on {tipSpill} frames" : ""), tipBad == 0 && tipSpill == 0 && tipFrames > 0, "tips");
+                Check($"{def.Id}: banners stayed clear of the HUD card and the panel on {bannerFrames - bannerBad}/{bannerFrames} frames (worst {bannerWorst:0.0} px; {string.Join(", ", bannersSeen)})"
+                      + (bannerBad > 0 ? $" last: {bannerWhy}" : ""), bannerBad == 0 && bannerFrames > 0 && (k != last || bannersSeen.Contains("YOU'RE FIRED!")), "banners");
                 Check($"{def.Id}: after the bell the track shows {runner.Hud.StarsDrawnLit} stars for {sim.StarCount}", runner.Hud.StarsDrawnLit == sim.StarCount, "stars");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }

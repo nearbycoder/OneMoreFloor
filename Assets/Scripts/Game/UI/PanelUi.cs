@@ -18,6 +18,7 @@ namespace OneMoreFloor
         readonly SlotButton[] buttons = new SlotButton[9];
         Image boardAll;
         public int HoverSlot = -1;
+        public RectTransform Root => root;
         public RectTransform ForecastAnchor => cards[0].Root;
         public RectTransform SlotRect(int slot) => slot >= 0 && slot < buttons.Length ? buttons[slot]?.Root : null;
 

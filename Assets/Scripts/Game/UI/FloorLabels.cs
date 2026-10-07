@@ -23,7 +23,7 @@ namespace OneMoreFloor
         /// <summary>Canvas units the labels need left of the tower (widest label plus gaps).</summary>
         public const float Gutter = 300f;
         // the HUD card ends at x = 28 + 360 (Hud.Build); the panel is 400 wide, 30 in from the right (PanelUi.Create)
-        const float HudRight = 400f, PanelLeftInset = 440f;
+        public const float HudRight = 400f, PanelLeftInset = 440f;
         const float ChipW = 72f, ChipH = 30f;
 
         ShiftRunner runner;
