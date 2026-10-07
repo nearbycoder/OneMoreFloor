@@ -82,7 +82,8 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
-The shift also pauses itself if the window loses focus or the controller you're playing with disconnects. The pause
+The shift also pauses itself if the window loses focus or the controller you're playing with disconnects. Resuming
+counts down 3, 2, 1 over the tower before the clock runs again, so you can find your place first. The pause
 card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
 keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit ask for a second press, so a stray
 button can't throw a run away.
@@ -295,15 +296,23 @@ Tools/autopilot.sh         # plays all ten shifts in the built game (each timed 
                            # then drives the menus with a virtual gamepad and a virtual keyboard and runs the flow
                            # checks (late pass, time card, auto-pause, pad glyphs, arrow keys, WASD and Esc, settings and
                            # the graphics level, patience badges, guest guide, restart and quit confirmation, the
-                           # pause card's controls panel, STOP markers, a click at the centre of every control on
-                           # every menu); every frame of every shift is also checked: reward popups never overlap
+                           # pause card's controls panel, STOP markers, the resume count, the close-up's edge alerts,
+                           # a click at the centre of every control on every menu); every frame of every shift is
+                           # also checked: reward popups never overlap
                            # (and flying coins never draw over them), the HUD's star
                            # track agrees with the score, the forecast tags agree with the rules (and floors land
                            # where they said), the coach tip never covers a floor label (tips are reset
                            # before each shift so every shift's tips get measured), and a shift banner (ON THE
                            # CLOCK!, RUSH HOUR!...) never covers the HUD card or the panel
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
+Tools/autopilot.sh out text   # the text audit: every visible text's capital height in pixels and any that spill out
+                              # of its box or card, on the title, roster, intro, play, pause, guide, settings and time card
+OMF_SIZE=1280x800 Tools/autopilot.sh out text   # the same at another window size (Steam Deck here)
 ```
+
+The autopilot runs the game inside a private nested KWin (`Tools/nested.sh`: its own Wayland socket, D-Bus session and
+scratch config folder), so its window never opens on your desktop and the real mouse can't reach it. `OMF_NESTED=0`
+runs it on the desktop instead, and machines without KWin fall back to that.
 
 ### Trailer and README media
 
@@ -313,8 +322,8 @@ Tools/make_trailer.sh      # records every shot from the built game, then cuts d
 Tools/make_trailer.sh stills   # only the README screenshots (about 6 minutes)
 ```
 
-Automation runs (`autopilot.sh`, `demo.sh`, `make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg`,
-so they never touch your save or Unity's prefs in `~/.config/unity3d`.
+Automation runs (`autopilot.sh`, `demo.sh`, `make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg`
+(or the nested KWin's scratch folder), so they never touch your save or Unity's prefs in `~/.config/unity3d`.
 
 `TrailerReel` (in the game) plays each shot from a fixed seed, skips ahead to a moment it found by playing the same
 seed headlessly, and records it twice: once rendered offline at a locked 30 fps, and once in real time to capture
@@ -410,10 +419,12 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 8 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+- **Rounds 4 to 9 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
   labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
   press-twice restart and quit, the GRAPHICS setting, the menus' restored text shadows and outlines, the repositioned
-  shift banners and WASD were checked by the autopilot, unit tests and screenshots, not by a person. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
+  shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings and the bigger small text on
+  small screens were checked by the autopilot, unit tests and screenshots, not by a person. Nobody has judged whether
+  the resume count feels like a help or a hold-up. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
   hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
   window averaged 103 and 104 fps in round 7 (load 0.5–31); round 6's runs, with other games sharing the GPU, averaged 23–32.
@@ -428,8 +439,12 @@ gamepad support), and it passes its automated checks. Honest caveats:
   prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
   checked at 1920×1080, 1440×900, 2560×1080, 1280×800 (Steam Deck size, in a window) and 1280×1024, not on real
   screens of those sizes. On a 5:4 screen the tower is fitted to the narrower strip between the labels and the panel,
-  so floors are only about 53 px apart at 1280×1024; on the Deck size they're about 75 px apart and the smallest HUD
-  text (the star caption) has 8 px capitals. The screenshots above are from the current
+  so floors are only about 53 px apart at 1280×1024; on the Deck size they're about 75 px apart. On windows smaller
+  than 1920×1080 the UI scales down, so small text is drawn bigger there to keep its capitals at least 9 px high
+  (Valve's Steam Deck guidance; the text audit measured 7.2 px at 1280×800 before). Two labels switch to shorter
+  words when that happens ("CLOCK STARTS AT FIRST DROP", "NEXT STOP, THE BUILDING..."), and a locked roster card's
+  hint wraps onto a second line. At 1920×1080 and up nothing changes; the default 1600×900 window draws four small
+  labels slightly bigger. None of this has been seen on a real Deck. The screenshots above are from the current
   build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing. Drawing guests 15% bigger was
   tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
   nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer

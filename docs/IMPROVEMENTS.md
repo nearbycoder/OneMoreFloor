@@ -910,3 +910,48 @@ stills are regenerated only if a change shows in them at 1920×1080 (Q2 shouldn'
 
 Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
 (#15), the license (#16), LOW's softer text, STOP? (owner), signing, hosting, releases and the trailer.
+
+## Round 9 results (2026-10-07)
+
+All four build items landed, plus the docs. Baseline on `107c577`: `build-linux` OK and the `ui` flow checks passed
+50 checks inside the new nested KWin (load 10–20). Final checks on the final code (`7109bfc`; later commits change only
+docs and images): EditMode **61/61**, `sim.sh fuzz` OK (21,270 stops matched the forecast preview), and the full
+autopilot on the last build, in a 1920×1080 window inside the nested KWin, passes **170 checks** (167 in round 8: all
+ten shifts to the bell, the pad pass and every `ui` check) with no logged exceptions, at 44 fps average (load 23 to
+32; this machine was busier than in any earlier full run). Graveyard also passes at 1280×800, 1280×1024, 1440×900 and 2560×1080 (11/11 checks each, load 20–31). The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test and autopilot
+run. Screenshots are in `docs/media/improvements/round9/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| Q1 nested test runs | `4aafe53` | Every autopilot run this round (baseline `ui`, the text audits, the full run, Graveyard at four sizes) | Met. The player's `WAYLAND_DISPLAY` was the private socket (`/proc/<pid>/environ`), the window got the size asked for, the scratch folder and every process from the run were gone afterwards. No game window opened on the shared desktop this round. |
+| Q3 resume count | `1588ca6` | 2 new `ui` checks, the Esc and Start resume checks extended | Met: after RESUME the count shows 3 then 2, the clock and a guest's patience hold, Esc during the count pauses again with the clock unmoved, and the clock runs on afterwards. Esc and pad Start resume into the count (1.20 s of it left as the card closed). Input works during the count; sending the car then takes effect when it ends. |
+| Q4 edge alerts | `f4ec0e9` | 2 new `ui` checks | Met: an off-screen floor's alert reads fill 0.15 red, 0.40 amber and 0.80 green for those patiences, and its red pulse moves its scale by 0.060, or 0.000 with reduced motion. |
+| Q2 Deck-readable text | `7109bfc` | A new text audit (`Tools/autopilot.sh out text`) at five window sizes, 3 new EditMode tests, before/after captures at 1280×800 | Met. At 1280×800 the smallest capitals went from **7.2 px to 9.0 px** on every screen (10 of 12 audited screens had text under 9 px; 22–36 texts per in-play screen), with nothing spilling out of its box or card. At 1920×1080 the floor enlarges **0** texts on every screen, so the game there is unchanged. It also passes at 1440×900, 1280×1024 and the default 1600×900 window (4 small labels slightly bigger there). |
+
+How Q2 works: every text made by `UiKit.Text` is tracked by `TextFloor`, which raises any whose capitals would come out
+under 9 px at the canvas's current scale (auto-sized ones get a higher minimum). Three things no longer fit once
+bigger, and the first audit and captures caught them: the HUD's "CLOCK STARTS ON YOUR FIRST DROP" (now "CLOCK STARTS
+AT FIRST DROP" with tighter tracking, on small screens only), the panel's "NEXT STOP, THE BUILDING WILL..." (now
+"NEXT STOP, THE BUILDING..." there), and a locked roster card's "A star on Wednesday, or 2 more tries", which now
+wraps onto a second line. The audit's spill check first missed the roster hint because it skipped dim text and only
+compared each text with its own box; it now counts text down to 25% opacity and checks it against the card it sits
+on too.
+
+Found along the way:
+- **One arrow-key check failed once and passed on the rerun.** "Up/Down picks floors" moved three floors instead of
+  two in one `ui` run at load 22–30, and moved two in the next. A frame hitch longer than the key-repeat delay
+  (0.38 s) while the virtual key is held would do that; it wasn't reproduced.
+- The first resume-count checks were timing-fragile: they read the count about 0.9 s after the key press, and at
+  load 26 the frame-quantised waits used up the 1.2 s count. They now record the count on the frame the card closes.
+- Settings toggles in the `ui` pass apply the default 1600×900 window size, so `ui` captures after the first settings
+  check are 1600×900. That was already true before this round.
+- Running the autopilot in a nested KWin doesn't change what's measured, but frame rates from it aren't comparable
+  with earlier rounds' runs on the real desktop.
+
+Still open: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13, needs the module), WebGL (#14), a listening
+pass (#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next
+release, and re-cutting the trailer, poster and teaser GIF (still 0.1.0, and they predate rounds 7 and 8's text
+edges). Whether the resume count helps or gets in the way, whether STOP? reads as a what-if, and whether LOW's softer
+text is acceptable need a person. A real Steam Deck, a real 5:4 monitor and AZERTY are still untried, and nobody has
+played rounds 4 to 9.
