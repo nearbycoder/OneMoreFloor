@@ -840,3 +840,73 @@ Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (
 trailer, poster and teaser GIF (still 0.1.0, and they predate rounds 7 and 8's text edges). Whether a 5:4 layout is
 worth doing, whether STOP? reads as a what-if, and whether LOW's softer text is acceptable need the owner or a
 player. Nobody has played rounds 4 to 8.
+
+## Round 9 scope (2026-10-07, branch `improvements-9`)
+
+The ranked list's remaining items (#12–#16) still wait on the owner or on human ears, the 5:4 layout is the owner's
+call, and guest scale stays untouched. These come from round 8's open notes and a fresh look at `107c577`:
+
+- **Text on a Steam Deck.** Round 8 measured 8 px capitals on the HUD's star caption at 1280×800. The canvas scales
+  everything by about 0.71 there, and the HUD labels, the panel's floor plates, the forecast cards' headers, the
+  label badges and the time card's lines are all 14–17 units, so they land at 7–8 px capitals. Valve's Deck
+  guidance asks for text at least 9 px high at 1280×800.
+- **Resuming throws you straight back in.** Resume (and the window regaining focus after an auto-pause) restarts the
+  clock on the same frame, while the pointer is still on the pause card and a guest may be one second from
+  storming off.
+- **Off-screen alerts are colour-only.** In the close-up, the arrows at the screen's edge for floors out of view show
+  the most impatient guest only as a ring colour (always a full ring), unlike every other patience display, which
+  also empties its ring. Green and amber are close for red-green colour-blind players.
+- **Test windows on the shared desktop.** The autopilot opens a 1920×1080 game window on the real desktop for up to
+  40 minutes. A sibling repo runs its tests in a private nested KWin; this one doesn't.
+
+Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow
+checks) passing, and the real `save.json` and `prefs` hashing the same before and after every run. Screenshots go to
+`docs/media/improvements/round9/`. Load average is noted with every timing.
+
+### Q1. Test windows in a private nested KWin
+
+`Tools/nested.sh` runs `Tools/play.sh` (so any self-test) inside its own `kwin_wayland --virtual` with its own
+socket, D-Bus session and scratch config folder, and stops only what it started, by PID. `Tools/autopilot.sh` uses
+it when KWin is available (`OMF_NESTED=0` runs on the real desktop as before).
+- **Acceptance:** the full autopilot passes inside it; the game process's `WAYLAND_DISPLAY` is the private socket;
+  no KWin or game process from the run is left afterwards; the window size is still the one asked for.
+- **Verify:** the autopilot output, `/proc/<pid>/environ` of the running player, `pgrep` after the run.
+
+### Q2. Text a Steam Deck can read
+
+The autopilot gets a text audit: on the title, roster, intro card, play (HUD card, panel, floor labels, coach tip,
+prompt strip, rider cards), pause card with its controls panel, guide, settings and time card, it measures every
+visible text's capital height in screen pixels (from the font's cap line and the canvas scale) and whether it
+overflows its box. On screens where the canvas is scaled below 1, small text is raised to a floor of 9 px capitals,
+with boxes widened or rows rearranged where it would no longer fit. At 1920×1080 nothing changes.
+- **Acceptance:** at 1280×800, no visible text in play or on the pause card, controls panel, guide, settings or
+  time card has capitals under 9 px, and none overflows its box. At 1920×1080 the audit's numbers are unchanged from
+  the baseline build. The Graveyard autopilot (every per-frame check) passes at 1280×800, 1280×1024, 1440×900 and
+  1920×1080.
+- **Verify:** the audit's table before and after at 1280×800 and 1920×1080, the autopilot at four sizes, and
+  before/after captures at 1280×800.
+
+### Q3. A beat to get ready after a pause
+
+Resuming a shift shows a short count (3, 2, 1, about 1.2 s) over the tower before the clock runs again. Pausing
+again during it pauses at once; the count isn't shown when no time would pass (the shift has ended). Reduced
+motion shows the numbers without the pop.
+- **Acceptance:** after RESUME (mouse, Enter, pad A, Esc and Start), `Sim.Time` holds for the count and then
+  advances; Esc during the count re-pauses with the clock still held; patience doesn't drain during it.
+- **Verify:** autopilot `ui`/pad checks on the sim clock, and a capture of the count.
+
+### Q4. Off-screen alerts show patience, not only its colour
+
+The close-up's edge alerts empty their ring with the most impatient guest's patience, like the floor labels'
+badges and the guests' own rings, and the red pulse respects reduced motion.
+- **Acceptance:** in the built game, an edge alert's ring fill equals the lowest patience on that floor (±0.02) and
+  its colour matches; with reduced motion on it doesn't pulse.
+- **Verify:** an autopilot `ui` check in the close-up with a drained guest on an off-screen floor, and a capture.
+
+### Q5. README, status and results
+
+The README's tests section, the Deck caveat in "Status and known issues" and this file are updated to match. README
+stills are regenerated only if a change shows in them at 1920×1080 (Q2 shouldn't).
+
+Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
+(#15), the license (#16), LOW's softer text, STOP? (owner), signing, hosting, releases and the trailer.
