@@ -700,3 +700,43 @@ The README's settings line and tests section, "Status and known issues" and this
 
 Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
 signing, hosting, releases and the trailer.
+
+## Round 7 results (2026-10-07)
+
+All three items landed, and K2 needed a second commit once the screenshots showed the first wasn't enough. K1's
+frame-rate target was met at the display's full size but not at 1920×1080. Baseline on `a515756`: `build-linux` OK
+and the full autopilot passed 129 checks at **103 fps** average, while the machine went from idle to busy (load 0.5
+at the start, 31 by the end). That's the first full run on a nearly idle machine; round 6's busy runs averaged 23–32.
+Final checks on the final code (`b69eec4`): EditMode **55/55**, `sim.sh fuzz` OK (21,270 stops matched the forecast
+preview), and the full autopilot passes **152 checks** (all ten shifts to the bell, the pad pass and every `ui`
+check) with no logged exceptions, at 104 fps average (load 25 falling to 15). The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot,
+PerfProbe and stills run. Screenshots are in `docs/media/improvements/round7/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| K2 coins under the tip | `dd5a466` | Per-frame check on every shift | Met as written: coins crossed popup text on 379–1,345 frames per shift and were drawn on top on none. But the regenerated `triple-drop.jpg` was still unreadable (gold text on gold coins), which led to the next row. |
+| K2 popups' dark edge | `b69eec4` | README stills regenerated from the same seeds and frames; before/after crops (`k2-*.jpg`); the real back buffer in PerfProbe frames | Met. **No popup had ever drawn its outline**: the signage font uses TMP's mobile SDF shader, which needs the `OUTLINE_ON` keyword, and setting `outlineWidth` doesn't turn it on. The banner's drop shadow was missing too, because the build only keeps underlay paired with `OUTLINE_ON`. Popups now share one material with both keywords, and the banner turns `OUTLINE_ON` on. Six stills changed and still match their captions; the other four differed only by render noise and were left alone. |
+| K3 arrow keys and menu hit tests | `76dce68` | Autopilot `ui` (full run and three `ui` runs, load 22–28) | Met: 11 new checks. Up/Down picks floors, Enter sends the car, a real Esc press pauses and the clock holds, the controls panel reads ARROW KEYS and fits, Down + Enter opens the guide, Esc closes it, Esc resumes. Every control on the title, intro card, settings card and time card takes a click at its centre. No game bug turned up. The first settings hit test failed because the test opened Settings with no screen underneath to hide, which a player can't do. |
+| K1 GRAPHICS setting | `e109a6c` | 2 new EditMode tests and an extended clamp test; 2 autopilot `ui` checks; interleaved PerfProbe series (Graveyard, 30 s of bot play, vsync off) | The setting works: LOW changes the running pipeline (MSAA off, 0.8 scale, hard shadows, no bloom), survives a save round trip, HIGH restores it, an old save loads as HIGH, and the arrow keys reach the row and step it. HIGH is unchanged (full autopilot 103 → 104 fps). **Frame rate:** at 3072×1728, HIGH ran 55–65 fps and LOW 62–113 (median of four 1.47×; 1.5× and 1.9× in the two quietest rounds, load 12–19). At 1920×1080, LOW was only 1.14–1.25× faster than HIGH (load 11–16), short of the 1.4× target, because at that size the CPU is the limit. LOW's 0.8 render scale softens the HUD text slightly, because the UI camera is in the same stack. |
+
+The frame-rate runs are noisy. Under load 23–38, the same setting varied by up to 2× between runs, and medians of
+three couldn't tell the levels apart, so only the runs at load 11–19 are used above. A 0.5 render scale was tried
+and was no faster than 0.8 under load, so LOW stays at 0.8. The player uses OpenGL Core on this machine, where
+Unity's GPU frame timing isn't reliable, so all timings are wall-clock.
+
+Found along the way:
+- **Menu headings probably have the same missing-keyword problem.** `Deco.Gilded` (Paused, Settings, Duty Roster
+  and the other card titles) asks for an underlay alone and an outline without `OUTLINE_ON`, so its intended dark
+  outline and shadow likely don't draw either. It wasn't changed, because fixing it changes the look of every menu.
+  It's a good next item, with before/after screenshots for someone to judge.
+- `Tools/make_trailer.sh stills` wiped `docs/media/screenshots/` before writing its ten stills, which deleted round
+  6's `pause-controls.jpg` (an autopilot capture). It now overwrites only its own files (`Tools/trailer/build.py`;
+  tested by keeping an extra file in a scratch folder).
+- An Esc press that pauses can't also resume in the same frame, because the pause card is inactive until the next
+  frame. The new check confirms the clock holds after a real Esc.
+
+Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (#14), a listening pass (#15), a license
+(#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
+trailer, poster and teaser GIF (still 0.1.0; they also predate the outlined popups). Nobody has played rounds 4–7.
+Whether STOP? reads as a what-if, and whether LOW's softer text is acceptable, need a person.

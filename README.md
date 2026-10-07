@@ -207,8 +207,10 @@ Each shift opens with a sticky note from The Management and a "New today" card, 
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
 pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast, relaxed shifts and **reduced
-motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
+settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts and
+**reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
+GRAPHICS is HIGH by default (the look in the screenshots); BALANCED and LOW turn down antialiasing, shadows, bloom and,
+on LOW, the render resolution, for weaker GPUs and big screens.
 
 ## Screenshots
 
@@ -289,10 +291,12 @@ Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands ag
                            # and every stop lands the floors where the labels' forecast tags said
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
-                           # then drives the menus with a virtual gamepad and runs the flow checks (late pass,
-                           # time card, auto-pause, pad glyphs, settings, patience badges, guest guide, restart and
-                           # quit confirmation, the pause card's controls panel, STOP markers); every
-                           # frame of every shift is also checked: reward popups never overlap, the HUD's star
+                           # then drives the menus with a virtual gamepad and a virtual keyboard and runs the flow
+                           # checks (late pass, time card, auto-pause, pad glyphs, arrow keys and Esc, settings and
+                           # the graphics level, patience badges, guest guide, restart and quit confirmation, the
+                           # pause card's controls panel, STOP markers, a click at the centre of every control on
+                           # every menu); every frame of every shift is also checked: reward popups never overlap
+                           # (and flying coins never draw over them), the HUD's star
                            # track agrees with the score, the forecast tags agree with the rules (and floors land
                            # where they said), and the coach tip never covers a floor label (tips are reset
                            # before each shift so every shift's tips get measured)
@@ -404,11 +408,17 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 6 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
-  labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel and the
-  press-twice restart and quit were checked by the autopilot, unit tests and screenshots, not by a person. Nobody
-  has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting hides them along with
-  the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
+- **Rounds 4 to 7 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+  labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
+  press-twice restart and quit and the GRAPHICS setting were checked by the autopilot, unit tests and screenshots,
+  not by a person. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
+  hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
+- **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
+  window averaged 103 and 104 fps in round 7 (load 0.5–31); round 6's runs, with other games sharing the GPU, averaged 23–32.
+  Fullscreen on this machine's 3072×1728 display runs at about 60 fps on HIGH. GRAPHICS LOW ran 1.5–1.9× faster
+  than HIGH there in the quieter runs, but only 1.15–1.25× at 1920×1080, where the CPU is the limit. LOW's 0.8
+  render scale also softens the HUD text slightly, because the UI is drawn in the same camera stack. No other GPU
+  has been tried.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine

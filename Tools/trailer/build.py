@@ -17,7 +17,6 @@ Everything is ffmpeg; no Python packages beyond the standard library.
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 
@@ -329,9 +328,8 @@ SCREENSHOTS = ["title", "core_shuffle", "ocean_moment", "triple_drop", "vampire_
 
 
 def screenshots(cap, out_dir):
-    if os.path.isdir(out_dir):
-        shutil.rmtree(out_dir)
-    os.makedirs(out_dir)
+    # overwrite only these stills: the folder also holds images from other runs (pause-controls.jpg is an autopilot capture)
+    os.makedirs(out_dir, exist_ok=True)
     for name in SCREENSHOTS:
         src = os.path.join(cap, "stills", name + ".png")
         if not os.path.exists(src):
