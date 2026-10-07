@@ -550,6 +550,54 @@ namespace OneMoreFloor
             yield return Wait(0.6f);
             Check($"raising that guest to 40% turns its floor's badges amber (slot {lowSlot + 1})", BadgeIs(lowSlot, Palette.Warn), "ui");
             Shot("ui_patience_badges_amber");
+            // the close-up's alerts for floors out of view: the most impatient guest's patience as a ring that empties,
+            // not only its colour, and the red pulse stills with reduced motion
+            {
+                var cur = runner.Hud.Cursor;
+                runner.Rig.Zoom = 1f;
+                int edgeSlot = -1;
+                for (int tries = 0; tries < 12 && edgeSlot < 0; tries++)
+                {
+                    yield return Wait(tries == 0 ? 2f : 1f);
+                    for (int sl = 0, far = -1; sl < ps.B.Count; sl++)
+                        if (ps.Waiting[(int)ps.B.At(sl)].Count > 0 && cur.EdgeAt(sl, out _, out _, out _) && Mathf.Abs(sl - ps.Car.DockedSlot) > far)
+                        { far = Mathf.Abs(sl - ps.Car.DockedSlot); edgeSlot = sl; }
+                    if (edgeSlot < 0) { runner.Paused = false; runner.FastForward(4f); runner.Paused = true; }
+                }
+                string Shown(int sl)
+                {
+                    cur.EdgeAt(sl, out float f, out Color c, out _);
+                    return $"fill {f:0.00} {(c == Palette.Bad ? "red" : c == Palette.Warn ? "amber" : c == Palette.Good ? "green" : "other")}";
+                }
+                bool EdgeIs(int sl, float frac, Color c) => cur.EdgeAt(sl, out float f, out Color col, out _) && Mathf.Abs(f - frac) <= 0.02f && col == c;
+                var seen = new List<string>();
+                bool fills = edgeSlot >= 0;
+                foreach (var (frac, col) in new[] { (0.15f, Palette.Bad), (0.4f, Palette.Warn), (0.8f, Palette.Good) })
+                {
+                    if (edgeSlot < 0) break;
+                    SetPatience(edgeSlot, frac);
+                    yield return Wait(0.3f);
+                    fills &= EdgeIs(edgeSlot, frac, col);
+                    seen.Add($"{frac:0.00} -> {Shown(edgeSlot)}");
+                    if (frac < 0.2f) Shot("ui_edge_alert_red");
+                }
+                Check($"an off-screen floor's edge alert empties its ring with the lowest patience there (slot {edgeSlot + 1}: {string.Join(", ", seen)})", fills, "ui");
+                float Wobble()
+                {
+                    cur.EdgeAt(edgeSlot, out _, out _, out float sc);
+                    return Mathf.Abs(sc - 1f);
+                }
+                SetPatience(edgeSlot, 0.15f);
+                float moving = 0f, still = 0f;
+                for (int f = 0; f < 40; f++) { yield return null; moving = Mathf.Max(moving, Wobble()); }
+                save.ReducedMotion = true;
+                root.ApplySettings();
+                for (int f = 0; f < 40; f++) { yield return null; still = Mathf.Max(still, Wobble()); }
+                save.ReducedMotion = false;
+                root.ApplySettings();
+                Check($"a red edge alert pulses (scale off by up to {moving:0.000}) and holds still with reduced motion ({still:0.000})", edgeSlot >= 0 && moving > 0.01f && still == 0f, "ui");
+                runner.Rig.Zoom = 0f;
+            }
             runner.Paused = false;
             root.QuitShift();
             yield return Wait(1f);

@@ -249,7 +249,13 @@ namespace OneMoreFloor
                 var e = new Edge { Rt = rt };
                 rt.gameObject.AddComponent<EdgeClick>().Click = () => { if (e.Slot >= 0) runner.RequestSend(e.Slot, false); };
                 e.Arrow = UiKit.Image("Arrow", rt, UiKit.Triangle, Palette.Hex(0xFFC857), new Vector2(22, 18), new Vector2(-50, 0));
+                // the most impatient guest's patience: a ring that empties, like the floor labels' badges, not only its colour
+                UiKit.Image("Track", rt, UiKit.Ring, new Color(0.08f, 0.05f, 0.1f, 0.85f), new Vector2(48, 48), new Vector2(-8, 0));
                 e.Ring = UiKit.Image("Ring", rt, UiKit.Ring, Palette.Good, new Vector2(48, 48), new Vector2(-8, 0));
+                e.Ring.type = Image.Type.Filled;
+                e.Ring.fillMethod = Image.FillMethod.Radial360;
+                e.Ring.fillOrigin = (int)Image.Origin360.Top;
+                e.Ring.fillClockwise = false;
                 e.Disc = UiKit.Image("Disc", rt, UiKit.Circle, Color.white, new Vector2(38, 38), new Vector2(-8, 0));
                 e.Icon = UiKit.Image("Icon", e.Disc.transform, null, Color.white, new Vector2(32, 32));
                 e.Icon.preserveAspect = true;
@@ -257,6 +263,23 @@ namespace OneMoreFloor
                 edges.Add(e);
             }
             return edges[i];
+        }
+
+        /// <summary>Self-test: the edge alert showing for a floor slot out of view, with its ring's fill, colour and scale.</summary>
+        public bool EdgeAt(int slot, out float fill, out Color color, out float scale)
+        {
+            foreach (var e in edges)
+                if (e.Rt.gameObject.activeSelf && e.Slot == slot)
+                {
+                    fill = e.Ring.fillAmount;
+                    color = e.Ring.color;
+                    scale = e.Rt.localScale.x;
+                    return true;
+                }
+            fill = 0f;
+            color = Color.clear;
+            scale = 0f;
+            return false;
         }
 
         void UpdateEdges()
@@ -294,10 +317,10 @@ namespace OneMoreFloor
                         e.Icon.sprite = Icons.Floor(f);
                         e.Icon.enabled = e.Icon.sprite != null;
                         e.Ring.color = worst > 0.5f ? Palette.Good : worst > 0.25f ? Palette.Warn : Palette.Bad;
-                        e.Ring.fillAmount = 1f;
+                        e.Ring.fillAmount = Mathf.Clamp01(worst);
                         e.Count.text = "×" + q.Count;
                         e.Arrow.rectTransform.localRotation = Quaternion.Euler(0, 0, up ? 0 : 180);
-                        float pulse = worst < 0.25f ? 1f + 0.06f * Mathf.Sin(t * 12f) : 1f;
+                        float pulse = worst < 0.25f && !SaveData.Current.ReducedMotion ? 1f + 0.06f * Mathf.Sin(t * 12f) : 1f;
                         e.Rt.localScale = Vector3.one * pulse;
                         float x = mid.x + (i - (slots.Count - 1) * 0.5f) * 166f;
                         e.Rt.anchoredPosition = new Vector2(x, up ? top - 44f : 44f + 60f);
