@@ -82,7 +82,14 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
-The shift also pauses itself if the window loses focus or the controller you're playing with disconnects.
+The shift also pauses itself if the window loses focus or the controller you're playing with disconnects. The pause
+card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
+keyboard, arrow keys, or your controller's own button names). Restart and quit ask for a second press, so a stray
+button can't throw a run away.
+
+<p align="center">
+  <img src="docs/media/screenshots/pause-controls.jpg" alt="The pause card with the controls panel beside it, written for mouse and keyboard" width="720">
+</p>
 
 ### Gamepad (or arrow keys)
 
@@ -116,8 +123,9 @@ sometimes stay **calm**). Wednesday adds **Rise** (a floor jumps to the top) and
 block of three rotates) and the Graveyard Shift adds **Flip** (a block of four or five reverses). The floor you're
 docked at stays put, so a card that names it **jams** with sparks and a grinding noise. The floor labels beside
 the tower show the next card too: a cream tag with an arrow and the slot each floor will land in, or a red **JAM**
-on a named floor the car is about to dock at. Once the car is on its way the tags are exact; before that they
-follow the floor you're hovering or have picked. Floors also **leave the
+on a named floor the car is about to dock at. The floor the tags assume you stop at is marked: a brass **STOP** on
+the car's target (where the tags are exact), and a dark **STOP?** on a floor you're hovering or have picked, as a
+what-if for stopping there instead. Floors also **leave the
 building** on a countdown, drifting off into the clouds while another floor slides in, and the **Ocean** visits for
 a few stops.
 
@@ -166,7 +174,7 @@ when a kid is aboard, where sunlight will hit a vampire or sun a plant, and how 
 
 Labels beside the tower name every floor, with its slot number, how many guests are waiting there and, when it's
 leaving the building, how many stops it has left. They follow the floors as the building shuffles, and a tag on
-each one says where the next card will put it (or JAM). The waiting
+each one says where the next card will put it (or JAM), with STOP or STOP? on the stop that assumes. The waiting
 count, on the labels and on the panel's buttons, is ringed with the patience of the floor's most impatient guest:
 dark while everyone is calm, amber under half, and red and pulsing when someone is about to storm off.
 
@@ -282,10 +290,12 @@ Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands ag
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
                            # then drives the menus with a virtual gamepad and runs the flow checks (late pass,
-                           # time card, auto-pause, pad glyphs, settings, patience badges, guest guide); every
+                           # time card, auto-pause, pad glyphs, settings, patience badges, guest guide, restart and
+                           # quit confirmation, the pause card's controls panel, STOP markers); every
                            # frame of every shift is also checked: reward popups never overlap, the HUD's star
                            # track agrees with the score, the forecast tags agree with the rules (and floors land
-                           # where they said), and the coach tip never covers a floor label
+                           # where they said), and the coach tip never covers a floor label (tips are reset
+                           # before each shift so every shift's tips get measured)
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 
@@ -394,10 +404,11 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 and 5 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
-  labels and the narrower coach tip were checked by the autopilot, unit tests and screenshots, not by a person.
-  Nobody has judged yet whether the tags help or clutter the labels; the SHUFFLE FORECAST setting hides them along
-  with the panel's cards.
+- **Rounds 4 to 6 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+  labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel and the
+  press-twice restart and quit were checked by the autopilot, unit tests and screenshots, not by a person. Nobody
+  has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting hides them along with
+  the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine

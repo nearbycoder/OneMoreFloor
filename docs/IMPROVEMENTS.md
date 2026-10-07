@@ -608,3 +608,38 @@ with its controls panel, and update "Status and known issues" and this file.
 
 Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
 signing, hosting, releases and the trailer.
+
+## Round 6 results (2026-10-07)
+
+All five items landed. Final checks on the final code (`0d679a2` and later; Z5 changed only docs and images):
+EditMode **53/53**, `sim.sh fuzz` OK (21,270 random-input stops matched the forecast preview), and the full autopilot
+on the last build in a 1920×1080 window passes **129 checks** (117 in round 5): all ten shifts to the bell, the pad
+pass and every `ui` check, with no logged exceptions. Graveyard also passes at 1440×900 and 2560×1080. The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot and
+stills run. Screenshots are in `docs/media/improvements/round6/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| Z1 restart and quit ask twice | `fdaa094` | Autopilot pad pass: 5 new checks | Met. With the pad, "down down A" arms RESTART SHIFT and the clock stays put; moving the ring disarms it; a second A restarts. With the mouse, one click arms QUIT TO ROSTER, pointing at RESUME disarms it, and two clicks quit. A 6 s timeout also disarms it. |
+| Z2 controls panel | `46bcbd6` | 2 EditMode tests (eight rows per scheme and family; exact pad names per family), 4 autopilot checks (Xbox, PlayStation, Nintendo, mouse), a layout check at three window sizes | Met: the card and panel are on screen, apart, and every row's text fits its cell at 1920×1080, 1440×900 and 2560×1080. The arrow-key scheme is covered by the unit test only; no autopilot step drives the pause card with arrow keys. |
+| Z3 STOP / STOP? markers | `48f45d1` | 3 new `ui` checks, the per-frame check extended to expect the markers | Met. In the full run the tags matched the preview on every frame of every shift, with a STOP mark showing on 344–1207 label-frames per shift, and floors landed where the tags said at every stop. STOP? only appears when a person points at a floor; the bot doesn't hover, so it's checked by the scripted `ui` step, not during the bot's shifts. |
+| Z4 tips on every shift | `5a5ae24` | Full autopilot | Met: tip frames on every shift (89–894 in the final run), 0 px overlap, no spilled text. |
+| Z5 README and stills | (this commit) | Each changed image looked at against its caption | `core-shuffle.jpg` now shows a STOP tag and `route-preview.jpg` a STOP? on the hovered floor. The other changed stills differ only by render noise (42–64 dB PSNR). A new `pause-controls.jpg` from the final full run shows the controls panel. The trailer, poster and teaser GIF are unchanged. |
+
+Found along the way:
+- **The new STOP check crashed the prompt strip** in the first full run (12 logged `ArgumentOutOfRangeException`s
+  in `HudCursor.UpdatePrompts`). The pad pass leaves gamepad mode on, and the check then runs a shift with input
+  off, so no floor had been picked (cursor slot -1). Only automation turns input off, so players couldn't hit it,
+  but the strip now stays hidden until a floor is picked (`0d679a2`). The rerun passed with no exceptions.
+- **Frame rate in the full runs is not comparable with round 5.** Single-shift runs on this branch averaged 65–103
+  fps (round 5: 47–79), but the two full runs averaged 32 and 23 fps while seven other games and several editors
+  shared the iGPU (load 16–35). No per-frame work was added outside the pause card, which only works while it's
+  open, and the label tags already ran the same preview every frame in round 5.
+- Unity's test runner rewrites `TestResults.xml` in the game's config folder (`~/.config/unity3d/Nearby/One More
+  Floor/`) on every `unity.sh test`, as it did in round 5. It isn't the save or the settings, and redirecting the
+  editor's config folder would also move the shared Unity licence, so it was left alone.
+
+Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (#14), a listening pass (#15), a license
+(#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
+trailer, poster and teaser GIF (still 0.1.0). Nobody has played rounds 4–6. In particular, whether the forecast tags
+help or clutter the labels, and whether STOP? reads as a what-if, need a person.
