@@ -733,8 +733,43 @@ namespace OneMoreFloor
             Check("Start resumes", !pause.Visible && !runner.Paused);
             yield return Pad("hold:lt hold:lt");
             Check("LT zooms back out", runner.Rig.Zoom < 0.05f);
-            root.QuitShift();
-            yield return Wait(1f);
+
+            // restart and quit ask for a second press: "down down A" from RESUME only arms RESTART SHIFT
+            var before = runner.Sim;
+            yield return Pad("start");
+            float tArm = runner.Sim.Time;
+            yield return Pad("down down a");
+            Check($"down, down, A on the pause card arms RESTART SHIFT ('{pause.RestartButton.Label.text}', '{pause.Hint}') and the shift stays paused",
+                  pause.Visible && runner.Paused && runner.Sim == before && runner.Sim.Time == tArm && pause.Armed == pause.RestartButton
+                  && pause.RestartButton.Label.text == "REALLY RESTART?" && pause.Hint.Contains("AGAIN"));
+            Shot("pad_pause_restart_armed");
+            yield return Pad("up");
+            Check("moving the focus ring off it calls the restart off", pause.Armed == null && pause.RestartButton.Label.text == "RESTART SHIFT" && runner.Sim == before);
+            yield return Pad("down a a");
+            yield return Wait(0.6f);
+            Check($"a second A restarts the shift (fresh run at {runner.Sim.Time:0.0} s)", runner.Sim != before && !pause.Visible && !runner.Paused && runner.Sim.Time < 2f);
+            // the mouse: one click arms QUIT TO ROSTER, hovering another button disarms it, two clicks quit
+            root.Pause();
+            yield return Wait(0.6f);
+            var roster2 = FindAnyObjectByType<RosterScreen>(FindObjectsInactive.Include);
+            pause.QuitButton.Click();
+            yield return null;
+            bool armedQuit = pause.Armed == pause.QuitButton && pause.QuitButton.Label.text == "REALLY QUIT?" && pause.Visible;
+            Shot("pad_pause_quit_armed");
+            UiButton resumeBtn = null;
+            foreach (var b in pause.GetComponentsInChildren<UiButton>()) if (b.name == "Btn_RESUME") resumeBtn = b;
+            resumeBtn.OnPointerEnter(null);
+            yield return null;
+            yield return null;
+            bool disarmed = pause.Armed == null && pause.QuitButton.Label.text == "QUIT TO ROSTER";
+            resumeBtn.OnPointerExit(null);
+            pause.QuitButton.Click();
+            yield return null;
+            Check($"one click arms QUIT TO ROSTER ({armedQuit}), pointing at RESUME disarms it ({disarmed}), and the shift is still on", armedQuit && disarmed && pause.Visible && !roster2.Visible);
+            pause.QuitButton.Click();
+            yield return Wait(0.8f);
+            Check("two clicks on QUIT TO ROSTER quit to the roster", roster2.Visible && !pause.Visible);
+            yield return Wait(0.4f);
         }
 
         /// <summary>The building's order and the first guests: what two runs of the same daily share.</summary>

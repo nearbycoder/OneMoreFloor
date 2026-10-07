@@ -56,6 +56,9 @@ namespace OneMoreFloor
 
         public void SetText(string t) => Label.text = t;
 
+        /// <summary>The mouse is over the button.</summary>
+        public bool Hovered => hover > 0.5f;
+
         public void SetColors(Color normal, Color hovered)
         {
             baseCol = normal;

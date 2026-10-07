@@ -371,7 +371,12 @@ namespace OneMoreFloor
 
     public sealed class PauseScreen : UiScreen
     {
-        TextMeshProUGUI reason;
+        TextMeshProUGUI reason, hint;
+        UiButton restart, quit, armed;
+        Component armedFocus;
+        float armedAt;
+        const string Idle = "ESC TO RESUME";
+        static readonly Color ArmedFace = Palette.Hex(0xF07075);
 
         /// <summary>Why the game paused on its own ("" when the player paused).</summary>
         public string Reason
@@ -379,6 +384,12 @@ namespace OneMoreFloor
             get => reason.text;
             set => reason.text = string.IsNullOrEmpty(value) ? "" : value.ToUpperInvariant();
         }
+
+        /// <summary>Self-test: the buttons that throw the run away, the one waiting for a second press, and the hint line.</summary>
+        public UiButton RestartButton => restart;
+        public UiButton QuitButton => quit;
+        public UiButton Armed => armed;
+        public string Hint => hint.text;
 
         public static PauseScreen Create(Transform parent, GameRoot game)
         {
@@ -392,14 +403,54 @@ namespace OneMoreFloor
             s.reason.characterSpacing = 6f;
             var resume = UiButton.Create(card, "RESUME", new Vector2(0, 126), new Vector2(420, 86), () => game.Resume(), true, 34);
             UiButton.Create(card, "GUEST GUIDE", new Vector2(0, 28), new Vector2(420, 68), () => game.ShowGuide(s), false, 25);
-            UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -54), new Vector2(420, 68), () => game.RestartShift(), false, 25);
+            // these two end the run unscored, so each asks for a second press first
+            s.restart = UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -54), new Vector2(420, 68), null, false, 25);
+            s.restart.OnClick = () => s.Confirm(s.restart, "REALLY RESTART?", game.RestartShift);
             UiButton.Create(card, "SETTINGS", new Vector2(0, -136), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);
-            UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -218), new Vector2(420, 68), () => game.QuitShift(), false, 25);
-            UiKit.Text("Hint", card, "ESC TO RESUME", 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(400, 24), new Vector2(0, -290)).characterSpacing = 8f;
+            s.quit = UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -218), new Vector2(420, 68), null, false, 25);
+            s.quit.OnClick = () => s.Confirm(s.quit, "REALLY QUIT?", game.QuitShift);
+            s.hint = UiKit.Text("Hint", card, Idle, 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(520, 24), new Vector2(0, -290));
+            s.hint.characterSpacing = 8f;
             resume.Focused = true;
             s.Primary = () => resume.Click();
             s.Back = () => game.Resume();
             return s;
+        }
+
+        void Confirm(UiButton b, string ask, System.Action act)
+        {
+            if (armed == b) { Disarm(); act(); return; }
+            Disarm();
+            armed = b;
+            armedFocus = UiNav.Focus;
+            armedAt = UiTime.Now;
+            b.SetText(ask);
+            b.SetColors(ArmedFace, ArmedFace);
+            hint.text = "PRESS AGAIN \u00B7 THIS RUN WON'T COUNT";
+            hint.color = ArmedFace;
+        }
+
+        void Disarm()
+        {
+            if (armed == null) return;
+            armed.SetText(armed == restart ? "RESTART SHIFT" : "QUIT TO ROSTER");
+            armed.SetColors(Color.white, Color.white);
+            armed = null;
+            hint.text = Idle;
+            hint.color = Deco.Muted;
+        }
+
+        public override void Show() { Disarm(); base.Show(); }
+        public override void Hide() { Disarm(); base.Hide(); }
+
+        protected override void Update()
+        {
+            base.Update();
+            if (armed == null) return;
+            // moving the focus ring or the mouse to another button, or waiting, calls it off
+            bool off = UiNav.Focus != armedFocus || UiTime.Now - armedAt > 6f;
+            foreach (var b in GetComponentsInChildren<UiButton>()) if (b != armed && b.Hovered) off = true;
+            if (off) Disarm();
         }
     }
 
