@@ -740,3 +740,64 @@ Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (
 (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
 trailer, poster and teaser GIF (still 0.1.0; they also predate the outlined popups). Nobody has played rounds 4–7.
 Whether STOP? reads as a what-if, and whether LOW's softer text is acceptable, need a person.
+
+## Round 8 scope (2026-10-07, branch `improvements-8`)
+
+The ranked list's remaining items (#12–#16) still wait on the owner or on human ears, and guest scale stays
+untouched. These come from round 7's open notes and a fresh look at `5bb2d7c` (baseline numbers in Round 8 results).
+The title capture from the baseline build confirms round 7's suspicion and goes further: the logo has no dark
+outline and the tagline under it no shadow. The same thing happens to every text that uses `Deco.Shadowed`, not
+only the headings. Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all
+shifts, pad pass, `ui` flow checks) passing, and the real `save.json` and `prefs` hashing the same before and after
+every run. Screenshots go to `docs/media/improvements/round8/`.
+
+### P1. Text draws the shadow and outline it asks for
+
+TMP's mobile SDF shader compiles its outline and underlay as `shader_feature`s, so a build only keeps the keyword
+sets some material in the build uses: none, `OUTLINE_ON` and `OUTLINE_ON UNDERLAY_ON` (TMP's own Outline and Drop
+Shadow materials). `Deco.Shadowed` asks for `UNDERLAY_ON` alone, which the build doesn't keep, so the HUD's shift
+name, clock and score, every secondary button, the panel's floor names, the roster's shift names, the guide's
+names and the title tagline draw with no shadow at all. `Deco.Gilded` (the logo and the Paused, Settings, Duty
+Roster and time-card headings) also sets an outline without `OUTLINE_ON`. Now a material under `Resources` keeps the
+`UNDERLAY_ON` set in the build, and gilded type turns its outline on.
+- **Acceptance:** an EditMode test fails if any keyword set the UI code asks for (`Shadowed`, `Gilded`, popups,
+  banner) isn't kept by a material in the build. In the built game, before/after captures of the title, roster,
+  intro card, pause card, settings, time card and HUD show the shadows and the headings' dark edge, and nothing
+  else changes size or position.
+- **Verify:** the test, and same-frame before/after crops from autopilot captures of the old and new builds.
+
+### P2. Shift banners stay clear of the HUD card and the panel
+
+ON THE CLOCK!, RUSH HOUR!, CLOCK OUT! and YOU'RE FIRED! slam in 180 px left of the screen's centre at 120 px type,
+so they run across the HUD card's star track just when a shift starts (`core-shuffle.jpg`). Now a banner is
+centred in the strip between the HUD card and the panel, shrinks to fit that strip, and draws under both cards, so
+even the slam-in passes behind them.
+- **Acceptance:** on every frame of every autopilot shift after the slam-in, the banner's text bounds don't overlap
+  the HUD card or the panel (0 px), at 1920×1080, 1440×900 and 2560×1080. Every banner was seen at least once in the
+  full run.
+- **Verify:** a per-frame autopilot check, and before/after captures of ON THE CLOCK!.
+
+### P3. WASD as well as the arrow keys
+
+Keyboard play already uses Q, E and F around WASD, but picking a floor needs the arrow keys. W/A/S/D now do what
+the arrow keys do, in play and in menus, and the controls panel and README say so.
+- **Acceptance:** in the built game, a virtual keyboard picks floors with W/S, picks a guest with D, sends the car
+  with Enter, and moves a menu's focus ring with S. The controls panel's keyboard rows name WASD and still fit their
+  cells. Zoom (Z), Q/E and F keep working.
+- **Verify:** autopilot `ui` checks with `KeySim`, the controls-sheet EditMode test, and a capture of the panel.
+
+### P4. Steam Deck and 5:4 screens
+
+Layouts were checked at 16:9, 16:10 and 21:9. The Linux build also runs on a Steam Deck (1280×800), and some
+players still have 5:4 monitors (1280×1024). The Graveyard autopilot, with all its per-frame checks (popups, coach
+tip against labels, star track, the pause card and controls panel, and P2's banner), runs at both sizes. Anything that
+fails gets fixed, or reported if it needs a layout decision. The smallest HUD text at 1280×800 is measured in pixels.
+- **Verify:** autopilot output and captures at both sizes.
+
+### P5. README, status and results
+
+The README's controls tables, "Status and known issues" and this file are updated to match. README stills are
+regenerated if P1 or P2 changes what they show, and checked against their captions.
+
+Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
+LOW's softer text (owner's call), signing, hosting, releases and the trailer.
