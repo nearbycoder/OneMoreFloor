@@ -165,7 +165,8 @@ Hover a guest to see who they are and where they're going. Hover a floor to prev
 when a kid is aboard, where sunlight will hit a vampire or sun a plant, and how many guests get off.
 
 Labels beside the tower name every floor, with its slot number, how many guests are waiting there and, when it's
-leaving the building, how many stops it has left. They follow the floors as the building shuffles. The waiting
+leaving the building, how many stops it has left. They follow the floors as the building shuffles, and a tag on
+each one says where the next card will put it (or JAM). The waiting
 count, on the labels and on the panel's buttons, is ringed with the patience of the floor's most impatient guest:
 dark while everyone is calm, amber under half, and red and pulsing when someone is about to storm off.
 
@@ -393,8 +394,10 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Round 4 additions are unplayed.** The star track, the Guest Guide and the save backup were checked by the
-  autopilot, unit tests and screenshots, not by a person. The README screenshots above predate the star track.
+- **Rounds 4 and 5 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+  labels and the narrower coach tip were checked by the autopilot, unit tests and screenshots, not by a person.
+  Nobody has judged yet whether the tags help or clutter the labels; the SHUFFLE FORECAST setting hides them along
+  with the panel's cards.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
