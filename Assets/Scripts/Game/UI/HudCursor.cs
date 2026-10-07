@@ -167,9 +167,11 @@ namespace OneMoreFloor
 
         void UpdatePrompts(bool on)
         {
+            var sim = runner.Sim;
+            // no floor picked yet (a scripted shift with input off): nothing to prompt for
+            on &= runner.CursorSlot >= 0 && runner.CursorSlot < sim.B.Count;
             prompts.gameObject.SetActive(on);
             if (!on) return;
-            var sim = runner.Sim;
             bool pad = Controls.Pad;
             var guest = runner.CursorPid >= 0 ? sim.Find(runner.CursorPid) : null;
             var floor = sim.B.At(runner.CursorSlot);
