@@ -3,7 +3,8 @@
 # so use Unity's native Wayland backend when a Wayland session is available.
 #   Tools/play.sh [extra player args]
 set -euo pipefail
-GAME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/Builds/Linux/OneMoreFloor.x86_64"
+# OMF_GAME runs another build (a baseline kept for before/after captures, say)
+GAME="${OMF_GAME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/Builds/Linux/OneMoreFloor.x86_64}"
 [ -x "$GAME" ] || { echo "No build yet. Run Tools/unity.sh build-linux first." >&2; exit 1; }
 # Unity takes the first -screen-width it sees, so only add the default size when the caller didn't pass one
 args=(-screen-fullscreen 0)
