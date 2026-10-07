@@ -52,6 +52,10 @@ namespace OneMoreFloor
             return h;
         }
 
+        const float CardTop = 24f, CardHeight = 524f;
+        /// <summary>How far down from the top of the canvas the left HUD card reaches (the coach tip sits below it).</summary>
+        public const float CardBottom = CardTop + CardHeight;
+
         void Build()
         {
             bubbleLayer = UiKit.Stretch("Bubbles", transform);
@@ -59,12 +63,12 @@ namespace OneMoreFloor
             top = UiKit.Stretch("Top", transform);
 
             // Left column: one framed card with the shift name, clock, tips + streak, and complaints.
-            const float H = 470f, W = 360f;
+            const float H = CardHeight, W = 360f;
             float Y(float fromTop) => H * 0.5f - fromTop;
             var col = Deco.Panel("LeftColumn", top, new Vector2(W, H), Vector2.zero);
             col.anchorMin = col.anchorMax = new Vector2(0, 1);
             col.pivot = new Vector2(0, 1);
-            col.anchoredPosition = new Vector2(28, -24);
+            col.anchoredPosition = new Vector2(28, -CardTop);
             const float X = -W * 0.5f + 28f;
 
             shiftDay = Deco.Label("Day", col, "MONDAY", 18, new Vector2(300, 24), new Vector2(0, Y(36)));
@@ -89,12 +93,30 @@ namespace OneMoreFloor
             score.rectTransform.pivot = new Vector2(0, 0.5f);
             streakBadge = UiKit.Image("StreakBadge", col, Deco.GoldPill, Color.white, new Vector2(104, 38), new Vector2(W * 0.5f - 28f - 52f, Y(262)));
             streak = UiKit.Text("Streak", streakBadge.transform, "x1.00", 20, Palette.Hex(0x3A230C), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(104, 38));
-            Deco.Divider(col, W - 56f, new Vector2(0, Y(360)), 0.7f);
 
-            complaintsLabel = Deco.Label("CLabel", col, "COMPLAINTS", 15, new Vector2(300, 22), new Vector2(0, Y(386)), TextAlignmentOptions.Left, Deco.Muted);
+            // star track: the shift's three star targets, lit as the tips pass them, and what the next one needs
+            for (int i = 0; i < trackStars.Length; i++)
+            {
+                var at = new Vector2(X + 14f + i * 32f, Y(372));
+                trackGlow[i] = UiKit.Image("StarGlow" + i, col, UiKit.SoftCircle, new Color(1f, 0.75f, 0.3f, 0f), new Vector2(54, 54), at);
+                trackStars[i] = UiKit.Image("Star" + i, col, Stars.Sprite, TrackUnlit, new Vector2(28, 28), at);
+            }
+            starCaption = UiKit.Text("StarCaption", col, "", 15, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(204, 24), new Vector2(50f, Y(373)));
+            starCaption.enableAutoSizing = true;
+            starCaption.fontSizeMin = 11;
+            starCaption.fontSizeMax = 15;
+            starCaption.characterSpacing = 2f;
+            const float BarW = W - 56f;
+            UiKit.Image("StarBarBack", col, UiKit.Pill, new Color(1f, 1f, 1f, 0.1f), new Vector2(BarW, 6), new Vector2(0, Y(396)));
+            starBar = UiKit.Image("StarBar", col, UiKit.Pill, Deco.Gold, new Vector2(BarW, 6), new Vector2(-BarW * 0.5f, Y(396)));
+            starBar.rectTransform.pivot = new Vector2(0, 0.5f);
+            starBarWidth = BarW;
+            Deco.Divider(col, W - 56f, new Vector2(0, Y(414)), 0.7f);
+
+            complaintsLabel = Deco.Label("CLabel", col, "COMPLAINTS", 15, new Vector2(300, 22), new Vector2(0, Y(440)), TextAlignmentOptions.Left, Deco.Muted);
             for (int i = 0; i < complaintSlots.Length; i++)
             {
-                var slot = UiKit.Image("Slot" + i, col, Deco.Recess, Color.white, new Vector2(42, 42), new Vector2(X + 21f + i * 58f, Y(428)));
+                var slot = UiKit.Image("Slot" + i, col, Deco.Recess, Color.white, new Vector2(42, 42), new Vector2(X + 21f + i * 58f, Y(482)));
                 complaintSlots[i] = UiKit.Image("Bead", slot.transform, UiKit.Circle, Palette.Bad, new Vector2(30, 30));
                 complaintSlots[i].rectTransform.localScale = Vector3.zero;
                 UiKit.Image("Shine", complaintSlots[i].transform, UiKit.SoftCircle, new Color(1, 1, 1, 0.55f), new Vector2(14, 10), new Vector2(-5, 7));
@@ -105,7 +127,20 @@ namespace OneMoreFloor
             FloorLabels = FloorLabels.Create(transform, runner, worldCam, canvasRt);
         }
 
-        TextMeshProUGUI complaintsLabel;
+        TextMeshProUGUI complaintsLabel, starCaption;
+        readonly Image[] trackStars = new Image[3], trackGlow = new Image[3];
+        readonly float[] starPunch = new float[3];
+        Image starBar;
+        float starBarWidth;
+
+        /// <summary>Stars lit on the HUD's star track, and its caption (what the next star needs).</summary>
+        public int StarsLit { get; private set; }
+        public string StarCaption => starCaption.text;
+        /// <summary>Self-test: stars actually drawn lit on the track (read back from the images).</summary>
+        public int StarsDrawnLit
+        {
+            get { int n = 0; foreach (var st in trackStars) if (st.color == Stars.Lit) n++; return n; }
+        }
         public HudCursor Cursor { get; private set; }
         public FloorLabels FloorLabels { get; private set; }
         /// <summary>Recordings: no popups, banners or flying coins while the simulation is skipped ahead.</summary>
@@ -121,6 +156,8 @@ namespace OneMoreFloor
             flying.Clear();
             shownScore = 0;
             lastStreak = 0;
+            StarsLit = 0;
+            for (int i = 0; i < trackStars.Length; i++) { trackStars[i].color = TrackUnlit; starPunch[i] = 0f; }
         }
 
         CanvasGroup group;
@@ -436,6 +473,55 @@ namespace OneMoreFloor
             }
         }
 
+        // ---------------------------------------------------------------- star track
+
+        static readonly Color TrackUnlit = new Color(1f, 1f, 1f, 0.24f);
+
+        void UpdateStarTrack(ShiftSim sim, float dt)
+        {
+            var targets = sim.Def.Stars;
+            int lit = sim.StarCount;
+            for (int i = 0; i < trackStars.Length; i++)
+            {
+                bool on = i < lit;
+                if (on && i >= StarsLit && !Quiet)
+                {
+                    starPunch[i] = 1f;
+                    AudioDirector.Instance?.Sfx("star_" + (i + 1), 0.55f, 1f, 0f, 0f, 0f);
+                }
+                trackStars[i].color = on ? Stars.Lit : TrackUnlit;
+                starPunch[i] = Mathf.Max(0f, starPunch[i] - dt * 2.2f);
+                float k = Ease.OutCubic(starPunch[i]);
+                trackStars[i].rectTransform.localScale = Vector3.one * (1f + 0.7f * k);
+                trackGlow[i].color = new Color(1f, 0.75f, 0.3f, on ? 0.18f + 0.5f * k : 0f);
+            }
+            StarsLit = lit;
+
+            if (lit >= targets.Length)
+            {
+                starCaption.text = "ALL THREE STARS!";
+                starCaption.color = Deco.Gold;
+                SetStarBar(1f);
+            }
+            else
+            {
+                int need = targets[lit] - sim.Score;
+                starCaption.text = sim.Relaxed && lit >= 1 ? "RELAXED CLEAR!"
+                    : sim.Relaxed ? $"${need:N0} TO A RELAXED CLEAR"
+                    : $"${need:N0} TO STAR {lit + 1}";
+                starCaption.color = sim.Relaxed && lit >= 1 ? Palette.Hex(0x8FD6C4) : Deco.Muted;
+                int from = lit > 0 ? targets[lit - 1] : 0;
+                SetStarBar(Mathf.Clamp01((float)(sim.Score - from) / Mathf.Max(1, targets[lit] - from)));
+            }
+        }
+
+        void SetStarBar(float frac)
+        {
+            var rt = starBar.rectTransform;
+            float w = Mathf.Lerp(rt.sizeDelta.x, Mathf.Max(6f, starBarWidth * frac), 0.25f);
+            rt.sizeDelta = new Vector2(w, rt.sizeDelta.y);
+        }
+
         // ---------------------------------------------------------------- route preview
 
         sealed class RouteMark { public RectTransform Rt; public Image Bg, Icon; public TextMeshProUGUI Text; }
@@ -627,6 +713,8 @@ namespace OneMoreFloor
             float m = sim.Multiplier;
             streakBadge.color = m >= 2.5f ? Palette.Hex(0xFF9CC8) : m >= 2f ? Palette.Hex(0xFFB27A) : m > 1.001f ? Color.white : new Color(0.7f, 0.66f, 0.62f);
             streakBadge.rectTransform.localScale = Vector3.one * (1f + 0.25f * streakPunch);
+
+            UpdateStarTrack(sim, dt);
 
             clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? "CLOCK STARTS ON YOUR FIRST DROP" : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
             if (sim.Def.Endless)

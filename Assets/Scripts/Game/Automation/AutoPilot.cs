@@ -114,6 +114,8 @@ namespace OneMoreFloor
                 var runner = root.Runner;
                 runner.AutoBot = Bot.Decent((ulong)(k + 11));
                 runner.Hud.WorstPopupOverlap = 0f;
+                int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0;
+                string starWhy = "";
                 Time.timeScale = speed;
                 float played = 0f;
                 float limit = k == 0 ? 200f : 60f;  // Monday plays to the bell; others get a minute of game time
@@ -122,6 +124,18 @@ namespace OneMoreFloor
                 {
                     yield return null;
                     played += Time.unscaledDeltaTime * speed;
+                    // the HUD's star track agrees with the score: lit stars, and the next target in the caption
+                    {
+                        var ss = runner.Sim;
+                        int expect = ss.Def.StarsFor(ss.Score);
+                        bool right = runner.Hud.StarsDrawnLit == expect
+                                     && (expect >= 3 ? runner.Hud.StarCaption.Contains("ALL THREE")
+                                                     : runner.Hud.StarCaption.Contains("$" + (ss.Def.Stars[expect] - ss.Score).ToString("N0")));
+                        starFrames++;
+                        starPeak = Mathf.Max(starPeak, runner.Hud.StarsDrawnLit);
+                        if (right) starLag = 0;
+                        else if (++starLag > 1) { starBad++; starWhy = $"score {ss.Score}, drawn {runner.Hud.StarsDrawnLit}, '{runner.Hud.StarCaption}'"; }
+                    }
                     if (Time.unscaledDeltaTime < 0.25f) { frames++; frameTime += Time.unscaledDeltaTime; worst = Mathf.Max(worst, Time.unscaledDeltaTime); }
                     if (!popupShot && k >= 3 && runner.Hud.PopupCount >= 4)
                     {
@@ -161,6 +175,9 @@ namespace OneMoreFloor
                 // popups never draw over each other (a few px of glyph-box contact is allowed)
                 float overlap = runner.Hud.WorstPopupOverlap;
                 Check($"{def.Id}: worst popup overlap {overlap:0.0} px" + (overlap > 0f ? $" ({runner.Hud.WorstPopupPair})" : ""), overlap <= 4f, "popups");
+                Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit)" + (starBad > 0 ? $" last miss: {starWhy}" : ""),
+                      starBad == 0 && starFrames > 0, "stars");
+                Check($"{def.Id}: after the bell the track shows {runner.Hud.StarsDrawnLit} stars for {sim.StarCount}", runner.Hud.StarsDrawnLit == sim.StarCount, "stars");
                 if (save.Stars[k] == 0) save.Stars[k] = 1;
             }
 

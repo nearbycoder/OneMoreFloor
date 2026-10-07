@@ -272,8 +272,8 @@ namespace OneMoreFloor
             else anchorPos = new Vector2(size.x * 0.5f, size.y * 0.78f);
 
             float bob = Mathf.Sin(UiTime.Now * 5f) * 8f;
-            // the tip lives in the free space of the left column; only the marker goes on the target
-            var boxPos = new Vector2(218f, size.y * 0.43f);
+            // the tip lives in the free space of the left column, clear of the HUD card; only the marker goes on the target
+            var boxPos = new Vector2(218f, Mathf.Min(size.y * 0.43f, size.y - Hud.CardBottom - 28f));
             box.anchoredPosition = boxPos + new Vector2(0, bob * 0.15f);
             arrow.gameObject.SetActive(hasArrow);
             arrow.anchoredPosition = anchorPos + (side != 0f ? new Vector2(-side * bob * 0.6f, 0f) : new Vector2(0, bob * 0.6f));
