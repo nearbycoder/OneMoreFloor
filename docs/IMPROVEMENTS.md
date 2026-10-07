@@ -470,3 +470,51 @@ Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (
 (#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
 trailer, poster and teaser GIF. The README screenshots predate the star track and the guide. Nobody has played these
 changes yet.
+
+## Round 5 scope (2026-10-06, branch `improvements-5`)
+
+Picked from round 4's open items and a fresh look at a normal run on `af771cd`. Each item ends with
+`sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow checks) passing, and
+the real `save.json` and `prefs` hashing the same before and after. Screenshots go to
+`docs/media/improvements/round5/`. Guest scale is untouched (still waiting on the owner).
+
+### Y1. The forecast shown on the tower
+
+The shuffle forecast is the game's planning tool, but it's text on the panel ("Office and Library", "Roll floors
+4-6 up"), so every stop means reading names and finding them in the tower while guests wait. Now the floor
+labels show what the next card will do: a small chip on each floor that will move, with an arrow and the slot it
+lands in, and a JAM chip on a named floor the car is about to dock at (the anchor rule). The chips are exact once
+the car is on its way (the card is played with the target as the anchor, after any floor leaves). Before that, they
+follow the floor you're hovering or have picked with the pad, and otherwise assume you won't stop at a floor the card
+moves. The SHUFFLE FORECAST setting hides them along with the panel cards.
+- **Acceptance:** a core `ShiftSim.PreviewStop(anchor)` predicts the building after the next full stop. On every
+  shift, with the bot playing, the building after every full stop equals the prediction made one tick before it.
+  In the built game, the chips on the labels agree with that prediction on every frame of every autopilot shift.
+- **Verify:** an EditMode test over all ten shifts (every full stop checked), unit tests for a jam, a block move
+  around the anchor and a floor leaving before the card, a per-frame autopilot check, and captures.
+
+### Y2. The coach tip never covers a floor label
+
+At 1920×1080 the tip box's right edge (~398 px) covers the first letter of a long floor label next to it. The box
+gets narrower, grows downward to fit its text, and is kept clear of the leftmost label every frame.
+- **Acceptance:** on every autopilot shift, at every frame where a tip shows, the tip box and the floor-label pills
+  don't overlap (0 px). Checked at 1920×1080, 1440×900 and 2560×1080. Every tip's text still fits inside its box.
+- **Verify:** a per-frame autopilot measurement on rectangles, like the popup check, plus before/after crops.
+
+### Y3. The autopilot plays every timed shift to the bell
+
+Only Monday played to the end; the others stopped after a minute and fast-forwarded, so the star track was only
+checked unlit during play, and rush hour never ran through the presentation outside Monday. Every timed shift now
+plays to the bell (Overtime keeps its one-minute cap, since it only ends on complaints).
+- **Acceptance:** the full autopilot passes, with "played to the bell" in each timed shift's line and stars lit
+  during play on the shifts where the bot earns them. The script's timeout covers the longer run.
+- **Verify:** the full autopilot output.
+
+### Y4. README screenshots and status
+
+Regenerate the README screenshots with `Tools/make_trailer.sh stills` so they show the star track and the forecast
+chips, check each against its caption, and update the README and "Status and known issues". The trailer, poster and
+teaser GIF are left alone (owner).
+
+Not this round: bigger guests (#12, owner), Windows (#13), WebGL (#14), the listening pass (#15), the license (#16),
+signing, hosting, releases and the trailer.
