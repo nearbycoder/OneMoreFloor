@@ -280,7 +280,12 @@ namespace OneMoreFloor
             return img;
         }
 
-        /// <summary>Soft drop shadow under the glyphs.</summary>
+        /// <summary>
+        /// Soft drop shadow under the glyphs. The fonts use TMP's mobile SDF shader, whose underlay and outline are
+        /// shader_features: a build only keeps keyword sets that some material in it uses, so
+        /// Resources/Fonts/SDF/Text Shadow Variant.mat exists to keep UNDERLAY_ON on its own (TMP's Outline and
+        /// Drop Shadow materials keep the other two). TextVariantTests checks that every set asked for here is kept.
+        /// </summary>
         public static T Shadowed<T>(T t, float alpha = 0.6f, float offset = 0.9f, float softness = 0.35f) where T : TMP_Text
         {
             var m = t.fontMaterial;
@@ -301,11 +306,18 @@ namespace OneMoreFloor
             t.enableVertexGradient = true;
             t.colorGradient = new VertexGradient(GoldLight, GoldLight, Palette.Hex(0xE2A646), Palette.Hex(0xE2A646));
             Shadowed(t, 0.7f, 1f, 0.4f);
-            if (outline > 0f)
-            {
-                t.outlineWidth = outline;
-                t.outlineColor = new Color32(70, 38, 12, 255);
-            }
+            if (outline > 0f) Outlined(t, outline, new Color32(70, 38, 12, 255));
+            return t;
+        }
+
+        /// <summary>A dark edge around the glyphs. Setting outlineWidth alone doesn't draw one: the shader needs OUTLINE_ON.</summary>
+        public static T Outlined<T>(T t, float width, Color32 color) where T : TMP_Text
+        {
+            t.outlineWidth = width;
+            t.outlineColor = color;
+            var m = t.fontMaterial;
+            m.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            t.fontMaterial = m;
             return t;
         }
 

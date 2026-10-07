@@ -4,6 +4,8 @@
     "references": [
         "OneMoreFloor.Core",
         "OneMoreFloor.Game",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

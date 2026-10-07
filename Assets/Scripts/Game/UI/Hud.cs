@@ -338,7 +338,7 @@ namespace OneMoreFloor
         /// with its OUTLINE_ON / UNDERLAY_ON keywords (setting outlineWidth on the text doesn't turn them on), and the
         /// build keeps that pair because TMP's "Drop Shadow" material uses it.
         /// </summary>
-        static Material PopupMaterial()
+        public static Material PopupMaterial()
         {
             if (popupMat) return popupMat;
             popupMat = new Material(UiKit.Signage.material) { name = "Popup (outline + halo)" };
@@ -702,11 +702,7 @@ namespace OneMoreFloor
             if (banner == null)
             {
                 banner = UiKit.Text("Banner", transform, "", 120, color, UiKit.Display, TextAlignmentOptions.Center, new Vector2(1600, 180), new Vector2(-180, 120));
-                Deco.Shadowed(banner, 0.75f, 1f, 0.45f);
-                banner.outlineWidth = 0.18f;
-                banner.outlineColor = new Color32(30, 20, 34, 255);
-                // the mobile SDF shader draws neither without OUTLINE_ON, and the build only has underlay paired with it
-                banner.fontMaterial.EnableKeyword(ShaderUtilities.Keyword_Outline);
+                Deco.Outlined(Deco.Shadowed(banner, 0.75f, 1f, 0.45f), 0.18f, new Color32(30, 20, 34, 255));
             }
             banner.text = text;
             banner.color = color;
