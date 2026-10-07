@@ -6,7 +6,7 @@ namespace OneMoreFloor
     /// <summary>
     /// Device-agnostic input on top of the Input System: which device the player is using right now (so
     /// prompts and focus rings can follow), plus repeating directional "nav" input from the d-pad, the left
-    /// stick and the arrow keys. Ticked once per frame before anything reads it.
+    /// stick, the arrow keys and WASD. Ticked once per frame before anything reads it.
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     public sealed class Controls : MonoBehaviour
@@ -80,10 +80,11 @@ namespace OneMoreFloor
             if (kb != null)
             {
                 Vector2 k = Vector2.zero;
-                if (kb.upArrowKey.isPressed) k.y += 1f;
-                if (kb.downArrowKey.isPressed) k.y -= 1f;
-                if (kb.rightArrowKey.isPressed) k.x += 1f;
-                if (kb.leftArrowKey.isPressed) k.x -= 1f;
+                // WASD by position (ZQSD on an AZERTY keyboard), next to the Q / E / F that cursor play already uses
+                if (kb.upArrowKey.isPressed || kb.wKey.isPressed) k.y += 1f;
+                if (kb.downArrowKey.isPressed || kb.sKey.isPressed) k.y -= 1f;
+                if (kb.rightArrowKey.isPressed || kb.dKey.isPressed) k.x += 1f;
+                if (kb.leftArrowKey.isPressed || kb.aKey.isPressed) k.x -= 1f;
                 if (k != Vector2.zero) { stick = k; keysUsed = true; }
             }
             if (padUsed) { LastPadDevice = gp; LastPadUse = Time.realtimeSinceStartup; }

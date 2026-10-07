@@ -84,19 +84,19 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 
 The shift also pauses itself if the window loses focus or the controller you're playing with disconnects. The pause
 card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
-keyboard, arrow keys, or your controller's own button names). Restart and quit ask for a second press, so a stray
+keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit ask for a second press, so a stray
 button can't throw a run away.
 
 <p align="center">
   <img src="docs/media/screenshots/pause-controls.jpg" alt="The pause card with the controls panel beside it, written for mouse and keyboard" width="720">
 </p>
 
-### Gamepad (or arrow keys)
+### Gamepad (or arrow keys / WASD)
 
 | Pad | Keys | Action |
 | --- | --- | --- |
-| **D-pad / left stick** up/down | **Up / Down** | Pick a floor (gold brackets, with the trip preview) |
-| **D-pad** left/right, **LB / RB** | **Left / Right**, **Q / E** | Pick a guest on that floor or in the car |
+| **D-pad / left stick** up/down | **Up / Down** or **W / S** | Pick a floor (gold brackets, with the trip preview) |
+| **D-pad** left/right, **LB / RB** | **Left / Right**, **A / D**, **Q / E** | Pick a guest on that floor or in the car |
 | **A** | **Enter** | Send the car, let the picked guest in, or go and get them |
 | **X** | **F** | Let the picked rider off here |
 | **Y** | **Space** | Let everyone in |
@@ -106,7 +106,8 @@ button can't throw a run away.
 
 A strip along the bottom says what each button will do right now. It names the buttons for the controller you're
 holding: Xbox letters, PlayStation shapes (✕ ○ □ △), or Nintendo letters, with B on the bottom. The table above uses Xbox
-names. Menus have a focus ring that the d-pad, stick and arrow keys move.
+names. Menus have a focus ring that the d-pad, stick, arrow keys and WASD move. WASD goes by key position, so on an
+AZERTY keyboard it's ZQSD.
 
 <p align="center">
   <img src="docs/media/screenshots/gamepad-closeup.jpg" alt="Gamepad play zoomed in: gold floor brackets, a guest card and the button prompt strip" width="720">

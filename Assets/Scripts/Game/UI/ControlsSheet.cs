@@ -8,7 +8,7 @@ namespace OneMoreFloor
     public enum ControlScheme { Mouse, Keys, Pad }
 
     /// <summary>
-    /// What every input does, written for one way of playing: mouse and keyboard, arrow keys, or a gamepad named the
+    /// What every input does, written for one way of playing: mouse and keyboard, arrow keys (or WASD), or a gamepad named the
     /// way the controller in use prints its buttons. The same tables as the README's "How to play".
     /// </summary>
     public static class ControlsSheet
@@ -21,7 +21,7 @@ namespace OneMoreFloor
         public static string Title(ControlScheme s, PadFamily f)
         {
             if (s == ControlScheme.Mouse) return "MOUSE AND KEYBOARD";
-            if (s == ControlScheme.Keys) return "ARROW KEYS";
+            if (s == ControlScheme.Keys) return "ARROW KEYS OR WASD";
             return f == PadFamily.PlayStation ? "PLAYSTATION CONTROLLER" : f == PadFamily.Nintendo ? "NINTENDO CONTROLLER" : "CONTROLLER";
         }
 
@@ -43,8 +43,8 @@ namespace OneMoreFloor
                     Add(N(GamepadButton.Start), "Pause");
                     break;
                 case ControlScheme.Keys:
-                    Add("UP / DOWN", "Pick a floor and preview the trip");
-                    Add("LEFT / RIGHT, Q / E", "Pick a guest on that floor or in the car");
+                    Add("UP / DOWN, W / S", "Pick a floor and preview the trip");
+                    Add("LEFT / RIGHT, A / D, Q / E", "Pick a guest on that floor or in the car");
                     Add("ENTER", "Send the car, let them in, or go get them");
                     Add("SPACE", "Let everyone in");
                     Add("F", "Let the picked rider off here");
@@ -74,6 +74,8 @@ namespace OneMoreFloor
         TextMeshProUGUI title;
         readonly List<(TextMeshProUGUI key, TextMeshProUGUI action)> cells = new List<(TextMeshProUGUI, TextMeshProUGUI)>();
         string shown;
+        /// <summary>The key cells' text without the &lt;nobr&gt; tags, for <see cref="Text"/>.</summary>
+        readonly List<string> plain = new List<string>();
         const float RowH = 62f, KeyW = 200f, ActionW = 234f;
 
         public static ControlsCard Create(Transform parent, Vector2 size, Vector2 pos)
@@ -108,9 +110,13 @@ namespace OneMoreFloor
             shown = id;
             title.text = ControlsSheet.Title(s, f);
             var rows = ControlsSheet.Rows(s, f);
+            plain.Clear();
             for (int i = 0; i < cells.Count; i++)
             {
-                cells[i].key.text = i < rows.Count ? rows[i].Key : "";
+                string key = i < rows.Count ? rows[i].Key : "";
+                plain.Add(key);
+                // a pair like "Q / E" never breaks across lines
+                cells[i].key.text = System.Text.RegularExpressions.Regex.Replace(key, @"(\S+ / \S+)", "<nobr>$1</nobr>");
                 cells[i].action.text = i < rows.Count ? rows[i].Action : "";
             }
         }
@@ -121,7 +127,7 @@ namespace OneMoreFloor
             get
             {
                 var sb = new System.Text.StringBuilder(title.text);
-                foreach (var (k, a) in cells) sb.Append('\n').Append(k.text).Append(": ").Append(a.text);
+                for (int i = 0; i < cells.Count; i++) sb.Append('\n').Append(i < plain.Count ? plain[i] : "").Append(": ").Append(cells[i].action.text);
                 return sb.ToString();
             }
         }

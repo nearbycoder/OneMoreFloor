@@ -769,7 +769,8 @@ namespace OneMoreFloor
             {
                 string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
                 Check($"with the arrow keys the controls panel lists the keys{(lay.Length > 0 ? ":" + lay : "")}",
-                      ct.StartsWith("ARROW KEYS\n") && ct.Contains("\nUP / DOWN: Pick a floor") && ct.Contains("\nENTER: Send the car") && ct.Contains("\nF: Let the picked rider")
+                      ct.StartsWith("ARROW KEYS OR WASD\n") && ct.Contains("\nUP / DOWN, W / S: Pick a floor") && ct.Contains("\nLEFT / RIGHT, A / D, Q / E: Pick a guest")
+                      && ct.Contains("\nENTER: Send the car") && ct.Contains("\nF: Let the picked rider")
                       && ct.Contains("\nBACKSPACE: Unpick") && lay.Length == 0, "ui");
             }
             Shot("ui_pause_controls_keys");
@@ -780,6 +781,31 @@ namespace OneMoreFloor
             Check("Esc closes the guide back to the pause card", pause.Visible && !guideK.Visible && runner.Paused, "ui");
             yield return Keys("esc");
             Check("Esc on the pause card resumes", !pause.Visible && !runner.Paused, "ui");
+
+            // WASD does what the arrow keys do: W/S pick floors, D picks a guest, S moves a menu's focus ring
+            {
+                // steer to a floor where someone is waiting, so D has a guest to pick (the busiest one, not the current)
+                var sw = runner.Sim;
+                int fromW = runner.CursorSlot, target = -1;
+                for (int sl = 0; sl < sw.B.Count; sl++)
+                    if (sl != fromW && sw.Waiting[(int)sw.B.At(sl)].Count > 0 && (target < 0 || sw.Waiting[(int)sw.B.At(sl)].Count > sw.Waiting[(int)sw.B.At(target)].Count)) target = sl;
+                if (target < 0) target = fromW + 2 < sw.B.Count ? fromW + 2 : fromW - 2;
+                var steps = new System.Text.StringBuilder();
+                for (int n = 0; n < Mathf.Abs(target - fromW); n++) steps.Append(target > fromW ? "w " : "s ");
+                yield return Keys(steps.ToString());
+                int pickedW = runner.CursorSlot;
+                Check($"W/S pick floors (slot {fromW + 1} -> {pickedW + 1}, aiming for {target + 1})", runner.CursorMode && Controls.KeyNav && pickedW == target, "ui");
+                var floorW = runner.Sim.B.At(pickedW);
+                int guests = runner.Sim.Waiting[(int)floorW].Count + runner.Sim.Car.Riders.Count;
+                yield return Keys("d");
+                Check($"D picks a guest on that floor or in the car ({guests} to pick from)", guests > 0 && runner.CursorPid >= 0, "ui");
+                yield return Keys("backspace enter");
+                Check($"Enter sends the car to the floor W/S picked ({floorW})", runner.Sim.Car.Target == floorW || runner.Sim.Car.DockedSlot == pickedW, "ui");
+                yield return Keys("esc s enter");
+                Check("Esc, S, Enter on the pause card opens the guest guide", guideK.Visible && !pause.Visible && runner.Paused, "ui");
+                yield return Keys("esc esc");
+                Check("Esc, Esc closes the guide and resumes", !pause.Visible && !guideK.Visible && !runner.Paused, "ui");
+            }
             root.QuitShift();
             yield return Wait(1f);
 

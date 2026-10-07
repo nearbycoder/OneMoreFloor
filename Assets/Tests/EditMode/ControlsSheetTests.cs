@@ -35,5 +35,14 @@ namespace OneMoreFloor.Tests
             // Nintendo pads swap the letters: the bottom button (send) is B, the top one (let everyone in) is X
             Assert.AreEqual("|D-PAD UP / DOWN|D-PAD LEFT / RIGHT, L / R|B|X|Y|A|ZR / ZL|+|", Keys(PadFamily.Nintendo));
         }
+
+        [Test]
+        public void KeyboardRowsNameWasdAlongsideTheArrows()
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var r in ControlsSheet.Rows(ControlScheme.Keys, PadFamily.Xbox)) sb.Append('|').Append(r.Key);
+            Assert.AreEqual("|UP / DOWN, W / S|LEFT / RIGHT, A / D, Q / E|ENTER|SPACE|F|BACKSPACE|Z, - / =|ESC / P|", sb.Append('|').ToString());
+            Assert.AreEqual("ARROW KEYS OR WASD", ControlsSheet.Title(ControlScheme.Keys, PadFamily.Xbox));
+        }
     }
 }
