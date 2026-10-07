@@ -160,7 +160,8 @@ namespace OneMoreFloor
             Deco.Divider(rt, 560, new Vector2(0, 336));
             UiKit.Text("Sub", rt, "A week at The Shuffleton. Earn a star to unlock the next shift, or clock out three times trying.", 24, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(1400, 36), new Vector2(0, 302));
             s.grid = UiKit.Rect("Grid", rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(1700, 680));
-            UiButton.Create(rt, "BACK", new Vector2(0, -474), new Vector2(280, 66), () => game.ShowTitle(), false, 26);
+            UiButton.Create(rt, "BACK", new Vector2(-160, -474), new Vector2(280, 66), () => game.ShowTitle(), false, 26);
+            UiButton.Create(rt, "GUEST GUIDE", new Vector2(160, -474), new Vector2(280, 66), () => game.ShowGuide(s), false, 26);
             s.Back = () => game.ShowTitle();
             return s;
         }
@@ -385,15 +386,16 @@ namespace OneMoreFloor
             var s = rt.gameObject.AddComponent<PauseScreen>();
             s.Init("Pause");
             Dim(rt, 0.7f);
-            var card = Card(rt, new Vector2(560, 600), Vector2.zero);
-            Heading(card, "Paused", 214, 460, 80);
-            s.reason = Deco.Label("Reason", card, "", 17, new Vector2(480, 26), new Vector2(0, 268), TextAlignmentOptions.Center);
+            var card = Card(rt, new Vector2(560, 680), Vector2.zero);
+            Heading(card, "Paused", 254, 460, 80);
+            s.reason = Deco.Label("Reason", card, "", 17, new Vector2(480, 26), new Vector2(0, 308), TextAlignmentOptions.Center);
             s.reason.characterSpacing = 6f;
-            var resume = UiButton.Create(card, "RESUME", new Vector2(0, 86), new Vector2(420, 86), () => game.Resume(), true, 34);
-            UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -12), new Vector2(420, 68), () => game.RestartShift(), false, 25);
-            UiButton.Create(card, "SETTINGS", new Vector2(0, -94), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);
-            UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -176), new Vector2(420, 68), () => game.QuitShift(), false, 25);
-            UiKit.Text("Hint", card, "ESC TO RESUME", 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(400, 24), new Vector2(0, -250)).characterSpacing = 8f;
+            var resume = UiButton.Create(card, "RESUME", new Vector2(0, 126), new Vector2(420, 86), () => game.Resume(), true, 34);
+            UiButton.Create(card, "GUEST GUIDE", new Vector2(0, 28), new Vector2(420, 68), () => game.ShowGuide(s), false, 25);
+            UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -54), new Vector2(420, 68), () => game.RestartShift(), false, 25);
+            UiButton.Create(card, "SETTINGS", new Vector2(0, -136), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);
+            UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -218), new Vector2(420, 68), () => game.QuitShift(), false, 25);
+            UiKit.Text("Hint", card, "ESC TO RESUME", 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(400, 24), new Vector2(0, -290)).characterSpacing = 8f;
             resume.Focused = true;
             s.Primary = () => resume.Click();
             s.Back = () => game.Resume();

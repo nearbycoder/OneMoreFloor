@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using OneMoreFloor.Core;
 using UnityEngine;
@@ -503,8 +504,63 @@ namespace OneMoreFloor
             settings.Hide();
             save.ReducedMotion = false;
             root.ApplySettings();
+
+            // the guest guide from the roster, early in the week: only what the open shifts introduce, the rest locked
+            for (int k = 0; k < save.Stars.Length; k++) { save.Stars[k] = 0; save.Plays[k] = 0; save.RelaxedClear[k] = false; }
+            save.Stars[0] = 1; save.Stars[1] = 2;
+            var rosterScreen = FindAnyObjectByType<RosterScreen>(FindObjectsInactive.Include);
+            var guideScreen = FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include);
+            root.ShowRoster();
+            yield return Wait(0.8f);
+            UiButton guideBtn = null;
+            foreach (var b in rosterScreen.GetComponentsInChildren<UiButton>(true)) if (b.name == "Btn_GUEST GUIDE") guideBtn = b;
+            Check($"every control on the roster takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
+            guideBtn?.Click();
+            yield return Wait(0.8f);
+            int gExpect = Guide.OpenCount(Guide.Guests, save.Unlocked), bExpect = Guide.OpenCount(Guide.Building, save.Unlocked);
+            Check($"the roster's GUEST GUIDE lists what Monday to Wednesday introduce: {guideScreen.GuestsOpen} guests (want {gExpect}), {guideScreen.BuildingOpen} cards (want {bExpect})",
+                  guideBtn != null && guideScreen.Visible && guideScreen.GuestsOpen == gExpect && guideScreen.BuildingOpen == bExpect
+                  && gExpect == 3 && bExpect == 5, "ui");
+            Shot("ui_guide_wednesday");
+            guideScreen.Back();
+            yield return Wait(0.6f);
+            Check("closing the guide returns to the roster", rosterScreen.Visible && !guideScreen.Visible, "ui");
             root.ShowTitle();
             yield return Wait(1f);
+        }
+
+        int hitMisses;
+
+        /// <summary>
+        /// Hit-tests every visible button, slider and toggle: a pointer at its centre must land on it (as Tools/uicheck.sh
+        /// does in the editor). Sets <see cref="hitMisses"/> and returns "" or a list of the misses for the check line.
+        /// </summary>
+        string HitMisses()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            var cam = GameRoot.Instance.UiCam;
+            var targets = new List<MonoBehaviour>();
+            targets.AddRange(FindObjectsByType<UiButton>(FindObjectsSortMode.None));
+            targets.AddRange(FindObjectsByType<UiSlider>(FindObjectsSortMode.None));
+            targets.AddRange(FindObjectsByType<UiToggle>(FindObjectsSortMode.None));
+            var sb = new System.Text.StringBuilder();
+            int ok = 0;
+            hitMisses = 0;
+            foreach (var b in targets)
+            {
+                if (!b.isActiveAndEnabled) continue;
+                var cg = b.GetComponentInParent<CanvasGroup>();
+                if (cg != null && (!cg.blocksRaycasts || cg.alpha < 0.5f)) continue;
+                var rt = (RectTransform)b.transform;
+                var sp = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(rt.rect.center));
+                var pe = new UnityEngine.EventSystems.PointerEventData(es) { position = sp };
+                var hits = new List<UnityEngine.EventSystems.RaycastResult>();
+                es.RaycastAll(pe, hits);
+                var top = hits.Count > 0 ? hits[0].gameObject : null;
+                if (top != null && top.transform.IsChildOf(b.transform)) ok++;
+                else { hitMisses++; sb.Append($" MISS {b.name} (hit {(top ? top.name : "none")})"); }
+            }
+            return $" ({ok} hit{(hitMisses > 0 ? "," + sb : "")})";
         }
 
         IEnumerator Pad(string script, float gap = 0.35f)
@@ -545,6 +601,20 @@ namespace OneMoreFloor
             Shot("pad_play");
             yield return Pad("start");
             Check("Start pauses", pause.Visible && runner.Paused);
+            Check($"every control on the pause card takes a click at its centre{HitMisses()}", hitMisses == 0);
+            // the guest guide from the pause card: Start already put the ring on RESUME, one step down is GUEST GUIDE
+            var guide = FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include);
+            float tPaused = runner.Sim.Time;
+            yield return Pad("down a");
+            yield return Wait(0.6f);
+            var sv = SaveData.Current;
+            int gOpen = Guide.OpenCount(Guide.Guests, sv.Unlocked), bOpen = Guide.OpenCount(Guide.Building, sv.Unlocked);
+            Check($"the pause card opens the guest guide with d-pad + A: {guide.GuestsOpen}/{Guide.Guests.Count} guests, {guide.BuildingOpen}/{Guide.Building.Count} cards, shift still paused",
+                  guide.Visible && !pause.Visible && runner.Paused && runner.Sim.Time == tPaused && guide.GuestsOpen == gOpen && guide.BuildingOpen == bOpen);
+            Check($"every control on the guide takes a click at its centre{HitMisses()}", hitMisses == 0);
+            Shot("pad_guide");
+            yield return Pad("b");
+            Check("B closes the guide back to the pause card", pause.Visible && !guide.Visible && runner.Paused);
             yield return Pad("start");
             Check("Start resumes", !pause.Visible && !runner.Paused);
             yield return Pad("hold:lt hold:lt");

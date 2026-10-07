@@ -53,6 +53,7 @@ namespace OneMoreFloor
         IntroScreen intro;
         PauseScreen pause;
         SettingsScreen settings;
+        GuideScreen guide;
         ResultsScreen results;
         EndingScreen ending;
         int currentShift;
@@ -84,7 +85,7 @@ namespace OneMoreFloor
 
         void HideAll()
         {
-            foreach (var sc in new UiScreen[] { title, roster, intro, pause, settings, results, ending })
+            foreach (var sc in new UiScreen[] { title, roster, intro, pause, settings, guide, results, ending })
                 if (sc != null && sc.Visible) sc.Hide();
         }
 
@@ -147,6 +148,8 @@ namespace OneMoreFloor
         }
 
         public void ShowSettings(UiScreen from) => settings.Open(from);
+
+        public void ShowGuide(UiScreen from) => guide.Open(from);
 
         public void BeginShift(int index)
         {
@@ -215,7 +218,7 @@ namespace OneMoreFloor
 
         void Pause(string reason)
         {
-            if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible) return;
+            if (!InShift || Runner.Sim == null || Runner.Sim.Ended || pause.Visible || settings.Visible || guide.Visible) return;   // already paused underneath
             Runner.Paused = true;
             pause.Reason = reason;
             pause.Show();
@@ -256,6 +259,7 @@ namespace OneMoreFloor
         {
             pause.Hide();
             if (settings.Visible) settings.Hide();
+            if (guide.Visible) guide.Hide();
             Runner.Paused = false;
         }
 
@@ -445,6 +449,7 @@ namespace OneMoreFloor
             intro = IntroScreen.Create(Canvas.transform, this);
             pause = PauseScreen.Create(Canvas.transform, this);
             settings = SettingsScreen.Create(Canvas.transform, this);
+            guide = GuideScreen.Create(Canvas.transform, this);
             results = ResultsScreen.Create(Canvas.transform, this);
             ending = EndingScreen.Create(Canvas.transform, this);
             SetLayerRecursive(canvasGo, UiLayer);
@@ -469,9 +474,9 @@ namespace OneMoreFloor
         {
             var kb = Keyboard.current;
             bool pausePressed = Controls.PausePressed || (kb != null && (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame));
-            if (InShift && pausePressed && !pause.Visible && !settings.Visible && !results.Visible)
+            if (InShift && pausePressed && !pause.Visible && !settings.Visible && !guide.Visible && !results.Visible)
                 Pause();
-            else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible)
+            else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible && !guide.Visible)
                 Resume();
             if (kb == null) return;
             // developer shortcuts: F1..F10 start a shift
