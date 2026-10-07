@@ -436,3 +436,37 @@ did. The check now reuses the red floor: it raises that guest to 40% and reads a
 
 Not this round: bigger guests (#12, waiting on the owner), Windows (#13), WebGL (#14), the listening pass (#15), the
 license (#16), signing, hosting, releases and the trailer.
+
+## Round 4 results (2026-10-06)
+
+All four items landed. Baseline on `b070a46`: `build-linux` OK, EditMode 39/39, `sim.sh fuzz` OK, full autopilot
+PASS (ten shifts, 8 pad, 21 `ui`, popups 0.0 px) at 103 fps (load ~12), with the amber badge check silently skipped.
+Final checks on the final code: EditMode **47/47**, `sim.sh fuzz` OK, and the full autopilot on the last build in a
+1920×1080 window passes all ten shifts, **12** pad checks, **25** `ui` checks, 10 popup checks and 20 new star-track
+checks, at 88 fps average (load average 22–27 during the run; this machine is shared, so the fps isn't comparable with
+the baseline's). Graveyard also passes at 1440×900 and 2560×1080. The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test and autopilot
+run. Screenshots are in `docs/media/improvements/round4/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| V2 crash-safe saves | `7888a61` | 6 EditMode tests in a throwaway folder under `Temp/` | Met: round trip with backup, a truncated file loads the backup and is kept aside without pushing the backup out, garbage with no backup starts fresh and is kept, values clamped. A real crash or power cut mid-write wasn't simulated; the tests damage the file directly. |
+| V1 star progress in play | `4e71ebd` | Per-frame autopilot check on all ten shifts, after-the-bell check, captures at 16:9, 16:10, 21:9 | Met. Monday (played to the bell) matched on 3538/3538 frames and lit all three; the other shifts play 60 s before a fast-forward, so most only exercised the unlit track during play and the final count after it. Making the card taller pushed the coach tip against it at 21:9, so the tip now keeps a 28 px gap. |
+| V3 guest guide | `026f783` | 2 EditMode tests; autopilot pad path (Start, down, A; B back) with the clock frozen; roster path with a Monday–Wednesday save (3 guests, 5 cards); in-game click hit-test of the pause card, guide and roster | Met. The first full run failed the pad path: Start already lights the focus ring, so "down down A" landed on RESTART SHIFT. The test script was wrong, not the game. |
+| V4 amber badge | `c077040` | Full autopilot `ui` | Met: the red floor's guest raised to 40% reads amber on the label and the panel. |
+
+Also: `Tools/autopilot.sh` now resolves a relative output folder (`8270220`). Before, the player wrote `player.log`
+under `Builds/Linux/` and the script reported "no autopilot output". Checked with `Tools/autopilot.sh Logs/r4/ap-relcheck ui`
+(PASS, with the log in that folder).
+
+Found along the way, not fixed:
+- At 1920×1080 the coach tip box (right edge ~398 px) covers the first letter of a long floor label next to it
+  ("BOILER ROOM" in `03_play_monday_18s`). This was already the case before this round. It needs the tip narrowed
+  or the labels' gutter moved, and both change the layout that rounds 1–2 measured.
+- `Tools/uicheck.sh` needs an editor session with a CLI bridge. The autopilot now does the same hit test in the
+  built game for the pause card, guide and roster, but not for title, intro, settings or results.
+
+Still open: bigger guests (#12, owner), Windows (#13, needs the module), WebGL (#14), a listening pass (#15), a license
+(#16), signing, notarizing and publishing the macOS build, a version bump before the next release, and re-cutting the
+trailer, poster and teaser GIF. The README screenshots predate the star track and the guide. Nobody has played these
+changes yet.

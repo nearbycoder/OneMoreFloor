@@ -80,7 +80,7 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Right-click a guest in the car** (while docked) | Let them off here to wait (for capacity and conflicts) |
 | **Hover** a guest or a floor | See where they're going and preview the trip: every stop on the way, sunlight danger for vampires, sun for plants, who gets off |
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
-| **Esc / P** | Pause (resume, restart, settings, quit to roster) |
+| **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
 The shift also pauses itself if the window loses focus or the controller you're playing with disconnects.
 
@@ -145,7 +145,8 @@ a few stops.
 Tips are fare plus patience left, times your **streak** (+5% per delivery, up to ×2.5; any complaint resets it)
 times **group drops** (+25% for each extra guest delivered at the same stop). The last 30 seconds are **Rush Hour**,
 worth ×1.5. Each stop's tips add up in a single popup, and the drop banner upgrades from DOUBLE to TRIPLE to
-FULL HOUSE. Stars come from your tips, and **one star unlocks the next shift**. If a shift won't give you a star,
+FULL HOUSE. Stars come from your tips, and **one star unlocks the next shift**. A star track under your tips lights
+each star as you pass its target and says how much the next one needs. If a shift won't give you a star,
 clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
 star on the Graveyard Shift).
 
@@ -191,9 +192,10 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 | 10 | Overtime | Endless. It keeps getting busier until five complaints. **Today's Shift** is a daily Overtime: the same building and opening guests for every run that day, with its own best. |
 
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
-shows the new rule. The first time a rule matters in play, a one-line tip points at it. At clock-out, the time card lists what each
+shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
+pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast, relaxed shifts and **reduced
+settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, screen shake, the shuffle forecast, relaxed shifts and **reduced
 motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
 
 ## Screenshots
@@ -218,7 +220,7 @@ cd OneMoreFloor-v0.1.0-linux-x86_64
 ```
 
 It needs 64-bit Linux with a Vulkan- or OpenGL 4.5-capable GPU. Saves go to
-`~/.config/unity3d/Nearby/One More Floor/`.
+`~/.config/unity3d/Nearby/One More Floor/` (`save.json`, plus `save.json.bak`, the save before it).
 
 **macOS:** the project now builds a universal (Intel and Apple silicon) app, but it hasn't been released or run on a
 Mac. It's unsigned and un-notarized, so macOS blocks it at first (the zip's README.txt explains how to open it
@@ -275,7 +277,8 @@ Tools/sim.sh fuzz          # the rules on .NET outside Unity: random commands ag
 Tools/sim.sh balance       # four bot skill levels play every shift (also: human, stars, pace, causes, relaxed)
 Tools/autopilot.sh         # plays all ten shifts in the built game, then drives the menus with a virtual gamepad
                            # and runs the flow checks (late pass, time card, auto-pause, pad glyphs, settings,
-                           # patience badges); every shift also fails if two reward popups ever overlap
+                           # patience badges, guest guide); every shift also fails if two reward popups ever
+                           # overlap or the HUD's star track disagrees with the score
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 ```
 
@@ -384,6 +387,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
+- **Round 4 additions are unplayed.** The star track, the Guest Guide and the save backup were checked by the
+  autopilot, unit tests and screenshots, not by a person. The README screenshots above predate the star track.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
