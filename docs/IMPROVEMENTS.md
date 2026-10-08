@@ -1190,3 +1190,71 @@ right default, whether LARGER TEXT should be on by default on small screens, the
 4–10 left for a person (the resume count, STOP?, LOW's softer text) need the owner or a player. A person's alt-tab on
 a real desktop, other compositors, a real Steam Deck, a real 5:4 monitor and AZERTY are still untried, and nobody has
 played rounds 4 to 11.
+
+## Round 12 scope (2026-10-08, branch `improvements-12`)
+
+This round's focus is AAA polish: the look, the UI and the feel, plus a graphics fidelity slider. Gameplay balance,
+difficulty and story don't change, guest scale stays untouched, and the owner's open calls (5:4 layout, LARGER TEXT's
+default, MUTE IN BACKGROUND's default, the Deck wordings, licence, signing, releases, the trailer) are left alone.
+Baseline on `251ebfb`: `build-linux` OK (`Logs/r12/build-baseline.log`). A fresh look at the built game's frames
+(`Logs/r12/base/`) found these:
+
+- **The graphics setting has nothing above today's look.** GRAPHICS offers HIGH, BALANCED and LOW. There's no step that
+  uses what URP can do beyond that (stronger ambient occlusion, more shadow detail, more antialiasing, depth of field,
+  HDR colour grading), and LOW still pays for ambient occlusion.
+- **Nothing stands behind the hotel.** The pavement stops just behind the building, so on every daytime shift the
+  skyline floats on the sky's flat sand-coloured underside, which fills half the screen like a blank wall.
+- **Shifts start and end with a hard cut.** CLOCK IN, ONE MORE SHIFT, RESTART and QUIT swap the sky, the light and
+  the framing in a single frame.
+- **The pause card's controls panel doesn't list F11 / Alt+Enter** (round 11's open note).
+
+Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow
+checks) passing, and the real `save.json` and `prefs` hashing the same before and after every run. Screenshots go to
+`docs/media/improvements/round12/`. Load average is noted with every timing.
+
+### F1. A GRAPHICS FIDELITY slider: LOW, MEDIUM, HIGH, ULTRA
+
+The GRAPHICS row becomes **GRAPHICS FIDELITY**, a four-notch slider (drag or click a notch, Left/Right on the keys or
+the pad). HIGH is today's look and stays the default; MEDIUM is today's BALANCED; LOW also drops ambient occlusion and
+thins particles; **ULTRA** adds what HIGH doesn't have: 8× MSAA, an 8192 px four-cascade sun shadow, soft shadows from
+every floor's lamp, high-quality ambient occlusion, high-quality bloom, HDR colour grading, a gentle depth of field on
+the far skyline, denser particles and 16× anisotropic filtering. Old saves keep their level (HIGH, BALANCED → MEDIUM,
+LOW). Everything changes a runtime copy of the pipeline and its renderer, so no project asset is ever modified.
+- **Acceptance:** each step really changes the running pipeline (checked in the built game), HIGH matches today's
+  settings exactly, the setting survives a save round trip and old saves map to the right step, mouse, keys and pad
+  all move it. A same-frame capture of each step (one frozen moment of a shift) shows the differences, and a frame-time
+  table per step (30 s of bot play, vsync off, two window sizes, load noted) goes in the results. LOW must be the
+  fastest step.
+- **Verify:** EditMode tests (mapping, migration, presets only get cheaper from ULTRA down), `ui` checks, a new
+  `-omfFidelityShots` capture mode and PerfProbe runs inside the nested KWin.
+
+### F2. A city behind the hotel
+
+The street continues to the horizon: ground under the skyline, rows of low-rise blocks between the hotel and the
+towers, all fading into the haze, lit by each shift's time of day (lit windows after dark). The skyline stops floating.
+- **Acceptance:** captures of every lighting preset (morning to night) before and after show ground and city where the
+  blank band was, nothing covers the hotel, labels or panel, and the frame time at HIGH stays within noise of before.
+- **Verify:** before/after captures and PerfProbe.
+
+### F3. Elevator doors between menus and shifts
+
+CLOCK IN, TODAY'S SHIFT, ONE MORE SHIFT, RESTART and QUIT close a pair of brass Deco doors over the screen (with the
+door sound and a ding), make the change behind them, and open on the new scene. REDUCED MOTION turns it into a short
+fade. Input is held while the doors are shut.
+- **Acceptance:** the change happens only while the doors are shut (frames captured mid-close, shut and mid-open), the
+  whole thing takes under a second, and every existing `ui` and pad check (restart, quit, retry) still passes.
+- **Verify:** the autopilot's `ui` and pad passes, plus a new check and captures.
+
+### F4. F11 / Alt+Enter on the controls panel
+
+The pause card's controls panel gets a FULLSCREEN cell (F11 / ALT+ENTER on mouse and arrow-key layouts).
+- **Acceptance:** the controls panel check still finds every cell inside the card at 1920×1080 and 1280×800, with and
+  without LARGER TEXT (text audit).
+- **Verify:** autopilot `ui`, the text audit and a capture.
+
+### F5. README, status and results
+
+The README's settings, controls, tests and status sections and this file are updated, with the fidelity table.
+
+Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
+(#15), the license (#16), signing, hosting, releases and the trailer.
