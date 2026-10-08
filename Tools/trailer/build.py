@@ -28,7 +28,7 @@ BPM = 104.0
 BEAT = 60.0 / BPM
 FPS = 30
 RATE = 48000
-SIZE_LIMIT_MB = 35.5  # MiB of video + audio; keeps the file comfortably under 40 MB
+SIZE_LIMIT_MB = 40.5  # MiB of video + audio: about 42.5 MB, under the 45 MB cap (GitHub warns at 50 MB)
 
 # ----------------------------------------------------------------------------------------------- the edit
 # (shot, in-point in seconds, length in beats (or seconds for the cold open), transition into this clip)
@@ -49,22 +49,24 @@ EDL = [
     dict(shot="tips", at=0.2, beats=6, x=DIS),
     # the guests
     dict(shot="plant", at=0.2, beats=9, x=DIS),
-    dict(shot="mirror", at=0.2, beats=7, x=DIS),
+    dict(shot="mirror", at=0.2, beats=6, x=DIS),
     dict(shot="vampire", at=0.2, beats=10, x=DIS),
     dict(shot="courier_jit", at=0.2, beats=5, x=DIS),
     dict(shot="courier_gone", at=0.0, beats=4, x=CUT),
     dict(shot="swimmer", at=0.2, beats=6, x=DIS),
-    dict(shot="kid", at=0.2, beats=8, x=DIS),
+    dict(shot="kid", at=0.2, beats=7, x=DIS),
     dict(shot="tycoon", at=0.2, beats=6, x=DIS),
     # pressure
     dict(shot="patience", at=0.2, beats=6, x=DIS),
     dict(shot="trouble", at=0.2, beats=6, x=DIS),
     # how you play it
     dict(shot="route", at=0.2, beats=8, x=DIS),
-    dict(shot="pad", at=0.2, beats=8, x=DIS),
+    dict(shot="pad", at=0.2, beats=7, x=DIS),
+    dict(shot="settings", at=0.2, beats=10, x=DIS),
     dict(shot="rush", at=0.2, beats=6, x=DIS),
     # the week
     dict(shot="week", at=0.2, beats=10, x=DIS),
+    dict(shot="clockin", at=0.2, beats=7, x=CUT),
     dict(shot="clockout", at=1.4, beats=10, x=DIS),
     dict(shot="graveyard", at=0.2, beats=6, x=DIS),
     dict(shot="overtime", at=0.2, beats=6, x=DIS),

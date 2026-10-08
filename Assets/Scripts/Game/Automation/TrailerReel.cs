@@ -9,6 +9,8 @@ using OneMoreFloor.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
@@ -19,7 +21,8 @@ namespace OneMoreFloor
     /// Every shot is a short, scripted clip: a shift started from a fixed seed, skipped ahead to a moment that
     /// <see cref="Probe"/> found by playing the same seed headlessly, then recorded with an animated caption in
     /// the game's Art Deco style. Launch with -omfTrailer &lt;outdir&gt; -omfTrailerPass video|audio
-    /// [-omfTrailerOnly a,b,c].
+    /// [-omfTrailerOnly a,b,c] [-omfFidelity 0-3] (the GRAPHICS FIDELITY step to record at; the throwaway save's
+    /// setting is set to it, so the settings card shows it too).
     ///
     /// The video pass renders offline at a locked 30 fps into outdir/shots/&lt;name&gt;.mp4 (and outdir/stills/*.png).
     /// The audio pass plays the same script in real time under -omfRecordAudio with the music muted (the
@@ -35,6 +38,7 @@ namespace OneMoreFloor
 
         string outDir;
         bool video;
+        int fidelity;
         HashSet<string> only;
         GameRoot root;
         ShiftRunner Runner => root.Runner;
@@ -65,10 +69,21 @@ namespace OneMoreFloor
         void Start()
         {
             var save = SaveData.Current;
+            if (GameRoot.GraphicsOverride >= 0)
+            {
+                // record at this step as a player would have it: the setting itself (the save is throwaway)
+                save.Fidelity = GameRoot.GraphicsOverride;
+                GameRoot.GraphicsOverride = -1;
+            }
             save.Music = 0f;
             save.ScreenShake = true;
             save.ShowForecast = true;
             root.ApplySettings();
+            fidelity = save.Fidelity;
+            // the settings card was built from the save before this ran: show the step being recorded
+            foreach (var c in FindObjectsByType<UiChoice>(FindObjectsInactive.Include))
+                if (c.Notched && c.Options == GraphicsQuality.Names) c.Set(fidelity, false);
+            Debug.Log($"[Trailer] GRAPHICS FIDELITY {GraphicsQuality.Names[GraphicsQuality.Applied]}, capture MSAA {Msaa}x, {W}x{H} at {Fps} fps");
             Runner.InputEnabled = false;
             var module = EventSystem.current ? EventSystem.current.GetComponent<BaseInputModule>() : null;
             if (module) module.enabled = false;
@@ -85,6 +100,9 @@ namespace OneMoreFloor
         }
 
         bool Want(string name) => only == null || only.Contains(name);
+
+        /// <summary>The running pipeline's antialiasing (it follows GRAPHICS FIDELITY), used for the offscreen capture too.</summary>
+        static int Msaa => GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset a ? a.msaaSampleCount : 4;
 
         // ================================================================ the script
 
@@ -135,7 +153,7 @@ namespace OneMoreFloor
                 cursorOn = true;
                 yield return Record("core", 10f,
                     Caption(0.35f, 3.0f, "RUN THE ELEVATOR", "Let guests in, pick a floor, and the car goes. Fast service means bigger tips.", Icons.Kind(Kind.Commuter)),
-                    Caption(3.55f, 6.1f, "EVERY STOP, THE HOTEL SHUFFLES", "Floors swap places whenever the car stops. The panel forecasts what's coming.", Icons.Floor(FloorId.Library)),
+                    Caption(3.55f, 6.1f, "EVERY STOP, THE HOTEL SHUFFLES", "Floors swap places whenever the car stops. The panel and floor tags show what's next.", Icons.Floor(FloorId.Library)),
                     StillAt(3.25f, "core_shuffle"));
             }
 
@@ -351,6 +369,24 @@ namespace OneMoreFloor
                 }
             }
 
+            // ---- settings: the pause card's controls panel, then GRAPHICS FIDELITY through every step and LARGER TEXT
+            if (Want("settings"))
+            {
+                yield return Prepare(1, 61, Strong, null, 24f, 0f);
+                root.Pause();
+                yield return Wait(Settle);
+                yield return Record("settings", 6.4f,
+                    Caption(0.2f, 6.0f, "SETTINGS", "Graphics from LOW to ULTRA, larger text, reduced motion and relaxed shifts.", Bellhop,
+                        true, true, new Vector2(-960f + 36f + 220f, -540f + 40f + 120f), 440f, 240f),
+                    SettingsScript());
+                var save = SaveData.Current;
+                save.LargeText = false;
+                save.Fidelity = fidelity;   // the slider ends where it started; make sure the rest records at the same step
+                root.ApplySettings();
+                HideScreen<SettingsScreen>();
+                HideScreen<PauseScreen>();
+            }
+
             // ---- rush hour
             if (Want("rush"))
             {
@@ -380,6 +416,21 @@ namespace OneMoreFloor
                 Still("intro");
             }
 
+            // ---- clock in: the intro card's CLOCK IN, the brass doors close (naming the shift) and open on it
+            if (Want("clockin"))
+            {
+                const int shift = 6;
+                if (!Want("week")) { SetProgress(7); root.ShowIntro(shift); yield return Wait(2.2f); }
+                Runner.PreStep = null;
+                root.FixedSeed = 111;   // the doors start the shift: the same one in both passes
+                cursorOn = false;
+                cursorPos = new Vector2(620, -380);
+                yield return Record("clockin", 4.8f,
+                    Caption(0.2f, 4.0f, "CLOCK IN", "A note from The Management, then the brass doors open on the shift.", Icons.Kind(Kind.Kid)),
+                    ClockInScript());
+                root.FixedSeed = 0;
+            }
+
             // ---- clock out
             if (Want("clockout"))
             {
@@ -393,7 +444,7 @@ namespace OneMoreFloor
                 var def = ShiftCatalog.Get(shift);
                 yield return Prepare(shift, seed, Strong, null, def.Duration - 1.2f, 0f);
                 yield return Record("clockout", 7.2f,
-                    Caption(2.6f, 4.4f, "CLOCK OUT", "Earn up to three stars and beat your best. Then, one more shift.", Icons.Badge("tophat"), true, true, new Vector2(-660, -120), 520f, 196f),
+                    Caption(2.6f, 4.4f, "CLOCK OUT", "Earn up to three stars, then chase your best. Then, one more shift.", Icons.Badge("tophat"), true, true, new Vector2(-660, -120), 520f, 196f),
                     StillAt(6.95f, "results"));
             }
 
@@ -415,7 +466,7 @@ namespace OneMoreFloor
                 yield return Prepare(9, 201, Strong, null, 250f, 0f);
                 cursorOn = true;
                 yield return Record("overtime", 4.4f,
-                    Caption(0.2f, 4.2f, "OVERTIME", "No clock. It keeps getting busier until five complaints end the night.", Bellhop),
+                    Caption(0.2f, 4.2f, "OVERTIME", "No clock, just busier and busier until five complaints. Today's Shift is new every day.", Bellhop),
                     StillAt(2.2f, "overtime"));
             }
 
@@ -588,7 +639,7 @@ namespace OneMoreFloor
             TickRipples(UiTime.Dt);
             if (!recording || !video) return;
             Canvas.ForceUpdateCanvases();
-            var tex = Shots.CaptureTexture(W, H);
+            var tex = Shots.CaptureTexture(W, H, true, Msaa);
             var bytes = tex.GetRawTextureData();
             pipe.Write(bytes, 0, bytes.Length);
             Destroy(tex);
@@ -600,7 +651,7 @@ namespace OneMoreFloor
             if (!video) return;
             overlay.gameObject.SetActive(false);
             Canvas.ForceUpdateCanvases();
-            Shots.Capture(Path.Combine(outDir, "stills", name + ".png"));
+            Shots.Capture(Path.Combine(outDir, "stills", name + ".png"), W, H, true, Msaa);
             overlay.gameObject.SetActive(true);
         }
 
@@ -880,6 +931,91 @@ namespace OneMoreFloor
                 cursorTarget = null;
             }
             yield return At(t + 1.4f);
+            cursorAlpha = 0f;
+        }
+
+        /// <summary>Press CLOCK IN on the intro card; the doors do the rest.</summary>
+        IEnumerator ClockInScript()
+        {
+            var b = Find(x => HasText(x, "CLOCK IN"));
+            if (b == null) { Debug.LogWarning("[Trailer] no CLOCK IN button"); yield break; }
+            var rt = (RectTransform)b.transform;
+            cursorAlpha = 1f;
+            cursorTarget = () => OfRect(rt);
+            yield return At(0.55f);
+            ExecuteEvents.Execute(b.gameObject, Pointer(), ExecuteEvents.pointerEnterHandler);
+            yield return At(0.85f);
+            cursorPress = 1f;
+            Ripple(cursorPos, Deco.Gold);
+            ExecuteEvents.Execute(b.gameObject, Pointer(), ExecuteEvents.pointerExitHandler);
+            b.Click();
+            cursorTarget = null;
+            yield return At(1.1f);
+            cursorAlpha = 0f;
+        }
+
+        /// <summary>From the pause card: SETTINGS, drag GRAPHICS FIDELITY down to LOW and back up to ULTRA, then LARGER TEXT on.</summary>
+        IEnumerator SettingsScript()
+        {
+            var open = Find(x => HasText(x, "SETTINGS"));
+            if (open == null) { Debug.LogWarning("[Trailer] no SETTINGS button"); yield break; }
+            var ort = (RectTransform)open.transform;
+            cursorAlpha = 1f;
+            cursorPos = new Vector2(330, -260);
+            cursorTarget = () => OfRect(ort);
+            yield return At(0.5f);
+            ExecuteEvents.Execute(open.gameObject, Pointer(), ExecuteEvents.pointerEnterHandler);
+            yield return At(0.8f);
+            cursorPress = 1f;
+            Ripple(cursorPos, Deco.Gold);
+            ExecuteEvents.Execute(open.gameObject, Pointer(), ExecuteEvents.pointerExitHandler);
+            open.Click();
+            yield return At(1.0f);
+
+            UiChoice slider = null;
+            foreach (var c in FindObjectsByType<UiChoice>(FindObjectsInactive.Exclude))
+                if (c.isActiveAndEnabled && c.Notched && c.Options == GraphicsQuality.Names) slider = c;
+            if (slider == null) { Debug.LogWarning("[Trailer] no GRAPHICS FIDELITY slider"); yield break; }
+            var frt = (RectTransform)slider.transform;
+            // the notches sit along the row from x = 124 to 310 (UiChoice's track)
+            Func<int, Func<Vector2?>> notch = i => () =>
+                ToOverlay(RectTransformUtility.WorldToScreenPoint(root.UiCam, frt.TransformPoint(new Vector3(Mathf.Lerp(124f, 310f, i / 3f), 0f, 0f))));
+            cursorTarget = notch(slider.Index);
+            yield return At(1.55f);
+            ExecuteEvents.Execute(slider.gameObject, Pointer(), ExecuteEvents.pointerEnterHandler);
+            cursorPress = 1f;
+            int from = slider.Index;
+            float t = 1.7f;
+            // down to LOW, a beat there, then back up to where it was
+            var path = new List<int>();
+            for (int i = from - 1; i >= GraphicsQuality.Low; i--) path.Add(i);
+            path.Add(-1);
+            for (int i = GraphicsQuality.Low + 1; i <= from; i++) path.Add(i);
+            foreach (int i in path)
+            {
+                t += i < 0 ? 0.35f : 0.32f;
+                if (i < 0) continue;
+                cursorTarget = notch(i);
+                yield return At(t);
+                slider.Set(i);
+                AudioDirector.Instance?.Sfx("ui_click", 0.45f, 0.9f + 0.1f * i);
+            }
+            ExecuteEvents.Execute(slider.gameObject, Pointer(), ExecuteEvents.pointerExitHandler);
+
+            UiToggle large = null;
+            foreach (var tg in FindObjectsByType<UiToggle>(FindObjectsInactive.Exclude))
+                if (tg.isActiveAndEnabled && tg.name.Contains("LARGER TEXT")) large = tg;
+            if (large == null) { Debug.LogWarning("[Trailer] no LARGER TEXT toggle"); yield break; }
+            var lrt = (RectTransform)large.transform;
+            // the switch sits at x = 278 in the row (UiToggle)
+            cursorTarget = () => ToOverlay(RectTransformUtility.WorldToScreenPoint(root.UiCam, lrt.TransformPoint(new Vector3(278f, 0f, 0f))));
+            yield return At(t + 0.55f);
+            cursorPress = 1f;
+            Ripple(cursorPos, Deco.Gold);
+            AudioDirector.Instance?.Sfx("ui_click", 0.8f);
+            large.Set(true);
+            yield return At(t + 1.2f);
+            cursorTarget = null;
             cursorAlpha = 0f;
         }
 
