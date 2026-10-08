@@ -1094,28 +1094,81 @@ namespace OneMoreFloor
                 Check($"LARGER TEXT raises the settings card's smallest capitals {before:0.0} -> {on:0.0} px ({spillsOn} spilling), survives a save round trip ({saved}), and off puts {off:0.0} px back",
                       large != null && saved && on >= TextFloor.LargeCapPx - 0.05f && spillsOn == 0 && Mathf.Abs(off - before) < 0.05f && !save.LargeText && !TextFloor.Large, "ui");
             }
-            // GRAPHICS: LOW changes the running pipeline, survives a save round trip, and HIGH puts the original look back
+            // GRAPHICS FIDELITY: every step really changes the running pipeline, survives a save round trip, and HIGH
+            // puts the shipped look back exactly
             var gfx = settings.GetComponentInChildren<UiChoice>(true);
-            gfx?.Set(GraphicsQuality.Low);
-            yield return Wait(0.6f);
-            Shot("ui_settings_graphics_low");
-            var rp = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
-            back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
-            bool lowOk = gfx != null && save.Graphics == GraphicsQuality.Low && back.Graphics == GraphicsQuality.Low && GraphicsQuality.Applied == GraphicsQuality.Low
-                         && rp != null && rp.msaaSampleCount == 1 && rp.renderScale < 1f && root.Sun.shadows == LightShadows.Hard;
+            string Pipeline()
+            {
+                var a = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+                bool bloomOn = false, bloomHq = false, bloomQuarter = false, dofOn = false;
+                if (root.Post.profile.TryGet<UnityEngine.Rendering.Universal.Bloom>(out var bl))
+                { bloomOn = bl.active; bloomHq = bl.highQualityFiltering.value; bloomQuarter = bl.downscale.value == UnityEngine.Rendering.Universal.BloomDownscaleMode.Quarter; }
+                if (root.Post.profile.TryGet<UnityEngine.Rendering.Universal.DepthOfField>(out var df)) dofOn = df.active && df.IsActive();
+                int lampShadows = 0;
+                foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.name == "Lamp" && l.shadows != LightShadows.None) lampShadows++;
+                return a == null ? "?" : $"msaa {a.msaaSampleCount}, scale {a.renderScale:0.##}, sun {a.mainLightShadowmapResolution} px x{a.shadowCascadeCount} {root.Sun.shadows}, " +
+                       $"renderer {GraphicsQuality.AppliedRenderer}, bloom {(bloomOn ? (bloomHq ? "HQ" : "on") + (bloomQuarter ? "/4" : "") : "off")}, dof {(dofOn ? "on" : "off")}, lut {a.colorGradingLutSize}, " +
+                       $"colour {a.hdrColorBufferPrecision}, lamp shadows {lampShadows}, particles x{Fx.Density:0.##}";
+            }
+            var fid = new string[GraphicsQuality.Names.Length];
+            bool roundTrips = true;
+            for (int lv = GraphicsQuality.Low; lv <= GraphicsQuality.Ultra; lv++)
+            {
+                gfx?.Set(lv);
+                yield return Wait(0.5f);
+                fid[lv] = Pipeline();
+                back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
+                roundTrips &= save.Fidelity == lv && back.Fidelity == lv && GraphicsQuality.Applied == lv;
+                Shot("ui_settings_fidelity_" + GraphicsQuality.Names[lv].ToLowerInvariant());
+            }
             gfx?.Set(GraphicsQuality.High);
-            yield return Wait(0.3f);
-            rp = QualitySettings.renderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
-            Check($"GRAPHICS LOW turns off MSAA, lowers the render scale and hardens shadows, survives a save round trip, and HIGH restores them (msaa {rp?.msaaSampleCount}, scale {rp?.renderScale})",
-                  lowOk && GraphicsQuality.Applied == GraphicsQuality.High && rp.msaaSampleCount == 4 && rp.renderScale == 1f && root.Sun.shadows == LightShadows.Soft, "ui");
+            yield return Wait(0.5f);
+            string high = Pipeline();
+            const string Shipped = "msaa 4, scale 1, sun 4096 px x2 Soft, renderer 0, bloom HQ, dof off, lut 32, colour _32Bits, lamp shadows 0, particles x1";
+            bool lowOk = fid[0].StartsWith("msaa 1, scale 0.8, sun 1024 px x1 Hard, renderer 1, bloom off, dof off");
+            bool mediumOk = fid[1].StartsWith("msaa 2, scale 1, sun 2048 px x2 Soft, renderer 2, bloom HQ/4, dof off");
+            bool ultraOk = fid[3].StartsWith("msaa 8, scale 1, sun 8192 px x4 Soft, renderer 3, bloom HQ, dof on, lut 64, colour _64Bits") && !fid[3].Contains("lamp shadows 0,");
+            Debug.Log("[AutoPilot] fidelity steps: " + string.Join(" | ", System.Linq.Enumerable.Select(System.Linq.Enumerable.Range(0, fid.Length), i => GraphicsQuality.Names[i] + ": " + fid[i])));
+            Check($"GRAPHICS FIDELITY: each step changes the running pipeline (LOW {lowOk}, MEDIUM {mediumOk}, ULTRA {ultraOk}), survives a save round trip ({roundTrips}), and HIGH is the shipped look ({high})",
+                  gfx != null && gfx.Notched && lowOk && mediumOk && ultraOk && roundTrips && fid[2] == Shipped && high == Shipped && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
+            // the mouse: a press on a notch picks it, dragging along the track follows the pointer
+            {
+                var es = UnityEngine.EventSystems.EventSystem.current;
+                Vector2 NotchPoint(int i) => RectTransformUtility.WorldToScreenPoint(root.UiCam, gfx.transform.Find("Track/Notch" + i).position);
+                var pe = new UnityEngine.EventSystems.PointerEventData(es) { position = NotchPoint(0), pressPosition = NotchPoint(0) };
+                var hits = new List<UnityEngine.EventSystems.RaycastResult>();
+                es.RaycastAll(pe, hits);
+                bool hitsRow = hits.Count > 0 && hits[0].gameObject.transform.IsChildOf(gfx.transform);
+                gfx.OnPointerDown(pe);
+                yield return null;
+                bool pickedLow = save.Fidelity == GraphicsQuality.Low && GraphicsQuality.Applied == GraphicsQuality.Low;
+                pe.position = NotchPoint(3) + new Vector2(0, 40f);   // drifting off the track's height still drags
+                pe.dragging = true;
+                gfx.OnDrag(pe);
+                yield return null;
+                bool draggedUltra = save.Fidelity == GraphicsQuality.Ultra;
+                gfx.OnPointerClick(pe);   // the click that ends the drag doesn't step it again
+                yield return null;
+                bool stayed = save.Fidelity == GraphicsQuality.Ultra;
+                pe.position = NotchPoint(2);
+                pe.dragging = false;
+                gfx.OnPointerDown(pe);
+                gfx.OnPointerClick(pe);
+                yield return Wait(0.3f);
+                Check($"the mouse picks GRAPHICS FIDELITY's notches: a press on LOW's notch reaches the slider ({hitsRow}) and picks LOW ({pickedLow}), a drag to ULTRA follows ({draggedUltra}, kept on release {stayed}), and a click on HIGH's notch puts it back",
+                      hitsRow && pickedLow && draggedUltra && stayed && save.Fidelity == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
+            }
             // the focus ring reaches it with the arrow keys (as with the d-pad), and Right/Left step it
             for (int k = 0; k < 9 && UiNav.Focus != (Component)gfx; k++) yield return Keys("up", 0.15f);
             bool reached = gfx != null && UiNav.Focus == (Component)gfx;
             yield return Keys("right");
-            bool stepped = save.Graphics == GraphicsQuality.Balanced && GraphicsQuality.Applied == GraphicsQuality.Balanced;
-            yield return Keys("left");
-            Check($"the arrow keys reach GRAPHICS and Right/Left step it HIGH -> BALANCED -> HIGH (reached {reached}, stepped {stepped})",
-                  reached && stepped && save.Graphics == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
+            bool stepped = save.Fidelity == GraphicsQuality.Ultra && GraphicsQuality.Applied == GraphicsQuality.Ultra;
+            Shot("ui_settings_fidelity_keys_ultra");
+            yield return Keys("left left");
+            bool down2 = save.Fidelity == GraphicsQuality.Medium;
+            yield return Keys("right");
+            Check($"the arrow keys reach GRAPHICS FIDELITY and Right/Left step it HIGH -> ULTRA -> MEDIUM -> HIGH (reached {reached}, stepped {stepped}, {down2})",
+                  reached && stepped && down2 && save.Fidelity == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
             // F11 and Alt+Enter switch the FULLSCREEN setting itself, from anywhere. Only inside the private nested KWin,
             // so nothing ever goes fullscreen on a real desktop.
             if (NestedDesktop)
@@ -1139,7 +1192,7 @@ namespace OneMoreFloor
                 bool off = !save.Fullscreen && Screen.fullScreenMode == FullScreenMode.Windowed && !settings.FullscreenShown
                            && Screen.width == want.x && Screen.height == want.y;
                 // the Enter of Alt+Enter isn't a menu press: the settings card is still open and GRAPHICS unchanged
-                bool noPress = settings.Visible && save.Graphics == GraphicsQuality.High;
+                bool noPress = settings.Visible && save.Fidelity == GraphicsQuality.High;
                 Check($"F11 goes fullscreen at the display's {dw}x{dh} ({sizeOn}, setting {(on ? "ON" : "?")}, saved {savedOn}), a settings change keeps it ({kept}), "
                       + $"and Alt+Enter brings back the {want.x}x{want.y} window ({sizeOff}) without pressing a button ({noPress})",
                       on && kept && savedOn && off && noPress, "ui");
@@ -1337,6 +1390,7 @@ namespace OneMoreFloor
             targets.AddRange(FindObjectsByType<UiButton>(FindObjectsSortMode.None));
             targets.AddRange(FindObjectsByType<UiSlider>(FindObjectsSortMode.None));
             targets.AddRange(FindObjectsByType<UiToggle>(FindObjectsSortMode.None));
+            targets.AddRange(FindObjectsByType<UiChoice>(FindObjectsSortMode.None));
             var sb = new System.Text.StringBuilder();
             int ok = 0;
             hitMisses = 0;
@@ -1402,6 +1456,22 @@ namespace OneMoreFloor
             Shot("pad_roster");
             yield return Pad("b");
             Check("B goes back to the title", title.Visible && !roster.Visible);
+            // GRAPHICS FIDELITY with the d-pad: up to the slider, Right steps HIGH -> ULTRA, Left steps back, B closes
+            {
+                root.ShowSettings(title);
+                yield return Wait(0.6f);
+                var settingsCard = FindAnyObjectByType<SettingsScreen>(FindObjectsInactive.Include);
+                var fid = settingsCard.GetComponentInChildren<UiChoice>(true);
+                for (int k = 0; k < 9 && UiNav.Focus != (Component)fid; k++) yield return Pad("up", 0.15f);
+                bool padReached = fid != null && UiNav.Focus == (Component)fid;
+                yield return Pad("right");
+                bool padUltra = SaveData.Current.Fidelity == GraphicsQuality.Ultra && GraphicsQuality.Applied == GraphicsQuality.Ultra;
+                yield return Pad("left");
+                bool padHigh = SaveData.Current.Fidelity == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High;
+                yield return Pad("b");
+                Check($"the d-pad reaches GRAPHICS FIDELITY ({padReached}), Right/Left step it HIGH -> ULTRA ({padUltra}) -> HIGH ({padHigh}), and B closes the settings",
+                      padReached && padUltra && padHigh && title.Visible && !settingsCard.Visible);
+            }
 
             root.BeginShift(1);
             var runner = root.Runner;

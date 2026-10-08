@@ -32,6 +32,7 @@ namespace OneMoreFloor
             var args = System.Environment.GetCommandLineArgs();
             SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0
                                  || System.Array.IndexOf(args, "-omfDemo") >= 0 || System.Array.IndexOf(args, "-omfTrailer") >= 0
+                                 || System.Array.IndexOf(args, "-omfFidelityShots") >= 0
                                  || (Application.isEditor && Application.isBatchMode);   // headless editor captures
             // Pace frames ourselves: on Wayland a vsync'd swap blocks on compositor frame callbacks,
             // which some compositors throttle hard for unfocused windows. Compositors don't tear.
@@ -41,8 +42,8 @@ namespace OneMoreFloor
             // recordings and self-tests run unattended, often without focus
             AutoPause = System.Array.IndexOf(args, "-omfAutopilot") < 0 && System.Array.IndexOf(args, "-omfDemo") < 0
                         && System.Array.IndexOf(args, "-omfTrailer") < 0 && !(Application.isEditor && Application.isBatchMode);
-            int gq = System.Array.IndexOf(args, "-omfGraphics");
-            if (gq >= 0 && gq + 1 < args.Length && int.TryParse(args[gq + 1], out int level)) GraphicsOverride = Mathf.Clamp(level, GraphicsQuality.High, GraphicsQuality.Low);
+            int gq = System.Array.IndexOf(args, "-omfFidelity");
+            if (gq >= 0 && gq + 1 < args.Length && int.TryParse(args[gq + 1], out int level)) GraphicsOverride = Mathf.Clamp(level, GraphicsQuality.Low, GraphicsQuality.Ultra);
             InputSystem.onDeviceChange += OnDeviceChange;
             Controls.Ensure(gameObject);
             BuildWorld();
@@ -70,6 +71,7 @@ namespace OneMoreFloor
             ApplySettings();
             AutoPilot.TryStart(this);
             PerfProbe.TryStart(this);
+            FidelityShots.TryStart(this);
             DemoReel.TryStart(this);
             TrailerReel.TryStart(this);
             int direct = StartIndexFromArgs();
@@ -355,7 +357,7 @@ namespace OneMoreFloor
             Rig.Still = save.ReducedMotion;
             TextFloor.Large = save.LargeText;
             if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
-            GraphicsQuality.Apply(GraphicsOverride >= 0 ? GraphicsOverride : save.Graphics, Sun, Post);
+            GraphicsQuality.Apply(GraphicsOverride >= 0 ? GraphicsOverride : save.Fidelity, Sun, Post, WorldCam);
             if (!Application.isEditor)
             {
                 var mode = save.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
@@ -384,7 +386,7 @@ namespace OneMoreFloor
             settings.SyncFromSave();
         }
 
-        /// <summary>Automation (-omfGraphics N): play at this GRAPHICS level without touching the save (-1 = the save's).</summary>
+        /// <summary>Automation (-omfFidelity N, 0 LOW to 3 ULTRA): play at this GRAPHICS FIDELITY without touching the save (-1 = the save's).</summary>
         public static int GraphicsOverride = -1;
 
         /// <summary>The windowed size: 1600x900, shrunk to 90% of the display when that's smaller, always 16:9.</summary>
@@ -523,6 +525,8 @@ namespace OneMoreFloor
             BeginShift(index);
             FixedSeed = prev;
         }
+
+        void LateUpdate() => GraphicsQuality.Focus(Post, WorldCam, Building.transform.position.z);
 
         void Update()
         {

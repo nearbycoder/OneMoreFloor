@@ -499,7 +499,7 @@ namespace OneMoreFloor
             Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, 30), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
             // rows 50 apart, so the card stays inside a 21:9 screen's height
             s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, -12), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.graphics = UiChoice.Create(card, "GRAPHICS", new Vector2(0, -62), GraphicsQuality.Names, save.Graphics, v => { save.Graphics = v; game.ApplySettings(); });
+            s.graphics = UiChoice.CreateNotched(card, "GRAPHICS FIDELITY", new Vector2(0, -62), GraphicsQuality.Names, save.Fidelity, v => { save.Fidelity = v; game.ApplySettings(); });
             s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -112), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
             s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -162), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
             s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -212), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });

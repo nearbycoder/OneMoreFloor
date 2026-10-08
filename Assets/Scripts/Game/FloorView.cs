@@ -1,6 +1,7 @@
 using OneMoreFloor.Core;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace OneMoreFloor
 {
@@ -11,6 +12,8 @@ namespace OneMoreFloor
     public sealed class FloorView : MonoBehaviour
     {
         public static float LampScale = 1f;
+        /// <summary>GRAPHICS FIDELITY ULTRA: the lamp casts soft shadows (furniture and guests on the back wall).</summary>
+        public static bool LampShadows;
         public FloorId Id;
         public int Slot = -1;
         public Transform Content;
@@ -222,7 +225,18 @@ namespace OneMoreFloor
             float dt = Time.deltaTime;
             hover = Mathf.Lerp(hover, hoverTarget, Ease.Damp(14f, dt));
             flash = Mathf.Max(0f, flash - dt * 1.8f);
-            if (lamp) { lamp.intensity = lampBase * LampScale * (1f + 0.35f * hover + 0.6f * flash); lamp.range = 9f + 3f * (LampScale - 1f); }
+            if (lamp)
+            {
+                lamp.intensity = lampBase * LampScale * (1f + 0.35f * hover + 0.6f * flash);
+                lamp.range = 9f + 3f * (LampScale - 1f);
+                var shadows = LampShadows ? LightShadows.Soft : LightShadows.None;
+                if (lamp.shadows != shadows)
+                {
+                    lamp.shadows = shadows;
+                    lamp.shadowStrength = 0.9f;
+                    lamp.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier = UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierMedium;
+                }
+            }
             bounce.Step(0f, 260f, 14f, dt);
             AnimateProps(dt);
 

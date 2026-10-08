@@ -251,8 +251,12 @@ namespace OneMoreFloor
         }
     }
 
-    /// <summary>A setting with a few named values (◀ HIGH ▶): left/right or a click on an arrow steps through them.</summary>
-    public sealed class UiChoice : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+    /// <summary>
+    /// A setting with a few named values (◀ HIGH ▶): left/right or a click on an arrow steps through them. Made with
+    /// <see cref="CreateNotched"/> it's a slider with a notch per value instead (GRAPHICS FIDELITY): drag the knob or
+    /// click a notch, and the value's name shows beside it.
+    /// </summary>
+    public sealed class UiChoice : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IDragHandler, IPointerEnterHandler, IPointerExitHandler
     {
         float hover;
         public void OnPointerEnter(PointerEventData e) => hover = 1f;
@@ -265,15 +269,31 @@ namespace OneMoreFloor
         RectTransform left, right;
         TextMeshProUGUI value;
         const float PillX = 228f, PillW = 220f;
+        // the notched slider: a track from TrackX0 to TrackX1 in the row, the value's name to its left
+        RectTransform track;
+        Image fill, knob;
+        Image[] notches;
+        float knobX;
+        bool downOnTrack;
+        const float TrackX0 = 124f, TrackX1 = 310f;
 
-        public static UiChoice Create(Transform parent, string label, Vector2 pos, string[] options, int index, Action<int> changed)
+        /// <summary>True for the notched slider style.</summary>
+        public bool Notched => track != null;
+
+        static RectTransform Row(Transform parent, string label, Vector2 pos, out Image focusGlow)
         {
             var root = UiKit.Rect("Choice_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 54));
             Deco.Label("Label", root, label, 26, new Vector2(400, 50), new Vector2(-160, 0), TextAlignmentOptions.Left, Palette.Cream);
             var hit = root.gameObject.AddComponent<Image>();
             hit.color = new Color(0, 0, 0, 0);
-            var focusGlow = UiKit.Image("Focus", root, Deco.Shadow, new Color(1f, 0.78f, 0.35f, 0f), new Vector2(800, 104));
+            focusGlow = UiKit.Image("Focus", root, Deco.Shadow, new Color(1f, 0.78f, 0.35f, 0f), new Vector2(800, 104));
             focusGlow.transform.SetAsFirstSibling();
+            return root;
+        }
+
+        public static UiChoice Create(Transform parent, string label, Vector2 pos, string[] options, int index, Action<int> changed)
+        {
+            var root = Row(parent, label, pos, out var focusGlow);
             var c = root.gameObject.AddComponent<UiChoice>();
             c.pill = UiKit.Image("Pill", root, Deco.Recess, Color.white, new Vector2(PillW, 46), new Vector2(PillX, 0));
             c.value = UiKit.Text("Value", c.pill.transform, "", 22, Deco.Gold, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(PillW - 70, 40));
@@ -288,12 +308,42 @@ namespace OneMoreFloor
             return c;
         }
 
+        /// <summary>A slider with one notch per value, the value's name to its left (LOW, MEDIUM, HIGH, ULTRA).</summary>
+        public static UiChoice CreateNotched(Transform parent, string label, Vector2 pos, string[] options, int index, Action<int> changed)
+        {
+            var root = Row(parent, label, pos, out var focusGlow);
+            var c = root.gameObject.AddComponent<UiChoice>();
+            float w = TrackX1 - TrackX0;
+            c.value = UiKit.Text("Value", root, "", 22, Deco.Gold, UiKit.Signage, TextAlignmentOptions.Right, new Vector2(130, 40), new Vector2(TrackX0 - 95f, 0));
+            var bg = UiKit.Image("Track", root, Deco.Recess, Color.white, new Vector2(w + 24f, 20), new Vector2((TrackX0 + TrackX1) * 0.5f, 0));
+            c.track = bg.rectTransform;
+            c.fill = UiKit.Image("Fill", bg.transform, Deco.GoldPill, Color.white, new Vector2(w, 14));
+            c.fill.rectTransform.pivot = new Vector2(0, 0.5f);
+            c.fill.rectTransform.anchoredPosition = new Vector2(-w * 0.5f - 9f, 0);
+            c.notches = new Image[options.Length];
+            for (int i = 0; i < options.Length; i++)
+                c.notches[i] = UiKit.Image("Notch" + i, bg.transform, UiKit.Circle, Deco.Muted, new Vector2(10, 10), new Vector2(c.NotchX(i, options.Length) - (TrackX0 + TrackX1) * 0.5f, 0));
+            c.knob = UiKit.Image("Knob", bg.transform, Deco.Knob, Color.white, new Vector2(38, 38));
+            UiKit.Image("KnobShadow", c.knob.transform, Deco.Shadow, new Color(1, 1, 1, 0.8f), new Vector2(62, 62), new Vector2(0, -5)).transform.SetAsFirstSibling();
+            c.Options = options;
+            c.Changed = changed;
+            c.focusGlow = focusGlow;
+            c.Set(index, false);
+            c.knobX = c.NotchX(c.Index, options.Length);
+            c.PlaceKnob();
+            return c;
+        }
+
+        float NotchX(int i, int n) => n <= 1 ? TrackX0 : Mathf.Lerp(TrackX0, TrackX1, i / (float)(n - 1));
+
         public void Set(int index, bool notify = true)
         {
             Index = Mathf.Clamp(index, 0, Options.Length - 1);
             value.text = Options[Index];
-            left.gameObject.SetActive(Index > 0);
-            right.gameObject.SetActive(Index < Options.Length - 1);
+            if (left) left.gameObject.SetActive(Index > 0);
+            if (right) right.gameObject.SetActive(Index < Options.Length - 1);
+            if (notches != null)
+                for (int i = 0; i < notches.Length; i++) notches[i].color = i <= Index ? Palette.Hex(0x3A230C) : Deco.Muted;
             if (notify) Changed?.Invoke(Index);
         }
 
@@ -306,16 +356,72 @@ namespace OneMoreFloor
             return true;
         }
 
+        void PlaceKnob()
+        {
+            float mid = (TrackX0 + TrackX1) * 0.5f;
+            knob.rectTransform.anchoredPosition = new Vector2(knobX - mid, 0);
+            fill.rectTransform.sizeDelta = new Vector2(Mathf.Max(14f, knobX - TrackX0 + 12f), 14f);
+        }
+
         void Update()
         {
             float f = NavFocus ? 1f : 0f;
-            float s = Mathf.Lerp(pill.rectTransform.localScale.x, 1f + 0.05f * Mathf.Max(hover, f), Ease.Damp(14f, UiTime.Dt));
-            pill.rectTransform.localScale = Vector3.one * s;
-            focusGlow.color = Color.Lerp(focusGlow.color, new Color(1f, 0.78f, 0.35f, 0.32f * f), Ease.Damp(14f, UiTime.Dt));
+            float dt = UiTime.Dt;
+            if (Notched)
+            {
+                knobX = Mathf.Lerp(knobX, NotchX(Index, Options.Length), Ease.Damp(18f, dt));
+                PlaceKnob();
+                float k = Mathf.Lerp(knob.rectTransform.localScale.x, 1f + 0.12f * Mathf.Max(hover, f), Ease.Damp(14f, dt));
+                knob.rectTransform.localScale = Vector3.one * k;
+            }
+            else
+            {
+                float s = Mathf.Lerp(pill.rectTransform.localScale.x, 1f + 0.05f * Mathf.Max(hover, f), Ease.Damp(14f, dt));
+                pill.rectTransform.localScale = Vector3.one * s;
+            }
+            focusGlow.color = Color.Lerp(focusGlow.color, new Color(1f, 0.78f, 0.35f, 0.32f * f), Ease.Damp(14f, dt));
+        }
+
+        /// <summary>The notch nearest a pointer, or -1 when it isn't over the track.</summary>
+        int NotchAt(PointerEventData e, bool anyHeight)
+        {
+            var cam = e.pressEventCamera ? e.pressEventCamera : GetComponentInParent<Canvas>()?.rootCanvas.worldCamera;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform, e.position, cam, out var local);
+            if (!anyHeight && (local.x < TrackX0 - 30f || local.x > TrackX1 + 30f || Mathf.Abs(local.y) > 30f)) return -1;
+            float t = Mathf.InverseLerp(TrackX0, TrackX1, local.x);
+            return Mathf.Clamp(Mathf.RoundToInt(t * (Options.Length - 1)), 0, Options.Length - 1);
+        }
+
+        public void OnPointerDown(PointerEventData e)
+        {
+            downOnTrack = false;
+            if (!Notched) return;
+            int i = NotchAt(e, false);
+            if (i < 0) return;
+            downOnTrack = true;
+            if (i != Index) Set(i);
+            AudioDirector.Instance?.Sfx("ui_click", 0.6f, 0.9f + 0.1f * Index);
+        }
+
+        public void OnDrag(PointerEventData e)
+        {
+            if (!Notched || !downOnTrack) return;
+            int i = NotchAt(e, true);
+            if (i == Index) return;
+            Set(i);
+            AudioDirector.Instance?.Sfx("ui_click", 0.45f, 0.9f + 0.1f * Index);
         }
 
         public void OnPointerClick(PointerEventData e)
         {
+            if (Notched)
+            {
+                // a press on the track already set it; a click on the name steps on, wrapping round to the first value
+                if (downOnTrack || e.dragging) return;
+                Set(Index + 1 < Options.Length ? Index + 1 : 0);
+                AudioDirector.Instance?.Sfx("ui_click", 0.7f);
+                return;
+            }
             // the left half of the pill steps back; anywhere else steps on, wrapping round to the first value
             RectTransformUtility.ScreenPointToLocalPointInRectangle(pill.rectTransform, e.position, e.pressEventCamera, out var local);
             bool back = local.x < 0f && local.x > -PillW * 0.5f - 10f && Mathf.Abs(local.y) < 40f;

@@ -29,7 +29,10 @@ namespace OneMoreFloor
         public bool ReducedMotion;
         /// <summary>LARGER TEXT: small text is drawn with capitals at least 12 px high on any screen (see <see cref="TextFloor"/>).</summary>
         public bool LargeText;
-        /// <summary>The GRAPHICS setting: 0 HIGH, 1 BALANCED, 2 LOW (see <see cref="GraphicsQuality"/>).</summary>
+        /// <summary>GRAPHICS FIDELITY: 0 LOW, 1 MEDIUM, 2 HIGH (the default), 3 ULTRA (see <see cref="GraphicsQuality"/>).</summary>
+        public int Fidelity = GraphicsQuality.Default;
+        /// <summary>The GRAPHICS setting before GRAPHICS FIDELITY (0 HIGH, 1 BALANCED, 2 LOW): read from older saves, and
+        /// still written (ULTRA as HIGH) so an older build keeps the nearest level.</summary>
         public int Graphics;
         /// <summary>Daily Overtime: the date of the runs below ("2026-10-06"), today's best and tries, and the best day.</summary>
         public string DailyDate = "";
@@ -98,6 +101,8 @@ namespace OneMoreFloor
                 string text = File.ReadAllText(path);
                 var s = string.IsNullOrWhiteSpace(text) ? null : JsonUtility.FromJson<SaveData>(text);
                 if (s == null) unreadable = true;
+                // a save from before GRAPHICS FIDELITY keeps its GRAPHICS level
+                else if (!text.Contains("\"Fidelity\"")) s.Fidelity = GraphicsQuality.FromLegacy(s.Graphics);
                 return s;
             }
             catch (Exception ex)
@@ -117,6 +122,7 @@ namespace OneMoreFloor
             string path = Path.Combine(dir, FileName), tmp = path + ".tmp", bak = path + ".bak";
             try
             {
+                Graphics = GraphicsQuality.ToLegacy(Fidelity);
                 var bytes = System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(this, true));
                 using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
@@ -158,7 +164,8 @@ namespace OneMoreFloor
             Music = Unit(Music, 0.8f);
             Sfx = Unit(Sfx, 0.9f);
             Zoom = Unit(Zoom, 0f);
-            Graphics = Mathf.Clamp(Graphics, GraphicsQuality.High, GraphicsQuality.Low);
+            if (Fidelity < GraphicsQuality.Low || Fidelity > GraphicsQuality.Ultra) Fidelity = GraphicsQuality.Default;
+            Graphics = GraphicsQuality.ToLegacy(Fidelity);
             return this;
         }
 

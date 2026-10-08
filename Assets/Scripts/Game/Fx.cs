@@ -7,6 +7,8 @@ namespace OneMoreFloor
     public sealed class Fx : MonoBehaviour
     {
         public static Fx Instance { get; private set; }
+        /// <summary>GRAPHICS FIDELITY: bursts emit this many times the particles they ask for (LOW 0.5, HIGH 1, ULTRA 1.6).</summary>
+        public static float Density = 1f;
         readonly Dictionary<string, ParticleSystem> systems = new Dictionary<string, ParticleSystem>();
         Material alphaMat, addMat, starMat, squareMat;
 
@@ -285,8 +287,11 @@ namespace OneMoreFloor
             ps.transform.position = at;
             var ep = new ParticleSystem.EmitParams { applyShapeToPosition = true };
             if (tint.HasValue) ep.startColor = tint.Value;
-            ps.Emit(ep, count);
+            ps.Emit(ep, Scaled(count));
         }
+
+        /// <summary>A burst's particle count at the current <see cref="Density"/> (never fewer than one).</summary>
+        public static int Scaled(int count) => count <= 0 ? 0 : Mathf.Max(1, Mathf.RoundToInt(count * Density));
 
         public static void Play(string name, Vector3 at, int count, Color? tint = null) => Instance?.Burst(name, at, count, tint);
     }
