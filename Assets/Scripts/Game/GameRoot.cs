@@ -374,6 +374,16 @@ namespace OneMoreFloor
             }
         }
 
+        /// <summary>F11 / Alt+Enter: flip the FULLSCREEN setting itself, so Settings shows it and the next launch keeps it.</summary>
+        public void ToggleFullscreen()
+        {
+            var save = SaveData.Current;
+            save.Fullscreen = !save.Fullscreen;
+            ApplySettings();
+            save.Save();
+            settings.SyncFromSave();
+        }
+
         /// <summary>Automation (-omfGraphics N): play at this GRAPHICS level without touching the save (-1 = the save's).</summary>
         public static int GraphicsOverride = -1;
 
@@ -522,6 +532,7 @@ namespace OneMoreFloor
                 Pause();
             else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible && !guide.Visible)
                 Resume();
+            if (Controls.FullscreenPressed) ToggleFullscreen();
             if (kb == null) return;
             // developer shortcuts: F1..F10 start a shift
             for (int i = 0; i < 10; i++)

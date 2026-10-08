@@ -1067,6 +1067,35 @@ namespace OneMoreFloor
             yield return Keys("left");
             Check($"the arrow keys reach GRAPHICS and Right/Left step it HIGH -> BALANCED -> HIGH (reached {reached}, stepped {stepped})",
                   reached && stepped && save.Graphics == GraphicsQuality.High && GraphicsQuality.Applied == GraphicsQuality.High, "ui");
+            // F11 and Alt+Enter switch the FULLSCREEN setting itself, from anywhere. Only inside the private nested KWin,
+            // so nothing ever goes fullscreen on a real desktop.
+            if (NestedDesktop)
+            {
+                int dw = Display.main.systemWidth, dh = Display.main.systemHeight;
+                save.Fullscreen = false;
+                yield return Keys("f11");
+                yield return Wait(1.5f);
+                string sizeOn = $"{Screen.width}x{Screen.height}";
+                bool on = save.Fullscreen && Screen.fullScreenMode == FullScreenMode.FullScreenWindow && settings.FullscreenShown
+                          && Screen.width == dw && Screen.height == dh && settings.Visible;
+                Shot("ui_fullscreen_f11");
+                root.ApplySettings();   // what moving a volume slider does: it used to drop a key-made fullscreen
+                yield return Wait(1.0f);
+                bool kept = save.Fullscreen && Screen.fullScreenMode == FullScreenMode.FullScreenWindow;
+                bool savedOn = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save)).Fullscreen;
+                yield return Keys("leftalt+enter");
+                yield return Wait(1.5f);
+                var want = GameRoot.WindowSize(dw, dh);
+                string sizeOff = $"{Screen.width}x{Screen.height}";
+                bool off = !save.Fullscreen && Screen.fullScreenMode == FullScreenMode.Windowed && !settings.FullscreenShown
+                           && Screen.width == want.x && Screen.height == want.y;
+                // the Enter of Alt+Enter isn't a menu press: the settings card is still open and GRAPHICS unchanged
+                bool noPress = settings.Visible && save.Graphics == GraphicsQuality.High;
+                Check($"F11 goes fullscreen at the display's {dw}x{dh} ({sizeOn}, setting {(on ? "ON" : "?")}, saved {savedOn}), a settings change keeps it ({kept}), "
+                      + $"and Alt+Enter brings back the {want.x}x{want.y} window ({sizeOff}) without pressing a button ({noPress})",
+                      on && kept && savedOn && off && noPress, "ui");
+            }
+            else Debug.Log("[AutoPilot] SKIP ui: F11 / Alt+Enter fullscreen runs only inside the nested KWin (OMF_NESTED=0 here)");
             settings.Hide();
             save.ReducedMotion = false;
             root.ApplySettings();

@@ -22,6 +22,8 @@ namespace OneMoreFloor
         /// <summary>Back in menus: B (Escape is handled by the screens themselves).</summary>
         public static bool Cancel { get; private set; }
         public static bool PausePressed { get; private set; }
+        /// <summary>F11 or Alt+Enter: switch FULLSCREEN (the Enter of Alt+Enter isn't a <see cref="Submit"/>).</summary>
+        public static bool FullscreenPressed { get; private set; }
         /// <summary>The gamepad the player last pressed something on, and when (unscaled realtime). Unlike
         /// <see cref="Pad"/>, a mouse nudge doesn't clear it, so a disconnect can still be traced to the pad in use.</summary>
         public static InputDevice LastPadDevice { get; private set; }
@@ -47,7 +49,7 @@ namespace OneMoreFloor
             LastPadDevice = null;
             LastPadUse = -1f;
             NavX = NavY = 0;
-            Submit = Cancel = PausePressed = false;
+            Submit = Cancel = PausePressed = FullscreenPressed = false;
             repeat = default;
             UiScreen.All.Clear();
         }
@@ -87,7 +89,7 @@ namespace OneMoreFloor
                 if (k != Vector2.zero) { stick = k; keysUsed = true; }
             }
             if (padUsed) { LastPadDevice = gp; LastPadUse = Time.realtimeSinceStartup; }
-            if (ForcePad) { Pad = KeyNav = true; NavX = NavY = 0; Submit = Cancel = PausePressed = false; return; }
+            if (ForcePad) { Pad = KeyNav = true; NavX = NavY = 0; Submit = Cancel = PausePressed = FullscreenPressed = false; return; }
             if (padUsed && !Pad) { Pad = true; if (!Application.isEditor) Cursor.visible = false; }
             if (padUsed || keysUsed) KeyNav = true;
             if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
@@ -103,7 +105,10 @@ namespace OneMoreFloor
             NavX = NavY = 0;
             if (repeat.Step(dir, Time.unscaledDeltaTime)) { NavX = dir.x; NavY = dir.y; }
 
-            Submit = (gp != null && gp.buttonSouth.wasPressedThisFrame) || (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame));
+            bool alt = kb != null && (kb.leftAltKey.isPressed || kb.rightAltKey.isPressed);
+            bool enter = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame);
+            FullscreenPressed = kb != null && (kb.f11Key.wasPressedThisFrame || (alt && enter));
+            Submit = (gp != null && gp.buttonSouth.wasPressedThisFrame) || (enter && !alt);
             Cancel = gp != null && gp.buttonEast.wasPressedThisFrame;
             PausePressed = gp != null && gp.startButton.wasPressedThisFrame;
         }

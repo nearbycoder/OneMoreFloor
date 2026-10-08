@@ -22,5 +22,5 @@ if [ "${OMF_NESTED:-1}" != 0 ] && command -v kwin_wayland > /dev/null && command
 else
   timeout 2400 "$ROOT/Tools/play.sh" "${args[@]}" > /dev/null 2>&1 || true
 fi
-grep -E "\[AutoPilot\] (PASS|FAIL|done|perf)" "$OUT/player.log" || { echo "no autopilot output (see $OUT/player.log)"; exit 1; }
+grep -E "\[AutoPilot\] (PASS|FAIL|SKIP|done|perf)" "$OUT/player.log" || { echo "no autopilot output (see $OUT/player.log)"; exit 1; }
 grep -q "\[AutoPilot\] done: PASS" "$OUT/player.log"

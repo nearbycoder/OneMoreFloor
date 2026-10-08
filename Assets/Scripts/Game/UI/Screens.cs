@@ -512,6 +512,15 @@ namespace OneMoreFloor
             return s;
         }
 
+        /// <summary>Show a setting changed elsewhere (F11 / Alt+Enter switch FULLSCREEN from anywhere).</summary>
+        public void SyncFromSave()
+        {
+            if (full != null && full.On != SaveData.Current.Fullscreen) full.Set(SaveData.Current.Fullscreen, false);
+        }
+
+        /// <summary>Self-test: the FULLSCREEN switch as drawn.</summary>
+        public bool FullscreenShown => full != null && full.On;
+
         public void Open(UiScreen from)
         {
             returnTo = from;
