@@ -311,9 +311,9 @@ namespace OneMoreFloor
             relaxedLine = Deco.Label("Relaxed", Root, "", 18, new Vector2(1400, 28), new Vector2(0, -329), TextAlignmentOptions.Center);
             relaxedLine.characterSpacing = 6f;
             goalsRoot = UiKit.Rect("Goals", Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -268), new Vector2(1400, 80));
-            var go = UiButton.Create(Root, "CLOCK IN", new Vector2(120, -400), new Vector2(400, 96), () => game.BeginShift(shift), true, 42);
+            var go = UiButton.Create(Root, "CLOCK IN", new Vector2(120, -400), new Vector2(400, 96), () => game.Doors(() => game.BeginShift(shift), shift), true, 42);
             UiButton.Create(Root, "BACK", new Vector2(-220, -400), new Vector2(220, 72), () => game.ShowRoster(), false, 26);
-            daily = UiButton.Create(Root, "TODAY'S SHIFT", new Vector2(520, -400), new Vector2(330, 72), () => game.BeginDaily(), false, 26);
+            daily = UiButton.Create(Root, "TODAY'S SHIFT", new Vector2(520, -400), new Vector2(330, 72), () => game.Doors(game.BeginDaily, -1, true), false, 26);
             go.Focused = true;
             Primary = () => go.Click();
             Back = () => game.ShowRoster();
@@ -421,10 +421,10 @@ namespace OneMoreFloor
             UiButton.Create(card, "GUEST GUIDE", new Vector2(0, 28), new Vector2(420, 68), () => game.ShowGuide(s), false, 25);
             // these two end the run unscored, so each asks for a second press first
             s.restart = UiButton.Create(card, "RESTART SHIFT", new Vector2(0, -54), new Vector2(420, 68), null, false, 25);
-            s.restart.OnClick = () => s.Confirm(s.restart, "REALLY RESTART?", game.RestartShift);
+            s.restart.OnClick = () => s.Confirm(s.restart, "REALLY RESTART?", game.DoorsRestart);
             UiButton.Create(card, "SETTINGS", new Vector2(0, -136), new Vector2(420, 68), () => game.ShowSettings(s), false, 25);
             s.quit = UiButton.Create(card, "QUIT TO ROSTER", new Vector2(0, -218), new Vector2(420, 68), null, false, 25);
-            s.quit.OnClick = () => s.Confirm(s.quit, "REALLY QUIT?", game.QuitShift);
+            s.quit.OnClick = () => s.Confirm(s.quit, "REALLY QUIT?", () => game.Doors(game.QuitShift));
             s.hint = UiKit.Text("Hint", card, Idle, 16, Deco.Muted, UiKit.Signage, TextAlignmentOptions.Center, new Vector2(520, 24), new Vector2(0, -290));
             s.hint.characterSpacing = 8f;
             resume.Focused = true;
@@ -605,11 +605,12 @@ namespace OneMoreFloor
             bestStamp.characterSpacing = 8f;
             bestLine = UiKit.Text("BestLine", paper, "", 18, Palette.Hex(0x8C6424), UiKit.Signage, TextAlignmentOptions.Center, new Vector2(600, 30), new Vector2(0, -318));
             bestLine.characterSpacing = 6f;
-            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -420), new Vector2(460, 96), () => game.RestartShift(), true, 36);
-            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(380, -420), new Vector2(260, 74), () => game.ShowIntro(shift + 1), false, 26);
-            UiButton.Create(Root, "ROSTER", new Vector2(-380, -420), new Vector2(260, 74), () => game.ShowRoster(), false, 26);
+            retry = UiButton.Create(Root, "ONE MORE SHIFT", new Vector2(0, -420), new Vector2(460, 96), () => game.DoorsRestart(), true, 36);
+            // leaving the shift's scene for the menus' goes through the doors too
+            next = UiButton.Create(Root, "NEXT SHIFT", new Vector2(380, -420), new Vector2(260, 74), () => game.Doors(() => game.ShowIntro(shift + 1)), false, 26);
+            UiButton.Create(Root, "ROSTER", new Vector2(-380, -420), new Vector2(260, 74), () => game.Doors(game.ShowRoster), false, 26);
             Primary = () => retry.Click();
-            Back = () => game.ShowRoster();
+            Back = () => game.Doors(game.ShowRoster);
         }
 
         public string CausesText => causes.text;

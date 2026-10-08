@@ -153,6 +153,18 @@ namespace OneMoreFloor
 
         public void ShowSettings(UiScreen from) => settings.Open(from);
 
+        /// <summary>Into or out of a shift: the screen doors close, <paramref name="change"/> runs behind them, and they open.
+        /// The shut doors name where they're going (the hotel, unless a shift is given).</summary>
+        public void Doors(System.Action change, int shift = -1, bool daily = false)
+        {
+            if (daily) ScreenDoors.Run(change, "Today's Shift · " + DateLabel(Today), "Daily Overtime");
+            else if (shift >= 0 && shift < ShiftCatalog.All.Count) ScreenDoors.Run(change, ShiftCatalog.Get(shift).Day, ShiftCatalog.Get(shift).Title);
+            else ScreenDoors.Run(change, "Back to the lobby");
+        }
+
+        /// <summary>ONE MORE SHIFT / RESTART: the doors name the shift being played again.</summary>
+        public void DoorsRestart() => Doors(RestartShift, DailyRun ? -1 : currentShift, DailyRun);
+
         public void ShowGuide(UiScreen from) => guide.Open(from);
 
         public void BeginShift(int index)
@@ -508,6 +520,7 @@ namespace OneMoreFloor
             guide = GuideScreen.Create(Canvas.transform, this);
             results = ResultsScreen.Create(Canvas.transform, this);
             ending = EndingScreen.Create(Canvas.transform, this);
+            ScreenDoors.Create(Canvas.transform);
             SetLayerRecursive(canvasGo, UiLayer);
         }
 
@@ -532,6 +545,7 @@ namespace OneMoreFloor
         {
             var kb = Keyboard.current;
             bool pausePressed = Controls.PausePressed || (kb != null && (kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame));
+            if (ScreenDoors.Busy) pausePressed = false;   // the doors are taking you somewhere
             if (InShift && pausePressed && !pause.Visible && !settings.Visible && !guide.Visible && !results.Visible)
                 Pause();
             else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible && !guide.Visible)

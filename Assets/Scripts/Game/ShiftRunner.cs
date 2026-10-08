@@ -111,7 +111,7 @@ namespace OneMoreFloor
                 }
                 if (acc > Step * 4f) acc = Step * 4f; // never spiral after a hitch
             }
-            if (InputEnabled && !Paused && !Attract) HandleInput();
+            if (InputEnabled && !Paused && !Attract && !ScreenDoors.Busy) HandleInput();
             if (!Paused && !Attract && AutoBot == null) Log.Tick(Rig.Zoom);
             SyncViews(dt);
             Car.Sync(Sim, running ? dt : 0f);

@@ -115,6 +115,17 @@ namespace OneMoreFloor
         Quaternion framedRot;
         float lastScreenX = -1f;
 
+        /// <summary>Jump straight to the current framing and zoom (behind the screen doors, so they open on it).</summary>
+        public void Snap()
+        {
+            if (!framed) return;
+            zoomShown = AllowZoom ? zoomTarget : 0f;
+            promptK = RoomForPrompts ? 1f : 0f;
+            Retarget();
+            framedPos = targetPos;
+            framedRot = targetRot;
+        }
+
         public void Shake(float amount) => shake = Mathf.Min(1.2f, shake + amount * ShakeScale);
 
         public void PushIn(Vector3 worldTarget, float amount, float hold)

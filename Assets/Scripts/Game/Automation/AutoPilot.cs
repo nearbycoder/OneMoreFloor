@@ -484,7 +484,69 @@ namespace OneMoreFloor
             yield return Wait(1.2f);
             Shot("ui_intro_relaxed");
             Check($"every control on the intro card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
-            root.StartShift(2, 2024);
+            // CLOCK IN goes through the screen doors: they close over the intro card, the shift starts behind them
+            // (only once they're shut), and they open on it in under a second; clicks land on the doors meanwhile
+            {
+                var doors = ScreenDoors.Instance;
+                UiButton clockIn = null;
+                foreach (var b in FindAnyObjectByType<IntroScreen>(FindObjectsInactive.Include).GetComponentsInChildren<UiButton>()) if (b.name == "Btn_CLOCK IN") clockIn = b;
+                var prevSeed = root.FixedSeed;
+                root.FixedSeed = 2024;
+                yield return Wait(0.3f);   // past the stall of the capture just taken, so the doors are timed on normal frames
+                clockIn?.Click();
+                clockIn?.Click();   // a double click doesn't queue a second change
+                bool early = false, blocked = false;
+                int changes = 0;
+                ShiftSim firstSim = null;
+                for (float tt = 0f; tt < 2.5f && (ScreenDoors.Busy || tt < 0.05f); tt += Time.unscaledDeltaTime)
+                {
+                    if (doors.Closing && root.InShift) early = true;
+                    if (root.InShift && root.Runner.Sim != firstSim) { changes++; firstSim = root.Runner.Sim; }
+                    if (!blocked && doors.Closing && tt > 0f)
+                    {
+                        // a click in the middle of the screen lands on the doors, not the card under them
+                        var pe = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f) };
+                        var hits = new List<UnityEngine.EventSystems.RaycastResult>();
+                        UnityEngine.EventSystems.EventSystem.current.RaycastAll(pe, hits);
+                        blocked = hits.Count > 0 && hits[0].gameObject.transform.IsChildOf(doors.transform);
+                    }
+                    yield return null;
+                }
+                root.FixedSeed = prevSeed;
+                Check($"CLOCK IN closes the screen doors, starts the shift behind them (shut {doors.ShutAtChange:0.00} at the change, early {early}, {changes} change), "
+                      + $"blocks clicks while they move ({blocked}) and opens on it after {doors.LastDuration:0.00} s of animation ({ScreenDoors.SlideTotal:0.00} s as designed; "
+                      + $"longest frame {doors.Longest * 1000f:0} ms, plus a {doors.ChangeFrame * 1000f:0} ms frame behind them)",
+                      root.InShift && !early && changes == 1 && doors.ShutAtChange >= 0.999f && blocked && ScreenDoors.SlideTotal < 1f
+                      && doors.LastDuration >= ScreenDoors.SlideTotal - 0.01f && doors.LastDuration <= ScreenDoors.SlideTotal + doors.Longest + 0.01f
+                      && !ScreenDoors.Busy, "ui");
+                // captures of a second pass over the shift (they stall frames, so they're kept out of the timed one)
+                bool shotClosing = false, shotShut = false, shotOpening = false;
+                root.Doors(() => { }, 2);
+                for (float tt = 0f; tt < 4f && (ScreenDoors.Busy || tt < 0.05f); tt += Time.unscaledDeltaTime)
+                {
+                    if (!shotClosing && doors.Closing && doors.Shut > 0.3f) { shotClosing = true; Shot("ui_doors_closing"); }
+                    else if (!shotShut && !doors.Closing && !doors.Opening && ScreenDoors.Busy) { shotShut = true; Shot("ui_doors_shut"); }
+                    else if (!shotOpening && doors.Opening && doors.Shut < 0.75f && doors.Shut > 0.15f) { shotOpening = true; Shot("ui_doors_opening"); }
+                    yield return null;
+                }
+                Debug.Log($"[AutoPilot] doors captured: closing {shotClosing}, shut {shotShut}, opening {shotOpening}");
+                // REDUCED MOTION: the doors fade in and out where they are instead of sliding
+                save.ReducedMotion = true;
+                root.ApplySettings();
+                bool ran = false, moved = false;
+                float alphaAtChange = -1f;
+                root.Doors(() => { ran = true; alphaAtChange = doors.Shut; });
+                for (float tt = 0f; tt < 2f && (ScreenDoors.Busy || tt < 0.05f); tt += Time.unscaledDeltaTime)
+                {
+                    if (Mathf.Abs(doors.LeftOffset) > 0.5f) moved = true;
+                    yield return null;
+                }
+                save.ReducedMotion = false;
+                root.ApplySettings();
+                Check($"with REDUCED MOTION the doors fade instead of sliding (moved {moved}), the change runs once they're opaque ({alphaAtChange:0.00}), "
+                      + $"in {doors.LastDuration:0.00} s ({ScreenDoors.FadeTotal:0.00} s as designed, longest frame {doors.Longest * 1000f:0} ms)",
+                      ran && !moved && alphaAtChange >= 0.999f && doors.LastDuration <= ScreenDoors.FadeTotal + doors.Longest + 0.01f, "ui");
+            }
             runner = root.Runner;
             runner.AutoBot = Bot.Human(5, 0f);
             yield return Wait(1f);

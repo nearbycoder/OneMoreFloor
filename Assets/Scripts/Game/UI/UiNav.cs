@@ -43,6 +43,7 @@ namespace OneMoreFloor
             wasDriving = Driving;
             if (Driving) Focus = selected;
             foreach (var w in widgets) SetFocus(w, Driving && w == selected);
+            if (ScreenDoors.Busy) return;   // nothing to press while the doors are moving or shut
 
             if (Controls.Cancel && screen.Back != null)
             {
