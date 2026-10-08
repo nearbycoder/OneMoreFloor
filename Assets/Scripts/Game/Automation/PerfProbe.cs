@@ -31,15 +31,36 @@ namespace OneMoreFloor
             var root = GameRoot.Instance;
             root.BeginShift(shift);
             root.Runner.AutoBot = Bot.Decent(3);
-            yield return new WaitForSecondsRealtime(3f);
+            var args0 = System.Environment.GetCommandLineArgs();
+            int li = System.Array.IndexOf(args0, "-omfPerfSecs");
+            float secs = 30f;
+            if (li >= 0 && li + 1 < args0.Length) float.TryParse(args0[li + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out secs);
+            // hitches: every frame over 40 ms, with what the shift did on it and the frame before (events, a GC)
+            var frameEvents = new List<string>();
+            string lastEvents = "";
+            root.Runner.OnEvent += e => frameEvents.Add(e.Type.ToString());
+            int gc0 = System.GC.CollectionCount(0), hitches = 0;
             var times = new List<float>();
             float t = 0f;
-            while (t < 30f)
+            // the first 3 s (the shift's opening) count for hitches but not for the averages
+            while (t < secs + 3f)
             {
                 yield return null;
-                times.Add(Time.unscaledDeltaTime);
-                t += Time.unscaledDeltaTime;
+                float dt = Time.unscaledDeltaTime;
+                if (t >= 3f) times.Add(dt);
+                t += dt;
+                int gc = System.GC.CollectionCount(0);
+                string now = string.Join(",", frameEvents);
+                if (dt > 0.04f)
+                {
+                    hitches++;
+                    Debug.Log($"[Perf] hitch {dt * 1000f:0} ms at {t:0.00} s (shift clock {root.Runner.Sim?.Time:0.00}){(gc != gc0 ? " gc" : "")} | this frame: {now} | before: {lastEvents}");
+                }
+                gc0 = gc;
+                lastEvents = now;
+                frameEvents.Clear();
             }
+            Debug.Log($"[Perf] {hitches} frames over 40 ms");
             times.Sort();
             float avg = 0f;
             foreach (var x in times) avg += x;

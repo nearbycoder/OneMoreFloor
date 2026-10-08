@@ -955,3 +955,71 @@ release, and re-cutting the trailer, poster and teaser GIF (still 0.1.0, and the
 edges). Whether the resume count helps or gets in the way, whether STOP? reads as a what-if, and whether LOW's softer
 text is acceptable need a person. A real Steam Deck, a real 5:4 monitor and AZERTY are still untried, and nobody has
 played rounds 4 to 9.
+
+## Round 10 scope (2026-10-07, branch `improvements-10`)
+
+The ranked list's remaining items (#12–#16) still wait on the owner or on human ears, and the 5:4 layout, guest
+scale, the resume count, the small-screen wordings, LOW's softer text and STOP? are the owner's call, so none of
+them change here. Baseline on `9cc19ce`: `build-linux` OK and the `ui` flow checks pass (52 checks, load 1.5–9).
+Three things were looked at and dropped before planning:
+
+- **Controller rumble.** There is none, but on Linux (the only released platform) the Input System builds SDL
+  gamepads without any rumble support, so it would do nothing for the players who have the game, and it couldn't
+  be felt here anyway.
+- **Frame hitches.** PerfProbe now logs every frame over 40 ms with what the shift did on it and the frame before,
+  and whether a garbage collection ran. Two 60 s runs (Graveyard and Saturday, 1920×1080, load 5 rising to 18)
+  had 26–30 such frames each, up to 373 ms, but none lined up with a game event or a collection, and they came in a
+  steady ~0.6 s rhythm while the machine got busier. Nothing in the game to fix.
+- **Labels crossing mid-shuffle.** They already fade to 25% while their floor moves.
+
+A quick experiment with the round 9 text floor raised to 12 px capitals (the audit's own numbers): at 1920×1080 it
+enlarges 22–32 texts per in-play screen and nothing spills; at 1280×800 about 17 texts spill out of their boxes. At
+14 px, 40 spill at 1280×800. So a larger-text option is within reach at 12 px.
+
+Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow
+checks) passing, and the real `save.json` and `prefs` hashing the same before and after every run. Screenshots go to
+`docs/media/improvements/round10/`. Load average is noted with every timing.
+
+### M1. Key repeat that a stalled frame can't double
+
+Round 9's one flaky check ("Up/Down picks floors" moved three floors, not two, at load 22–30) points at the menus'
+and the floor cursor's key repeat: it fires again once 0.38 s of real time has passed with the key held, so a single
+long frame while a key is down counts as holding it. Now each frame adds at most 1/20 s towards the repeat, so a
+hitch can't turn one press into two, while a key that's really held still repeats as before.
+- **Acceptance:** an EditMode test of the repeat: one press held across a 0.5 s frame steps once; held for 0.5 s of
+  normal frames it steps twice (0.38 s, then every 0.12 s); releasing and pressing again steps again. The arrow-key,
+  WASD and settings-row `ui` checks pass in three `ui` runs.
+- **Verify:** the test, and the `ui` runs' own output.
+
+### M2. Idle in the background
+
+The game draws at the display's refresh rate (60–240 fps) even when its window has lost focus and the shift has
+paused itself, which keeps a laptop's GPU and fans busy for nothing. Now, when the window loses focus, it draws at
+most 30 fps until focus comes back, then returns to the display's rate. Recordings and the autopilot, which run
+unfocused, keep their full rate (they already turn auto-pause off).
+- **Acceptance:** in the built game, the `ui` focus check sees the target drop to 30 and at most about 32 frames
+  drawn in a second of real time after focus is lost, and the original target back after focus returns. Everything
+  else in the `ui` pass still passes.
+- **Verify:** the extended `ui` check's own numbers.
+
+### M3. A LARGER TEXT setting
+
+Settings gets **LARGER TEXT** (off by default). On, every text whose capitals would be under 12 px on screen is
+drawn at 12 px (instead of round 9's 9 px floor, which only acts on small screens), so at 1920×1080 the HUD's small
+labels, the panel's floor plates and forecast headers, label badges and tags, the prompt strip and the time card's
+lines get about 20% bigger, and a third bigger on a Steam Deck. Texts that no longer fit get shorter words, wrap or
+a wider box, as in round 9.
+- **Acceptance:** the setting survives a save round trip and applies at once. The text audit with LARGER TEXT on
+  finds no visible text under 12 px and none spilling on all twelve audited screens at 1920×1080, 1280×800,
+  1440×900 and 1280×1024. With it off, the audit at 1920×1080 and 1280×800 matches the baseline (same floor, same
+  counts of enlarged texts). The Graveyard autopilot passes with it on at 1920×1080 and 1280×800.
+- **Verify:** the audit tables, a `ui` check of the toggle, and before/after captures at 1280×800 and 1920×1080.
+
+### M4. README, status and results
+
+The README's settings and tests sections, "Status and known issues" and this file are updated to match. README
+stills stay as they are unless a change shows in them with default settings (none should).
+
+Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
+(#15), the license (#16), the resume count, the small-screen wordings, LOW's softer text and STOP? (owner), signing,
+hosting, releases and the trailer.
