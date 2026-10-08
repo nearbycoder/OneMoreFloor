@@ -121,6 +121,8 @@ namespace OneMoreFloor
                 for (int u = 0; u < k; u++) if (save.Stars[u] == 0) save.Stars[u] = 1;
                 // one-time tips would all be used up by Wednesday: forget them so every shift's tips get measured
                 save.SeenHints = new string[0];
+                // every other shift has a best above its third star to chase, so both kinds of caption get measured
+                save.Best[k] = k % 2 == 1 ? def.Stars[def.Stars.Length - 1] + 2500 : 0;
                 root.ShowIntro(k);
                 yield return Wait(1.0f);
                 if (k <= 1 || k == 5 || k == 8) Shot($"intro_{def.Id}");
@@ -129,7 +131,7 @@ namespace OneMoreFloor
                 runner.AutoBot = Bot.Decent((ulong)(k + 11));
                 runner.Hud.WorstPopupOverlap = 0f;
                 runner.Hud.CoinCrossFrames = runner.Hud.CoinOverTextFrames = 0;
-                int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0;
+                int starFrames = 0, starBad = 0, starLag = 0, starPeak = 0, chaseFrames = 0, newBestFrames = 0;
                 string starWhy = "";
                 int chipFrames = 0, chipBad = 0, chipSeen = 0, chipStops = 0, chipStopBad = 0, chipJams = 0, chipStopMarks = 0, prevStops = runner.Sim.Stops;
                 string chipWhy = "";
@@ -159,9 +161,14 @@ namespace OneMoreFloor
                     {
                         var ss = runner.Sim;
                         int expect = ss.Def.StarsFor(ss.Score);
+                        int best = runner.Hud.BestToBeat;
+                        string cap = runner.Hud.StarCaption;
                         bool right = runner.Hud.StarsDrawnLit == expect
-                                     && (expect >= 3 ? runner.Hud.StarCaption.Contains("ALL THREE")
-                                                     : runner.Hud.StarCaption.Contains("$" + (ss.Def.Stars[expect] - ss.Score).ToString("N0")));
+                                     && (expect < 3 ? cap.Contains("$" + (ss.Def.Stars[expect] - ss.Score).ToString("N0"))
+                                         : best <= 0 ? cap.Contains("ALL THREE")
+                                         : ss.Score > best ? cap == "NEW BEST!"
+                                         : cap.Contains("$" + (best - ss.Score).ToString("N0") + " TO"));
+                        if (expect >= 3 && best > 0) { if (ss.Score > best) newBestFrames++; else chaseFrames++; }
                         starFrames++;
                         starPeak = Mathf.Max(starPeak, runner.Hud.StarsDrawnLit);
                         if (right) starLag = 0;
@@ -341,8 +348,10 @@ namespace OneMoreFloor
                 // flying coins burst from where the tip pops up: they may pass behind its text, never over it
                 Check($"{def.Id}: flying coins crossed popup text on {runner.Hud.CoinCrossFrames} frames and drew over it on {runner.Hud.CoinOverTextFrames}",
                       runner.Hud.CoinOverTextFrames == 0, "popups");
-                Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit)" + (starBad > 0 ? $" last miss: {starWhy}" : ""),
-                      starBad == 0 && starFrames > 0, "stars");
+                Check($"{def.Id}: HUD star track matched the score on {starFrames - starBad}/{starFrames} frames (peak {starPeak} lit"
+                      + (runner.Hud.BestToBeat > 0 ? $"; best ${runner.Hud.BestToBeat:N0}: chased on {chaseFrames} frames, NEW BEST on {newBestFrames}, announced {runner.Hud.NewBestCount}x)" : "; no best)")
+                      + (starBad > 0 ? $" last miss: {starWhy}" : ""),
+                      starBad == 0 && starFrames > 0 && runner.Hud.NewBestCount <= 1 && (newBestFrames == 0 || runner.Hud.NewBestCount == 1), "stars");
                 Check($"{def.Id}: forecast chips matched the preview on {chipFrames - chipBad}/{chipFrames} frames (chips up on {chipSeen}, STOP marks {chipStopMarks})" + (chipBad > 0 ? $" last miss: {chipWhy}" : ""),
                       chipBad == 0 && chipSeen > 0 && chipStopMarks > 0, "forecast");
                 Check($"{def.Id}: floors landed where the chips said at {chipStops - chipStopBad}/{chipStops} stops ({chipJams} JAM chips)" + (chipStopBad > 0 ? $" miss: {chipWhy}" : ""),
@@ -483,6 +492,58 @@ namespace OneMoreFloor
             yield return Wait(6.5f);
             Check("fired twice on a shift: the time card suggests Relaxed", runner.Sim.Fired && results.HintText.Contains("Relaxed"), "ui");
             Shot("ui_results_suggest_relaxed");
+
+            // after three stars the track chases the best: "$X TO YOUR BEST", then NEW BEST! once, with the record sound.
+            // Only fast-forwards move this shift (the runner is held), so a dry run of the same seed and bot finds where
+            // the third star comes and how it ends, and the best goes halfway between.
+            {
+                int at3 = -1, final = 0;
+                root.StartShift(0, 808);
+                runner = root.Runner;
+                runner.Paused = true;
+                runner.AutoBot = Bot.Strong(8);
+                while (!runner.Sim.Ended) { runner.FastForward(0.25f, true); if (at3 < 0 && runner.Sim.StarCount >= 3) at3 = runner.Sim.Score; }
+                final = runner.Sim.Score;
+                runner.Paused = false;
+                yield return Wait(0.5f);
+                root.QuitShift();
+                yield return Wait(0.5f);
+                System.Array.Clear(save.Best, 0, save.Best.Length);
+                save.Best[0] = at3 + (final - at3) / 2;
+                root.StartShift(0, 808);
+                runner = root.Runner;
+                runner.Rig.Zoom = 0f;
+                runner.Paused = true;
+                runner.AutoBot = Bot.Strong(8);
+                float soundBefore = AudioDirector.Instance.LastPlayedAt("new_record");
+                string chased = "", passed = "";
+                while (!runner.Sim.Ended && passed.Length == 0)
+                {
+                    runner.FastForward(0.25f);
+                    yield return null;
+                    string cap = runner.Hud.StarCaption;
+                    if (runner.Sim.StarCount >= 3 && cap.Contains(" TO YOUR BEST") && chased.Length == 0)
+                    {
+                        chased = $"{cap} at ${runner.Sim.Score:N0}";
+                        yield return Wait(0.4f);
+                        Shot("ui_star_track_chasing_best");
+                    }
+                    if (cap == "NEW BEST!") passed = $"NEW BEST! at ${runner.Sim.Score:N0}";
+                }
+                yield return Wait(0.8f);   // the record sound is queued a beat after the caption
+                Shot("ui_star_track_new_best");
+                bool sounded = AudioDirector.Instance.LastPlayedAt("new_record") > soundBefore;
+                if (!runner.Sim.Ended) runner.FastForward(2f);
+                yield return null;
+                Check($"after three stars the track chases the best (${save.Best[0]:N0}; the third star came at ${at3:N0}, the dry run ended at ${final:N0}): "
+                      + $"'{chased}', then '{passed}', announced {runner.Hud.NewBestCount}x, record sound {sounded}",
+                      at3 > 0 && final > at3 + 1 && chased.Length > 0 && passed.Length > 0 && runner.Hud.NewBestCount == 1 && sounded
+                      && (runner.Sim.Ended || runner.Hud.StarCaption == "NEW BEST!"), "ui");
+                runner.Paused = false;
+                root.QuitShift();
+                yield return Wait(1f);
+                System.Array.Clear(save.Best, 0, save.Best.Length);
+            }
 
             // guest size: a crowded nine-floor shift at full zoom-out, then a full car in close-up
             save.Zoom = 0f;
@@ -1057,6 +1118,20 @@ namespace OneMoreFloor
             yield return Still($"play: Monday with a coach tip ({(root.Coach.Showing ? "showing" : "none came")})", "text_play_monday");
             root.QuitShift();
             yield return Wait(1f);
+
+            // three stars and a best still to beat: the longest star caption
+            save.Best[0] = 99999;
+            root.StartShift(0, 808);
+            runner = root.Runner;
+            runner.Rig.Zoom = 0f;
+            runner.InputEnabled = false;
+            runner.AutoBot = Bot.Strong(8);
+            for (int i = 0; i < 60 && runner.Sim.StarCount < 3 && !runner.Sim.Ended; i++) runner.FastForward(2f);
+            yield return Wait(0.8f);
+            yield return Still($"play: Monday chasing the best ('{runner.Hud.StarCaption}')", "text_play_best_chase");
+            root.QuitShift();
+            yield return Wait(1f);
+            save.Best[0] = 31250;
 
             // a busy Graveyard Shift: nine labels with forecast tags, badges, riders, and the card for a hovered guest
             root.StartShift(8, 91);

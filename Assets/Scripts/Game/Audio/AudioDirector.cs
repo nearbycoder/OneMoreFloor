@@ -210,6 +210,9 @@ namespace OneMoreFloor
             src.Play();
         }
 
+        /// <summary>Self-test: when an effect last started (UiTime), or -1 if it never has.</summary>
+        public float LastPlayedAt(string name) => lastPlayed.TryGetValue(name, out var t) ? t : -1f;
+
         struct Pending { public float At; public string Name; public float Vol, Pitch, Pan; }
         readonly List<Pending> pending = new List<Pending>();
 

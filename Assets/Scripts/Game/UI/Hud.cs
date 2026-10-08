@@ -140,6 +140,11 @@ namespace OneMoreFloor
         /// <summary>Stars lit on the HUD's star track, and its caption (what the next star needs).</summary>
         public int StarsLit { get; private set; }
         public string StarCaption => starCaption.text;
+        /// <summary>The score to beat once all three stars are lit: the player's best on this shift (today's best on the
+        /// daily), 0 when there's none or bests aren't saved (a relaxed shift). Set after each shift begins.</summary>
+        public int BestToBeat { get; set; }
+        /// <summary>Times this shift's track announced a new best (at most once a shift).</summary>
+        public int NewBestCount { get; private set; }
         /// <summary>Self-test: stars actually drawn lit on the track (read back from the images).</summary>
         public int StarsDrawnLit
         {
@@ -161,6 +166,8 @@ namespace OneMoreFloor
             shownScore = 0;
             lastStreak = 0;
             StarsLit = 0;
+            BestToBeat = 0;
+            NewBestCount = 0;
             for (int i = 0; i < trackStars.Length; i++) { trackStars[i].color = TrackUnlit; starPunch[i] = 0f; }
         }
 
@@ -545,7 +552,32 @@ namespace OneMoreFloor
             }
             StarsLit = lit;
 
-            if (lit >= targets.Length)
+            if (lit >= targets.Length && BestToBeat > 0 && sim.Score > BestToBeat)
+            {
+                // past the best: once a shift, the record sound and a punch of the stars
+                if (NewBestCount == 0)
+                {
+                    NewBestCount++;
+                    if (!Quiet)
+                    {
+                        for (int i = 0; i < starPunch.Length; i++) starPunch[i] = 1f;
+                        AudioDirector.Instance?.SfxLater("new_record", 0.35f, 0.7f);
+                    }
+                }
+                starCaption.text = "NEW BEST!";
+                starCaption.color = Deco.GoldLight;
+                SetStarBar(1f);
+            }
+            else if (lit >= targets.Length && BestToBeat > 0)
+            {
+                // three stars and a best to chase: the bar runs from the third star to the best
+                int need = BestToBeat - sim.Score;
+                starCaption.text = TextFloor.Fit(starCaption, $"${need:N0} TO YOUR BEST", $"${need:N0} TO BEST");   // shorter if a raised text floor needs it
+                starCaption.color = Deco.Gold;
+                int from = Mathf.Min(targets[targets.Length - 1], BestToBeat - 1);
+                SetStarBar(Mathf.Clamp01((float)(sim.Score - from) / Mathf.Max(1, BestToBeat - from)));
+            }
+            else if (lit >= targets.Length)
             {
                 starCaption.text = "ALL THREE STARS!";
                 starCaption.color = Deco.Gold;

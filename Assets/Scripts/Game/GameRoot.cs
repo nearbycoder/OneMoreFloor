@@ -169,6 +169,8 @@ namespace OneMoreFloor
             Runner.Attract = false;
             Runner.AutoBot = null;
             Runner.Begin(def, runSeed, SaveData.Current.Relaxed && !def.Endless);
+            // once the stars are lit, the track chases the best (relaxed runs don't save one)
+            Runner.Hud.BestToBeat = Runner.Sim.Relaxed ? 0 : SaveData.Current.Best[index];
             Runner.Hud.SetVisible(true);
             Runner.Ended = OnShiftEnded;
             Audio.PlayGameplay(def);
@@ -205,6 +207,7 @@ namespace OneMoreFloor
             StartShift(ot, Progress.DailySeed(d.Year, d.Month, d.Day));
             DailyRun = true;
             Runner.Hud.SetShiftName("Today's Shift · " + DateLabel(d), "Daily Overtime");
+            Runner.Hud.BestToBeat = SaveData.Current.DailyBestOn(DateKey(d));
         }
 
         /// <summary>Remember the player's zoom level for the next shift.</summary>
