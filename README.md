@@ -82,7 +82,8 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
-The shift also pauses itself if the window loses focus or the controller you're playing with disconnects. Resuming
+The shift also pauses itself if the window loses focus or the controller you're playing with disconnects, and while the
+window is in the background the game draws at most 30 frames a second. Resuming
 counts down 3, 2, 1 over the tower before the clock runs again, so you can find your place first. The pause
 card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
 keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit ask for a second press, so a stray
@@ -209,8 +210,10 @@ Each shift opens with a sticky note from The Management and a "New today" card, 
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
 pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts and
-**reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still).
+settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts,
+**reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still) and
+**larger text** (no text with capitals under 12 px on any screen: the HUD's, panel's and labels' small print grows by
+about a fifth at 1920×1080 and a third on a Steam Deck).
 GRAPHICS is HIGH by default (the look in the screenshots); BALANCED and LOW turn down antialiasing, shadows, bloom and,
 on LOW, the render resolution, for weaker GPUs and big screens.
 
@@ -308,6 +311,8 @@ Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 Tools/autopilot.sh out text   # the text audit: every visible text's capital height in pixels and any that spill out
                               # of its box or card, on the title, roster, intro, play, pause, guide, settings and time card
 OMF_SIZE=1280x800 Tools/autopilot.sh out text   # the same at another window size (Steam Deck here)
+Tools/autopilot.sh out text-large                # the text audit with LARGER TEXT on (a 12 px floor)
+OMF_LARGE_TEXT=1 Tools/autopilot.sh out 8        # any run with LARGER TEXT on (here the Graveyard Shift)
 ```
 
 The autopilot runs the game inside a private nested KWin (`Tools/nested.sh`: its own Wayland socket, D-Bus session and
@@ -419,11 +424,12 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 9 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+- **Rounds 4 to 10 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
   labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
   press-twice restart and quit, the GRAPHICS setting, the menus' restored text shadows and outlines, the repositioned
-  shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings and the bigger small text on
-  small screens were checked by the autopilot, unit tests and screenshots, not by a person. Nobody has judged whether
+  shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings, the bigger small text on
+  small screens, LARGER TEXT and the 30 fps background rate were checked by the autopilot, unit tests and screenshots,
+  not by a person. The background rate is checked through Unity's focus callback; a real alt-tab wasn't scripted. Nobody has judged whether
   the resume count feels like a help or a hold-up. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
   hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
@@ -444,7 +450,10 @@ gamepad support), and it passes its automated checks. Honest caveats:
   (Valve's Steam Deck guidance; the text audit measured 7.2 px at 1280×800 before). Two labels switch to shorter
   words when that happens ("CLOCK STARTS AT FIRST DROP", "NEXT STOP, THE BUILDING..."), and a locked roster card's
   hint wraps onto a second line. At 1920×1080 and up nothing changes; the default 1600×900 window draws four small
-  labels slightly bigger. None of this has been seen on a real Deck. The screenshots above are from the current
+  labels slightly bigger. The LARGER TEXT setting raises that floor to 12 px everywhere; on a small screen a few labels
+  then use shorter words ("$20,660 TO GO", "NEXT STOP, THE HOTEL..."), the pause card's controls panel grows taller,
+  and a forecast line that won't fit makes the next card two lines tall while the one after shows only its title. The
+  panel dial's scale numbers keep the default size, as they'd crowd each other. None of this has been seen on a real Deck. The screenshots above are from the current
   build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing. Drawing guests 15% bigger was
   tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
   nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer

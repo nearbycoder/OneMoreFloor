@@ -1023,3 +1023,53 @@ stills stay as they are unless a change shows in them with default settings (non
 Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
 (#15), the license (#16), the resume count, the small-screen wordings, LOW's softer text and STOP? (owner), signing,
 hosting, releases and the trailer.
+
+## Round 10 results (2026-10-07)
+
+All three build items landed, plus the docs. Baseline on `9cc19ce`: `build-linux` OK and the `ui` flow checks passed
+(52 checks, load 1.5–9). Final checks on the final code (`c303d43`; the next commit changes only docs and images):
+EditMode **67/67** (`Logs/r10/test-final.xml`), `sim.sh fuzz` OK (21,270 stops matched the forecast preview), and the
+full autopilot on the last build, in a 1920×1080 window inside the nested KWin, passes **172 checks** (170 in round 9:
+all ten shifts to the bell, the pad pass and every `ui` check) with no logged exceptions, at 57 fps average, worst
+frame 239 ms (load 17–19; `Logs/r10/ap-full.out`). The hashes of `~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}`
+matched before and after every build, test and autopilot run. Screenshots are in `docs/media/improvements/round10/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| M1 key repeat vs stalled frames | `c16fe1c` | 3 new EditMode tests; three `ui` runs at load 25–30 | Met. A press held across a 0.5 s frame steps once; held for 0.45 s of normal frames it steps twice, for 0.7 s four times; a new direction steps at once. "Up/Down picks floors" (2 → 4), "W/S pick floors" and the GRAPHICS row's Right/Left passed in all three runs. The original flake was never reproduced, so this removes the likely cause rather than a seen one. |
+| M2 30 fps in the background | `eaa0647` | The `ui` focus check, extended | Met: target 60 → 30 when focus goes, **30.0 fps** drawn over the next 1.5 s, 60 again when it comes back, and the shift stays paused (load 30–32). Driven through Unity's own `OnApplicationFocus`; a real alt-tab wasn't scripted. Recordings and the autopilot keep their rate. |
+| M3 LARGER TEXT | `c303d43` | 3 new EditMode tests (one tries all 138 forecast cards at Deck size); the text audit with it on at five sizes and off at two; Graveyard with it on at two sizes; a new `ui` check; captures | Met. With it on, **0 texts under 12 px and 0 spilling** on all 12 audited screens at 1920×1080, 1280×800, 1440×900, 1280×1024 and 1600×900. At 1920×1080 it enlarges 13–19 texts per in-play screen and 23 on the time card. Off, the audit at 1920×1080 (0 enlarged) and 1280×800 (1–36 enlarged per screen) matches round 9 count for count; the settings card has 2 more texts for its new row. Graveyard passes with it on at 1920×1080 and 1280×800 (11/11 checks each, on the build just before the dial change below, which only keeps nine numbers smaller). The `ui` check reads the settings card's smallest capitals 10.8 → 12.0 px, 0 spilling, saved, and back to 10.8 when it's off. |
+
+How M3 fits on small screens (each found by the audit or the card test, then rechecked):
+- One-line labels the floor makes too wide give up letter spacing first, never below 0 (time card stat labels, the
+  roster's NEW: line). Only with LARGER TEXT on; the default floor never touches spacing.
+- Four labels pick the longest wording that fits: "CLOCK STARTS ON YOUR FIRST DROP" / "...AT FIRST DROP" /
+  "STARTS AT FIRST DROP", "NEXT STOP, THE BUILDING WILL..." / "...BUILDING..." / "NEXT STOP, THE HOTEL...", and the star
+  caption's "$20,660 TO STAR 1" / "$20,660 TO GO" (relaxed: "TO A RELAXED CLEAR" / "TO CLEAR").
+- 40 of the 138 possible forecast lines don't fit one line on a Deck ("Library and Boiler Room"), and the panel can't
+  get wider, so then the next card grows to two lines and the card after shows only its title (THEN: CALM).
+- The pause card's controls panel grows taller when a cell needs a third line, and a key pair like "LEFT / RIGHT" may
+  break when it can't fit on one line. Guest guide rules get a taller, wider box.
+- The panel dial's scale numbers (1–9 round the arc) keep the default floor: enlarged, they ran into each other, and
+  the number under the needle says the same thing.
+- The label tags, forecast chips and prompt strip re-measure their width when the floor changes their font size, so
+  switching LARGER TEXT mid-shift doesn't leave them too narrow.
+
+Found along the way:
+- **The text audit read some texts up to 1% small.** It measured pixels per canvas unit over one unit, about 0.009
+  world units, and the UI camera sits at y = −1000, so float rounding showed as 11.87 px on texts drawn at 12 px (only
+  some, depending on where they sat). It now measures over 100 units. Round 9's numbers moved by at most 0.1 px.
+- The first default audit at "1920×1080" ran at 1600×900: the audit applied the settings to switch the text floor, and
+  that also applies the window-size clamp (1920 is over 95% of the 2020-wide nested desktop). It now sets the floor
+  directly; the reported numbers are from the rerun.
+- **Frame hitches aren't the game's.** PerfProbe's new trace (60 s of Graveyard and of Saturday, load 5–18) found 26–30
+  frames over 40 ms per run, up to 373 ms, with no garbage collection and nothing in the shift on or just before them,
+  at a steady ~0.6 s rhythm. Controller rumble was ruled out because the Input System gives Linux SDL gamepads none.
+- A few wait loops of mine that watched logs for a finished run were stopped at their time limits; they only read logs and never touched a game process.
+
+Still open: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13, needs the module), WebGL (#14), a listening
+pass (#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next
+release, and re-cutting the trailer, poster and teaser GIF. Whether LARGER TEXT should be on by default on small
+screens, whether "$20,660 TO GO" and the title-only THEN card read well, and everything rounds 4–9 left for a person
+(the resume count, STOP?, LOW's softer text) need the owner or a player. A real Steam Deck, a real 5:4 monitor and
+AZERTY are still untried, and nobody has played rounds 4 to 10.
