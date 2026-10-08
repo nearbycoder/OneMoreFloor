@@ -870,6 +870,48 @@ namespace OneMoreFloor
                 Check($"after the count the clock runs on from the same moment ({tHold:0.00} -> {runner.Sim.Time:0.00} s)",
                       !runner.Paused && runner.Sim.Time > tHold && runner.Hud.CountShown.Length == 0, "ui");
             }
+            // a real alt-tab: the nested KWin opens another window, which takes focus, then closes it. Everything above
+            // came through Unity's focus callback; this is the compositor's own focus change.
+            if (NestedDesktop)
+            {
+                string altDir = System.Environment.GetEnvironmentVariable("OMF_NESTED_DIR");
+                string altReq = Path.Combine(altDir, "focus-request"), altAck = Path.Combine(altDir, "focus-ack");
+                if (File.Exists(altAck)) File.Delete(altAck);
+                save.MuteInBackground = true;
+                int altRate = Application.targetFrameRate;
+                float altLoud = 0f, altQuiet = 0f, altLoudBack = 0f;
+                yield return PeakOver(0.4f, pk => altLoud = pk);
+                bool altWasFocused = !root.InBackground;
+                File.WriteAllText(altReq, "away");
+                float altTAway = 0f;
+                while (!root.InBackground && altTAway < 10f) { yield return null; altTAway += Time.unscaledDeltaTime; }
+                bool altLost = root.InBackground;
+                yield return null;
+                float altT0 = runner.Sim.Time;
+                yield return Wait(0.5f);
+                int altF0 = Time.frameCount;
+                float altR0 = Time.realtimeSinceStartup;
+                yield return PeakOver(1.0f, pk => altQuiet = pk);
+                float altFps = (Time.frameCount - altF0) / (Time.realtimeSinceStartup - altR0);
+                bool altPaused = pause.Visible && runner.Paused && runner.Sim.Time == altT0;
+                int altAwayRate = Application.targetFrameRate;
+                string altHelper = File.Exists(altAck) ? File.ReadAllText(altAck).Trim() : "no answer";
+                File.WriteAllText(altReq, "back");
+                float altTBack = 0f;
+                while (root.InBackground && altTBack < 10f) { yield return null; altTBack += Time.unscaledDeltaTime; }
+                bool altRegained = !root.InBackground;
+                yield return Wait(0.8f);
+                yield return PeakOver(0.5f, pk => altLoudBack = pk);
+                Check($"a real alt-tab (the nested KWin's helper: '{altHelper}'): focus went in {altTAway:0.00} s ({altLost}), the shift paused ({altPaused}), "
+                      + $"{altAwayRate} fps target and {altFps:0.0} drawn, mix {Db(altLoud)} -> {Db(altQuiet)}; closing the other window brought focus back in {altTBack:0.00} s ({altRegained}), "
+                      + $"{Application.targetFrameRate} fps target and the mix at {Db(altLoudBack)}",
+                      altWasFocused && altLost && altPaused && altAwayRate == Mathf.Min(altRate, GameRoot.BackgroundRate) && altFps <= GameRoot.BackgroundRate + 2f
+                      && altLoud > 0.01f && altQuiet < 0.001f && altRegained && Application.targetFrameRate == altRate && altLoudBack > 0.01f && pause.Visible, "ui");
+                Shot("ui_real_alt_tab_back");
+                root.Resume();
+                yield return Wait(ShiftRunner.ResumeCount + 0.3f);
+            }
+            else Debug.Log("[AutoPilot] SKIP ui: the real alt-tab runs only inside the nested KWin (OMF_NESTED=0 here)");
             yield return Pad("rb");
             // a nudged mouse becomes the active input, but the player is still holding the controller
             var nudge = InputSystem.AddDevice<Mouse>("OMF Virtual Mouse");
@@ -981,6 +1023,13 @@ namespace OneMoreFloor
             {
                 // steer to a floor where someone is waiting, so D has a guest to pick (the busiest one, not the current)
                 var sw = runner.Sim;
+                // (let the shift run on until someone is waiting away from the car: the checks above can leave nobody)
+                bool Waiting()
+                {
+                    for (int sl = 0; sl < sw.B.Count; sl++) if (sl != runner.CursorSlot && sw.Waiting[(int)sw.B.At(sl)].Count > 0) return true;
+                    return false;
+                }
+                for (int i = 0; i < 30 && !Waiting() && !sw.Ended; i++) runner.FastForward(1f);
                 int fromW = runner.CursorSlot, target = -1;
                 for (int sl = 0; sl < sw.B.Count; sl++)
                     if (sl != fromW && sw.Waiting[(int)sw.B.At(sl)].Count > 0 && (target < 0 || sw.Waiting[(int)sw.B.At(sl)].Count > sw.Waiting[(int)sw.B.At(target)].Count)) target = sl;
