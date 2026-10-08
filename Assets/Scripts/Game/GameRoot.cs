@@ -234,9 +234,25 @@ namespace OneMoreFloor
         /// </summary>
         public bool AutoPause { get; set; }
 
+        /// <summary>Frames per second at most while the window is in the background (the shift has paused itself then).</summary>
+        public const int BackgroundRate = 30;
+        int foregroundRate = int.MinValue;
+
         void OnApplicationFocus(bool focus)
         {
             if (!focus) AutoPauseFor("Paused while you were away");
+            // nothing that matters moves while the window is in the background, so don't keep the GPU (and a laptop's
+            // fans) busy at the display's full rate. Unattended runs (recordings, the autopilot) keep their rate.
+            if (!focus && AutoPause && foregroundRate == int.MinValue)
+            {
+                foregroundRate = Application.targetFrameRate;
+                Application.targetFrameRate = foregroundRate > 0 ? Mathf.Min(foregroundRate, BackgroundRate) : BackgroundRate;
+            }
+            else if (focus && foregroundRate != int.MinValue)
+            {
+                Application.targetFrameRate = foregroundRate;
+                foregroundRate = int.MinValue;
+            }
         }
 
         void OnDestroy() => InputSystem.onDeviceChange -= OnDeviceChange;

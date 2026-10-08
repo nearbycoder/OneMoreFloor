@@ -723,12 +723,21 @@ namespace OneMoreFloor
             runner.AutoBot = Bot.Decent(5);
             yield return Wait(3f);
             runner.FastForward(12f); // guests waiting, for the resume count's patience check and the keyboard checks below
+            int rate = Application.targetFrameRate;
             root.SendMessage("OnApplicationFocus", false);
             yield return null;
             float t0 = runner.Sim.Time;
+            int bgRate = Application.targetFrameRate, f0 = Time.frameCount;
+            float r0 = Time.realtimeSinceStartup;
             yield return Wait(1.5f);
+            float bgFps = (Time.frameCount - f0) / (Time.realtimeSinceStartup - r0);
             Check("losing focus pauses the shift and stops the clock", pause.Visible && runner.Paused && runner.Sim.Time == t0, "ui");
             Shot("ui_pause_focus");
+            // and the game idles in the background: at most 30 fps until focus comes back
+            root.SendMessage("OnApplicationFocus", true);
+            yield return null;
+            Check($"in the background it draws at most {GameRoot.BackgroundRate} fps (target {rate} -> {bgRate}, {bgFps:0.0} fps drawn), and focus brings back {Application.targetFrameRate}",
+                  bgRate == Mathf.Min(rate, GameRoot.BackgroundRate) && bgFps <= GameRoot.BackgroundRate + 2f && Application.targetFrameRate == rate && pause.Visible, "ui");
             // resuming gives a beat to find your place: the clock, patience and the bot hold through a 3-2-1 count
             {
                 root.Resume();
