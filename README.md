@@ -82,8 +82,12 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
+**F11** or **Alt+Enter** switches fullscreen anywhere in the game; it's the same as the FULLSCREEN setting, so Settings
+shows it and the next launch keeps it.
+
 The shift also pauses itself if the window loses focus or the controller you're playing with disconnects, and while the
-window is in the background the game draws at most 30 frames a second. Resuming
+window is in the background the game draws at most 30 frames a second and its sound fades out (the **MUTE IN
+BACKGROUND** setting, on by default). Resuming
 counts down 3, 2, 1 over the tower before the clock runs again, so you can find your place first. The pause
 card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
 keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit ask for a second press, so a stray
@@ -160,7 +164,8 @@ Tips are fare plus patience left, times your **streak** (+5% per delivery, up to
 times **group drops** (+25% for each extra guest delivered at the same stop). The last 30 seconds are **Rush Hour**,
 worth ×1.5. Each stop's tips add up in a single popup, and the drop banner upgrades from DOUBLE to TRIPLE to
 FULL HOUSE. Stars come from your tips, and **one star unlocks the next shift**. A star track under your tips lights
-each star as you pass its target and says how much the next one needs. If a shift won't give you a star,
+each star as you pass its target and says how much the next one needs. Once all three are lit it counts down to your
+best on that shift ("$1,240 TO YOUR BEST"; today's best on Today's Shift) and calls **NEW BEST!** as you pass it. If a shift won't give you a star,
 clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
 star on the Graveyard Shift).
 
@@ -210,7 +215,7 @@ Each shift opens with a sticky note from The Management and a "New today" card, 
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
 pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts,
+settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, muting the game while it's in the background, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts,
 **reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still) and
 **larger text** (no text with capitals under 12 px on any screen: the HUD's, panel's and labels' small print grows by
 about a fifth at 1920×1080 and a third on a Steam Deck).
@@ -300,6 +305,8 @@ Tools/autopilot.sh         # plays all ten shifts in the built game (each timed 
                            # checks (late pass, time card, auto-pause, pad glyphs, arrow keys, WASD and Esc, settings and
                            # the graphics level, patience badges, guest guide, restart and quit confirmation, the
                            # pause card's controls panel, STOP markers, the resume count, the close-up's edge alerts,
+                           # the star track's chase of a seeded best, MUTE IN BACKGROUND read off the final mix, a real
+                           # alt-tab and F11 / Alt+Enter (those two only inside the nested KWin),
                            # a click at the centre of every control on every menu); every frame of every shift is
                            # also checked: reward popups never overlap
                            # (and flying coins never draw over them), the HUD's star
@@ -317,7 +324,10 @@ OMF_LARGE_TEXT=1 Tools/autopilot.sh out 8        # any run with LARGER TEXT on (
 
 The autopilot runs the game inside a private nested KWin (`Tools/nested.sh`: its own Wayland socket, D-Bus session and
 scratch config folder), so its window never opens on your desktop and the real mouse can't reach it. `OMF_NESTED=0`
-runs it on the desktop instead, and machines without KWin fall back to that.
+runs it on the desktop instead, and machines without KWin fall back to that (the alt-tab and fullscreen checks then
+print SKIP). For the alt-tab check, `nested.sh` opens a `kdialog` box inside the nested desktop at the game's request
+and closes it again. When the session ends it stops anything still running on its private D-Bus bus (apps start
+helpers like `xdg-desktop-portal-kde` and `ksecretd` there, which would otherwise outlive it) and says what it stopped.
 
 ### Trailer and README media
 
@@ -424,12 +434,16 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 10 are unplayed.** The star track, the Guest Guide, the save backup, the forecast tags on the floor
+- **Rounds 4 to 11 are unplayed.** The star track (and its chase of your best after three stars), the Guest Guide,
+  the save backup, the forecast tags on the floor
   labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
   press-twice restart and quit, the GRAPHICS setting, the menus' restored text shadows and outlines, the repositioned
   shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings, the bigger small text on
-  small screens, LARGER TEXT and the 30 fps background rate were checked by the autopilot, unit tests and screenshots,
-  not by a person. The background rate is checked through Unity's focus callback; a real alt-tab wasn't scripted. Nobody has judged whether
+  small screens, LARGER TEXT, the 30 fps background rate, MUTE IN BACKGROUND and F11 / Alt+Enter were checked by the
+  autopilot, unit tests and screenshots, not by a person. The background behaviour (pause, 30 fps, the mix fading out)
+  is checked with a real focus change inside a private nested KWin, where another window opens and takes focus;
+  it hasn't been tried with a person's alt-tab on a real desktop, or on other compositors. F11 / Alt+Enter is only
+  tested inside that nested KWin, so nothing goes fullscreen on the shared desktop. Nobody has judged whether
   the resume count feels like a help or a hold-up. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
   hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080

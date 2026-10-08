@@ -1148,3 +1148,45 @@ The README's settings, controls and tests sections, "Status and known issues" an
 Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
 (#15), the license (#16), LARGER TEXT's default, the Deck wordings, the resume count, LOW's softer text and STOP?
 (owner), signing, hosting, releases and the trailer.
+
+## Round 11 results (2026-10-08)
+
+All four build items landed, plus the docs. Baseline on `08958f8`: `build-linux` OK and the `ui` flow checks passed
+55 checks (load 2–11, `Logs/r11/ap-baseline-ui.out`). Final checks on the final code (`663ad4e`; the next commit changes
+only docs and images): EditMode **68/68** (`Logs/r11/test-final.xml`), `sim.sh fuzz` OK (21,270 stops matched the forecast
+preview, `Logs/r11/fuzz-final.out`), `build-linux` OK, and the full autopilot on that build, in a 1920×1080 window inside
+the nested KWin, passes **176 checks** (172 in round 10: all ten shifts, every timed one to the bell, the pad pass and
+every `ui` check) with no FAIL or SKIP lines and no logged exceptions, at 48 fps average, worst frame 240 ms (load 20
+at the start after a stretch at 40–53, 24 at the end; `Logs/r11/ap-full.out`). The text audit passes at 1920×1080,
+1280×800 and 2560×1080 with and without LARGER TEXT (`Logs/r11/audit-*.out`, on the working tree just before the item
+commits, same code). The hashes of `~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after
+every build, test and autopilot run. Screenshots are in `docs/media/improvements/round11/`.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| N1 chase your best | `ac8157d` | The per-frame star-track check with a seeded best on every other shift; a new `ui` check; the text audit's new "chasing the best" screen | Met. In the full run the track matched the score on every frame of every shift; on Tuesday, Thursday, Saturday and Monday Again it showed "$X TO YOUR BEST" on 46–112 frames, then NEW BEST! (announced once each). Overtime's seeded best was out of the bot's reach, and the other five shifts had no best and kept ALL THREE STARS!. The `ui` check: "$362 TO YOUR BEST" at the third star, NEW BEST! at $22,850, once, with the record sound. With LARGER TEXT at 1280×800 and 2560×1080 the caption picks "TO BEST" and nothing spills. |
+| N2 MUTE IN BACKGROUND | `7c9e478` | 1 new EditMode test; the `ui` focus check reading the final mix's meter; settings click test and text audits | Met: the mix peak went from −2 dBFS to silent while away, −15 dBFS with focus back, and stayed at −14 dBFS away with the setting off. An old save loads with it on. The settings card keeps its size; its rows are now 50 apart (54 before) to make room. |
+| N3 F11 / Alt+Enter | `010eb9c` | A `ui` check inside the nested KWin | Met: F11 went fullscreen at the nested display's 2020×1180 with the setting saved and shown ON, an `ApplySettings` (what a volume slider does) kept it, and Alt+Enter brought back the 1600×900 window with the settings card still open (its Enter wasn't a button press). Unity's own Alt+Enter switch is now off. Not tried on a real desktop on purpose, so nothing went fullscreen on the shared machine. |
+| N4 a real alt-tab | `663ad4e` | A `ui` check on the compositor's own focus change; `nested.log` after every nested run | Met: a `kdialog` box took focus in 0.27 s, the shift paused, 30 fps target (29.1 drawn), mix silent; closing it brought focus back in 0.12 s with 60 fps and the sound. Every nested run this round after the fix ended with "stopped 2 leftover processes from this session's bus: xdg-desktop-portal-kde, ksecretd" (or 0 when no portal was used), and the machine-wide ksecretd count was the same before and after the two runs where it was counted (85 around the first `ui` run; 84 after the full run). |
+
+Found along the way:
+- **Where the leftover ksecretd came from.** A prototype run showed `kdialog` activating `xdg-desktop-portal`, which
+  starts `xdg-desktop-portal-kde` and the kwallet portal, which starts `ksecretd`; those two outlive
+  `dbus-run-session`. The game itself started none in the `text` runs (0 stopped). 84 ksecretd processes were already
+  running on the machine when this round began; they weren't started by this session, so they were left alone. The
+  six left by this round's three prototype runs (a portal and a ksecretd each) were stopped by PID.
+- The first N1 `ui` check never saw the chase: one group drop took the score from under the third star straight
+  past the seeded best. The game was right (NEW BEST! once, with the sound); the check now places the best from a
+  dry run of the same seed.
+- One `ui` run failed "D picks a guest" with nobody waiting away from the car, because the new checks before it
+  changed the Graveyard run's timing. It now lets the shift run on until someone is waiting; that's a test fix,
+  not a game one.
+- The controls panel on the pause card doesn't list F11 / Alt+Enter; the README mentions them under the tables.
+
+Still open: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13, needs the module), WebGL (#14), a listening
+pass (#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next
+release, and re-cutting the trailer, poster and teaser GIF. MUTE IN BACKGROUND is on by default; whether that's the
+right default, whether LARGER TEXT should be on by default on small screens, the Deck wordings, and everything rounds
+4–10 left for a person (the resume count, STOP?, LOW's softer text) need the owner or a player. A person's alt-tab on
+a real desktop, other compositors, a real Steam Deck, a real 5:4 monitor and AZERTY are still untried, and nobody has
+played rounds 4 to 11.
