@@ -1042,9 +1042,9 @@ namespace OneMoreFloor
             yield return Wait(0.6f);
             {
                 string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
-                Check($"with the mouse the controls panel lists mouse and keyboard{(lay.Length > 0 ? ":" + lay : "")}",
+                Check($"with the mouse the controls panel lists mouse and keyboard, F11 / Alt+Enter last{(lay.Length > 0 ? ":" + lay : "")}",
                       ct.StartsWith("MOUSE AND KEYBOARD\n") && ct.Contains("\nRIGHT-CLICK A RIDER: Let them off") && ct.Contains("\nSPACE: Let everyone in")
-                      && ct.Contains("CLICK A FLOOR, 1-9") && lay.Length == 0, "ui");
+                      && ct.Contains("CLICK A FLOOR, 1-9") && ct.EndsWith("\nF11 / ALT+ENTER: Fullscreen on or off") && lay.Length == 0, "ui");
             }
             Shot("ui_pause_controls_mouse");
             root.Resume();
@@ -1067,10 +1067,10 @@ namespace OneMoreFloor
             Check($"Esc pauses the shift and stays paused (clock {tk:0.0} -> {runner.Sim.Time:0.0} s)", pause.Visible && runner.Paused, "ui");
             {
                 string ct = pause.ControlsPanel.Text, lay = ControlsLayout(pause);
-                Check($"with the arrow keys the controls panel lists the keys{(lay.Length > 0 ? ":" + lay : "")}",
+                Check($"with the arrow keys the controls panel lists the keys, F11 / Alt+Enter last{(lay.Length > 0 ? ":" + lay : "")}",
                       ct.StartsWith("ARROW KEYS OR WASD\n") && ct.Contains("\nUP / DOWN, W / S: Pick a floor") && ct.Contains("\nLEFT / RIGHT, A / D, Q / E: Pick a guest")
                       && ct.Contains("\nENTER: Send the car") && ct.Contains("\nF: Let the picked rider")
-                      && ct.Contains("\nBACKSPACE: Unpick") && lay.Length == 0, "ui");
+                      && ct.Contains("\nBACKSPACE: Unpick") && ct.EndsWith("\nF11 / ALT+ENTER: Fullscreen on or off") && lay.Length == 0, "ui");
             }
             Shot("ui_pause_controls_keys");
             var guideK = FindAnyObjectByType<GuideScreen>(FindObjectsInactive.Include);

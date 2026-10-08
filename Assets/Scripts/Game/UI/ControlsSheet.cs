@@ -51,6 +51,7 @@ namespace OneMoreFloor
                     Add("BACKSPACE", "Unpick");
                     Add("Z, - / =", "Zoom in and out");
                     Add("ESC / P", "Pause");
+                    Add("F11 / ALT+ENTER", "Fullscreen on or off");
                     break;
                 default:
                     Add("CLICK A GUEST", "Let them in at your floor, or go and get them");
@@ -61,6 +62,7 @@ namespace OneMoreFloor
                     Add("HOVER", "Preview the trip and the next shuffle");
                     Add("WHEEL, Z, - / =", "Zoom in and out");
                     Add("ESC / P", "Pause");
+                    Add("F11 / ALT+ENTER", "Fullscreen on or off");
                     break;
             }
             return rows;
@@ -78,7 +80,9 @@ namespace OneMoreFloor
         string shown;
         /// <summary>The key cells' text without the &lt;nobr&gt; tags, for <see cref="Text"/>.</summary>
         readonly List<string> plain = new List<string>();
-        const float RowH = 62f, KeyW = 200f, ActionW = 234f;
+        /// <summary>Rows on the panel: eight for the controller, nine with the keyboard's fullscreen keys.</summary>
+        public const int MaxRows = 9;
+        const float RowH = 56f, KeyW = 200f, ActionW = 234f;
 
         public static ControlsCard Create(Transform parent, Vector2 size, Vector2 pos)
         {
@@ -87,8 +91,8 @@ namespace OneMoreFloor
             c.head.characterSpacing = 14f;
             c.title = UiKit.Text("Scheme", c.Rt, "", 18, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(size.x - 60, 26), new Vector2(0, size.y * 0.5f - 84));
             c.divider = Deco.Divider(c.Rt, size.x * 0.5f, new Vector2(0, size.y * 0.5f - 108));
-            float top = size.y * 0.5f - 152f;
-            for (int i = 0; i < 8; i++)
+            float top = size.y * 0.5f - 121f - RowH * 0.5f;
+            for (int i = 0; i < MaxRows; i++)
             {
                 float y = top - i * RowH;
                 var key = UiKit.Text("Key" + i, c.Rt, "", 17, Palette.Hex(0xFFC857), UiKit.Signage, TextAlignmentOptions.Right, new Vector2(KeyW, RowH - 4), new Vector2(-KeyW * 0.5f - 22f, y));
@@ -138,7 +142,7 @@ namespace OneMoreFloor
         void Layout(float h)
         {
             rowH = h;
-            float panelH = baseH + 8 * (h - RowH), top = panelH * 0.5f;
+            float panelH = baseH + MaxRows * (h - RowH), top = panelH * 0.5f;
             Rt.sizeDelta = new Vector2(Rt.sizeDelta.x, panelH);
             head.rectTransform.anchoredPosition = new Vector2(0, top - 52);
             title.rectTransform.anchoredPosition = new Vector2(0, top - 84);
