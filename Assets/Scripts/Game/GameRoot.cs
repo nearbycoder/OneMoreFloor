@@ -241,9 +241,15 @@ namespace OneMoreFloor
         public const int BackgroundRate = 30;
         int foregroundRate = int.MinValue;
 
+        /// <summary>The window doesn't have focus (as last reported by <see cref="OnApplicationFocus"/>).</summary>
+        public bool InBackground { get; private set; }
+
         void OnApplicationFocus(bool focus)
         {
+            InBackground = !focus;
+            Debug.Log(focus ? "[Focus] the window has focus" : "[Focus] the window lost focus");
             if (!focus) AutoPauseFor("Paused while you were away");
+            UpdateBackgroundSound();
             // nothing that matters moves while the window is in the background, so don't keep the GPU (and a laptop's
             // fans) busy at the display's full rate. Unattended runs (recordings, the autopilot) keep their rate.
             if (!focus && AutoPause && foregroundRate == int.MinValue)
@@ -256,6 +262,13 @@ namespace OneMoreFloor
                 Application.targetFrameRate = foregroundRate;
                 foregroundRate = int.MinValue;
             }
+        }
+
+        /// <summary>MUTE IN BACKGROUND: quiet while the window is in the background. Unattended runs (recordings, the
+        /// autopilot) keep their sound, as they keep their frame rate.</summary>
+        void UpdateBackgroundSound()
+        {
+            if (Audio != null) Audio.Muted = InBackground && AutoPause && SaveData.Current.MuteInBackground;
         }
 
         void OnDestroy() => InputSystem.onDeviceChange -= OnDeviceChange;
@@ -336,6 +349,7 @@ namespace OneMoreFloor
                 Audio.MasterVolume = save.Master;
                 Audio.MusicVolume = save.Music;
                 Audio.SfxVolume = save.Sfx;
+                UpdateBackgroundSound();
             }
             Rig.ShakeScale = save.ScreenShake && !save.ReducedMotion ? 1f : 0f;
             Rig.Still = save.ReducedMotion;

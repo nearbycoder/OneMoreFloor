@@ -129,6 +129,21 @@ namespace OneMoreFloor.Tests
         }
 
         [Test]
+        public void MuteInBackgroundRoundTripsAndAnOldSaveHasItOn()
+        {
+            File.WriteAllText(Main, "{\"Version\":1,\"Master\":0.5,\"Fullscreen\":true}");   // a save from before the setting existed
+            var old = SaveData.LoadFrom(dir);
+            Assert.IsTrue(old.MuteInBackground, "on unless the player turned it off");
+            Assert.IsTrue(old.Fullscreen);
+            Assert.AreEqual(0.5f, old.Master);
+            Assert.IsTrue(new SaveData().MuteInBackground);
+            new SaveData { MuteInBackground = false }.SaveTo(dir);
+            Assert.IsFalse(SaveData.LoadFrom(dir).MuteInBackground);
+            new SaveData { MuteInBackground = true }.SaveTo(dir);
+            Assert.IsTrue(SaveData.LoadFrom(dir).MuteInBackground);
+        }
+
+        [Test]
         public void GraphicsPresetsOnlyGetCheaperFromHighToLow()
         {
             var high = GraphicsQuality.For(GraphicsQuality.High);

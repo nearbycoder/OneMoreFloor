@@ -395,6 +395,24 @@ namespace OneMoreFloor
             Application.Quit(errors == 0 ? 0 : 1);
         }
 
+        /// <summary>This run is inside Tools/nested.sh's private KWin (its own Wayland socket), not on a real desktop.</summary>
+        static bool NestedDesktop => !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("OMF_NESTED_DIR"))
+                                     && (System.Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") ?? "").StartsWith("omf-nested-");
+
+        /// <summary>The loudest sample of the game's final mix over <paramref name="seconds"/> of real time.</summary>
+        static IEnumerator PeakOver(float seconds, System.Action<float> result)
+        {
+            float peak = 0f;
+            for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime)
+            {
+                yield return null;
+                peak = Mathf.Max(peak, AudioDirector.Instance != null ? AudioDirector.Instance.OutputPeak : 0f);
+            }
+            result(peak);
+        }
+
+        static string Db(float peak) => peak > 0f ? $"{20f * Mathf.Log10(peak):0} dBFS" : "silent";
+
         void Check(string what, bool ok, string area = "pad")
         {
             Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {area}: {what}");
@@ -788,12 +806,17 @@ namespace OneMoreFloor
             yield return Wait(3f);
             runner.FastForward(12f); // guests waiting, for the resume count's patience check and the keyboard checks below
             int rate = Application.targetFrameRate;
+            save.MuteInBackground = true;
+            float loudBefore = 0f;
+            yield return PeakOver(0.4f, pk => loudBefore = pk);
             root.SendMessage("OnApplicationFocus", false);
             yield return null;
             float t0 = runner.Sim.Time;
             int bgRate = Application.targetFrameRate, f0 = Time.frameCount;
             float r0 = Time.realtimeSinceStartup;
-            yield return Wait(1.5f);
+            float quietAway = 0f;
+            yield return Wait(0.5f);   // the fade out takes a quarter of a second
+            yield return PeakOver(1.0f, pk => quietAway = pk);
             float bgFps = (Time.frameCount - f0) / (Time.realtimeSinceStartup - r0);
             Check("losing focus pauses the shift and stops the clock", pause.Visible && runner.Paused && runner.Sim.Time == t0, "ui");
             Shot("ui_pause_focus");
@@ -802,6 +825,21 @@ namespace OneMoreFloor
             yield return null;
             Check($"in the background it draws at most {GameRoot.BackgroundRate} fps (target {rate} -> {bgRate}, {bgFps:0.0} fps drawn), and focus brings back {Application.targetFrameRate}",
                   bgRate == Mathf.Min(rate, GameRoot.BackgroundRate) && bgFps <= GameRoot.BackgroundRate + 2f && Application.targetFrameRate == rate && pause.Visible, "ui");
+            // MUTE IN BACKGROUND: the final mix goes quiet while away and comes back with focus; off, it plays on
+            {
+                float loudBack = 0f, loudOff = 0f;
+                yield return Wait(0.6f);
+                yield return PeakOver(0.5f, pk => loudBack = pk);
+                save.MuteInBackground = false;
+                root.SendMessage("OnApplicationFocus", false);
+                yield return Wait(0.6f);
+                yield return PeakOver(0.5f, pk => loudOff = pk);
+                root.SendMessage("OnApplicationFocus", true);
+                save.MuteInBackground = true;
+                Check($"in the background the sound fades out: mix peak {Db(loudBefore)} before, {Db(quietAway)} away, {Db(loudBack)} with focus back, "
+                      + $"and {Db(loudOff)} away with MUTE IN BACKGROUND off",
+                      loudBefore > 0.01f && quietAway < 0.001f && loudBack > 0.01f && loudOff > 0.01f, "ui");
+            }
             // resuming gives a beat to find your place: the clock, patience and the bot hold through a 3-2-1 count
             {
                 root.Resume();

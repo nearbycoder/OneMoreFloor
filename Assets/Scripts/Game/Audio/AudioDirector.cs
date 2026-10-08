@@ -13,6 +13,17 @@ namespace OneMoreFloor
         public static AudioDirector Instance { get; private set; }
 
         public float MasterVolume = 1f, MusicVolume = 0.8f, SfxVolume = 0.9f;
+        MasterLimiter limiter;
+
+        /// <summary>Fade the whole mix out (the window is in the background and MUTE IN BACKGROUND is on), or back in.</summary>
+        public bool Muted
+        {
+            get => limiter != null && limiter.OutputGain < 0.5f;
+            set { if (limiter != null) limiter.OutputGain = value ? 0f : 1f; }
+        }
+
+        /// <summary>Self-test: the largest sample of the final mix in the last audio buffer.</summary>
+        public float OutputPeak => limiter != null ? limiter.LastPeak : 0f;
         // gain staging: every clip is mastered near full scale, so the sums need headroom
         const float MusicGain = 0.42f, SfxGain = 0.6f;
 
@@ -41,7 +52,7 @@ namespace OneMoreFloor
             go.transform.SetParent(parent, false);
             var a = go.AddComponent<AudioDirector>();
             go.AddComponent<AudioListener>();
-            go.AddComponent<MasterLimiter>();
+            a.limiter = go.AddComponent<MasterLimiter>();
             AudioTap.TryStart(go);
             a.Build();
             Instance = a;

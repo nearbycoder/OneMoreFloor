@@ -12,6 +12,13 @@ namespace OneMoreFloor
     public sealed class MasterLimiter : MonoBehaviour
     {
         public float Ceiling = 0.85f;
+        /// <summary>The level the whole mix fades to (0 silent, 1 full), set from the main thread: MUTE IN BACKGROUND
+        /// fades it out while the window is in the background. It ramps per sample, after every source, so nothing
+        /// clicks and the synced stems keep playing in time underneath.</summary>
+        public float OutputGain = 1f;
+        /// <summary>Self-test: the largest sample of the output in the last buffer (after the fade and the limiter).</summary>
+        public float LastPeak { get; private set; }
+        float fade = 1f, fadeOut, fadeIn;
         float gain = 1f;
         float attack, release;
         int look, pos, channels;
@@ -26,6 +33,8 @@ namespace OneMoreFloor
             release = 1f - Mathf.Exp(-1f / (0.12f * sr));
             required = new float[look];
             for (int i = 0; i < look; i++) required[i] = 1f;
+            fadeOut = 1f / (0.25f * sr);   // out in a quarter of a second, back in 0.4 s
+            fadeIn = 1f / (0.4f * sr);
         }
 
         void OnAudioFilterRead(float[] data, int ch)
@@ -36,8 +45,10 @@ namespace OneMoreFloor
                 delay = new float[look * ch];
                 pos = 0;
             }
+            float target = Mathf.Clamp01(OutputGain), outPeak = 0f;
             for (int i = 0; i < data.Length; i += ch)
             {
+                fade = fade > target ? Mathf.Max(target, fade - fadeOut) : Mathf.Min(target, fade + fadeIn);
                 float peak = 0f;
                 for (int c = 0; c < ch; c++) peak = Mathf.Max(peak, Mathf.Abs(data[i + c]));
                 required[pos] = peak > Ceiling ? Ceiling / peak : 1f;
@@ -47,13 +58,15 @@ namespace OneMoreFloor
                 int d = pos * ch;
                 for (int c = 0; c < ch; c++)
                 {
-                    float outv = delay[d + c] * gain;
+                    float outv = delay[d + c] * gain * fade;
                     delay[d + c] = data[i + c];
                     // the window guarantees this almost never triggers; it's a last line of defence
                     data[i + c] = Mathf.Clamp(outv, -Ceiling, Ceiling);
+                    outPeak = Mathf.Max(outPeak, Mathf.Abs(data[i + c]));
                 }
                 pos = (pos + 1) % look;
             }
+            LastPeak = outPeak;
         }
     }
 }

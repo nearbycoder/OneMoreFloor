@@ -20,6 +20,8 @@ namespace OneMoreFloor
         public bool EndingSeen;
         public string[] SeenHints = new string[0];
         public float Master = 1f, Music = 0.8f, Sfx = 0.9f;
+        /// <summary>MUTE IN BACKGROUND: the sound fades out while the window doesn't have focus.</summary>
+        public bool MuteInBackground = true;
         public bool ScreenShake = true;
         public bool Fullscreen;
         public bool ShowForecast = true;
