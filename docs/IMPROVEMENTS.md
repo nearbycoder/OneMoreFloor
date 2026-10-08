@@ -1258,3 +1258,67 @@ The README's settings, controls, tests and status sections and this file are upd
 
 Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
 (#15), the license (#16), signing, hosting, releases and the trailer.
+
+## Round 12 results (2026-10-08)
+
+All four build items landed, plus the docs. Baseline on `251ebfb`: `build-linux` OK (143.8 MB,
+`Logs/r12/build-baseline.log`). Final checks on the final code (`d5d1a1c`; the next commit changes only docs, images and
+two tool scripts): EditMode **69/69** (`Logs/r12/test-final.xml`), `sim.sh fuzz` OK (21,270 stops matched the forecast
+preview, `Logs/r12/fuzz-final.out`), `build-linux` OK (146.0 MB, `Logs/r12/build-final.log`), and the full autopilot on
+that build, in a 1920×1080 window inside the nested KWin, passes **180 checks** (all ten shifts, every timed one to the bell, the pad pass and every `ui` check) with no FAIL or SKIP lines and no logged exceptions, at 50 fps average, worst frame 228 ms (load 28 at the start, 107 at its peak, 20 at the end; `Logs/r12/ap-full.out`). The text audit passes at 1920×1080 and 1280×800 with
+and without LARGER TEXT (`Logs/r12/audit-*.out`, on the F4 code before its commit, same code). The hashes of
+`~/.config/unity3d/Nearby/One More Floor/{save.json,prefs}` matched before and after every build, test, autopilot and
+capture run. Screenshots are in `docs/media/improvements/round12/`, and the README's ten stills were regenerated
+from the final build.
+
+| Item | Commit | Verified by | Result |
+| --- | --- | --- | --- |
+| F1 GRAPHICS FIDELITY | `de28a0b` | 3 new and 2 rewritten EditMode tests; 3 new `ui` checks and 1 pad check; `-omfFidelityShots` captures; `Tools/fidelity.sh perf` | Met. The `ui` check reads the running pipeline at each step (below) and HIGH matches the shipped settings exactly, bloom aside (see below). Every step survives a save round trip; old saves map HIGH → HIGH, BALANCED → MEDIUM, LOW → LOW, and the old field is still written so an older build keeps the nearest level. The mouse (press a notch, drag across, click), the arrow keys and the d-pad all move it. A 20-particle burst makes 10 / 16 / 20 / 32 particles. LOW was the fastest step in every round. |
+| F2 a city behind the hotel | `b71aa7d` | `-omfSkyShots` captures of all nine lighting presets with and without the city (`-omfNoCity`), same frozen moment; PerfProbe | Met. The blank band is gone under every preset, and the lit windows follow the time of day (`f2-city-before-after-*.jpg`). Nothing covers the hotel, labels or panel. Its frame-time cost is smaller than the noise between rounds (HIGH with and without it overlapped at both sizes). It's 10 merged meshes (PerfProbe counted 170–180 renderers without it and 182–199 with it). |
+| F3 elevator doors | `578f7bc` | 2 new `ui` checks; the existing pad restart/quit checks; captures | Met. CLOCK IN: the shift started only once the doors were shut (1.00), exactly once despite a double click, clicks landed on the doors meanwhile, and the animation took 0.93 s in the full run and 0.94–0.95 s in the `ui` runs (0.92 s designed; each phase can overrun by up to one frame, and one earlier run at load 29 with 108 ms frames measured 1.00 s). REDUCED MOTION fades in place in 0.63–0.71 s (0.62 s designed; 0.71 s with a 96 ms frame in the full run). The pad's restart and quit checks still pass. |
+| F4 F11 / Alt+Enter on the controls panel | `d5d1a1c` | 2 extended `ui` checks; 1 rewritten EditMode test; the text audit at 4 settings | Met. Mouse and arrow-key layouts end with "F11 / ALT+ENTER: Fullscreen on or off", the panel fits beside the card, and nothing spills or falls under the floor at 1920×1080 and 1280×800, with and without LARGER TEXT. |
+
+### GRAPHICS FIDELITY: the steps
+
+| Step | Pipeline as read in the built game (`ui` check) | 1920×1080 avg fps (p50) | 2560×1440 avg fps (p50) |
+| --- | --- | --- | --- |
+| LOW | MSAA 1, scale 0.8, sun 1024 px ×1 hard, no ambient occlusion, bloom off, particles ×0.5 | 49.3 / 50.6 (17.8 / 16.3 ms) | 50.7 / 51.3 (14.3 / 15.3 ms) |
+| MEDIUM | MSAA 2, sun 2048 px ×2 soft, half-res 4-sample AO, bloom at quarter res, particles ×0.8 | 45.7 / 43.2 (20.2 / 21.2 ms) | 53.0 / 40.7 (15.0 / 23.0 ms) |
+| HIGH (default) | MSAA 4, sun 4096 px ×2 soft, 8-sample AO, bloom, LUT 32, 32-bit colour, particles ×1 | 47.0 / 47.6 (19.1 / 17.5 ms) | 49.8 / 38.2 (17.7 / 24.0 ms) |
+| ULTRA | MSAA 8, sun 8192 px ×4 soft, soft lamp shadows (8 lamps), 12-sample AO (stronger, wider), bloom, depth of field, LUT 64, 64-bit colour, particles ×1.6 | 32.7 / 35.9 (29.2 / 20.1 ms) | 31.7 / 29.4 (26.4 / 31.7 ms) |
+| HIGH without the city | as HIGH | 43.2 / 52.0 (21.7 / 15.0 ms) | 33.9 / 35.2 (29.5 / 23.5 ms) |
+
+30 s of the Graveyard Shift with the bot after a 3 s settle, vsync off, two rounds in opposite orders
+(`Logs/r12/perf-1080.out`, load 17–38; `Logs/r12/perf-1440.out`, load 20–30), on the shared Radeon 8060S iGPU with
+other sessions' games on it. The same setting varied by up to 1.3× between rounds, so only the ends are clear: LOW
+fastest, ULTRA slowest. MEDIUM and HIGH can't be told apart here, and the city's cost is inside the noise.
+Same-frame captures of every step: `f1-fidelity-steps-graveyard.jpg`, `f1-fidelity-steps-tuesday.jpg` and
+`f1-fidelity-closeup-crops-graveyard.jpg` (one frozen moment, game time stopped and camera drift off, so only the
+setting changes).
+
+Found along the way:
+- **Bloom never reached the screen in the built game.** URP strips post-processing variants that no VolumeProfile
+  asset in the project uses. The only one with bloom (`SampleSceneProfile`) uses high-quality filtering, so the build
+  kept only that variant, while the game's runtime profile asked for the other: the bloom passes ran every frame and the
+  composite didn't apply them. Every step with bloom now uses the kept variant, so HIGH shows the neon, lamp and coin
+  glow it was designed with (`f1-bloom-before-after.jpg`). It's the one deliberate change to the default look.
+- The same stripping decides what ULTRA can use, so its ambient-occlusion levels are real renderer assets
+  (`PC_Renderer_NoAO/AOLow/AOHigh`, written by `ProjectSetup.ConfigureFidelity`) and `FidelityVariants.asset` keeps
+  depth of field. HDR colour grading was left out: keeping its variant means switching the shipped pipeline asset to
+  HDR grading, which changes HIGH's colours, so ULTRA uses a 64-point LUT and a 64-bit colour buffer instead. The
+  build grew 2.1 MB (143.8 → 146.0 MB), all shader variants.
+- The doors' first timing check failed on frames the test itself stalled (a capture taken just before, and captures
+  during the doors). The timed run now takes no captures; a second pass takes them. The doors also skip the frame that
+  makes the change, so a slow shift start stays hidden behind them instead of shortening the hold.
+- `Tools/make_trailer.sh stills` opened the game on the real desktop; it now runs inside the nested KWin like the
+  autopilot. The README's ten stills were regenerated with it; `pause-controls.jpg` (an autopilot capture) was replaced
+  with the final run's, which shows the new row.
+- Every nested run this round ended with `nested.sh`'s own "stopped N leftover processes from this session's bus"
+  (2, xdg-desktop-portal-kde and ksecretd, after the `ui` runs that use the alt-tab helper; 0 otherwise).
+
+Still open: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13, needs the module), WebGL (#14), a listening
+pass (#15), a license (#16), signing, notarizing and publishing the macOS build, a version bump before the next
+release, and re-cutting the trailer, poster and teaser GIF (still 0.1.0, without the city, doors or bloom). Whether
+ULTRA's look is worth its cost, whether the city competes with the hotel, whether the doors feel quick enough on the
+hundredth shift, and the default bloom need a person, as do everything rounds 4–11 left (the resume count, STOP?,
+LOW's softer text, LARGER TEXT's and MUTE IN BACKGROUND's defaults, the Deck wordings). No other GPU has been tried.

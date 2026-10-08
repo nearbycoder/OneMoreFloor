@@ -10,7 +10,9 @@
 #   Tools/make_trailer.sh capture    only capture
 #   Tools/make_trailer.sh assemble   re-assemble from an existing capture
 #   Tools/make_trailer.sh stills     only the README screenshots: the video pass, then docs/media/screenshots
-#                                    (the trailer, its poster and the teaser GIF are left as they are; ~6 minutes)
+#                                    (the trailer, its poster and the teaser GIF are left as they are; ~6 minutes).
+#                                    It runs inside a private nested KWin (Tools/nested.sh) when KWin is there
+#                                    (OMF_NESTED=0 runs it on the desktop).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="${WORK:-$ROOT/Captures/trailer}"
@@ -19,7 +21,12 @@ if [ "${1:-}" = "stills" ]; then
   STILLS="$ROOT/Captures/stills"
   rm -rf "$STILLS" && mkdir -p "$STILLS"
   echo "video pass for the stills (offline render, ~6 min)..."
-  timeout 1800 "$ROOT/Tools/play.sh" -logFile "$STILLS/video.log" -omfTrailer "$STILLS" -omfTrailerPass video > /dev/null 2>&1 || true
+  # inside a private nested KWin when there is one (Tools/nested.sh), so no window opens on the desktop
+  if [ "${OMF_NESTED:-1}" != 0 ] && command -v kwin_wayland > /dev/null && command -v dbus-run-session > /dev/null; then
+    "$ROOT/Tools/nested.sh" --timeout 1800 -logFile "$STILLS/video.log" -omfTrailer "$STILLS" -omfTrailerPass video > "$STILLS/nested.log" 2>&1 || true
+  else
+    timeout 1800 "$ROOT/Tools/play.sh" -logFile "$STILLS/video.log" -omfTrailer "$STILLS" -omfTrailerPass video > /dev/null 2>&1 || true
+  fi
   grep -q "\[Trailer\] done" "$STILLS/video.log" || { echo "video pass failed (see $STILLS/video.log)"; exit 1; }
   nice -n 10 python3 "$ROOT/Tools/trailer/build.py" "$STILLS" "$ROOT/docs/media" screenshots
   exit 0

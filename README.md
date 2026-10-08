@@ -83,7 +83,7 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
 
 **F11** or **Alt+Enter** switches fullscreen anywhere in the game; it's the same as the FULLSCREEN setting, so Settings
-shows it and the next launch keeps it.
+shows it and the next launch keeps it. The pause card's controls panel lists it too.
 
 The shift also pauses itself if the window loses focus or the controller you're playing with disconnects, and while the
 window is in the background the game draws at most 30 frames a second and its sound fades out (the **MUTE IN
@@ -211,16 +211,32 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 | 9 | Friday the 13th · Graveyard Shift | Everyone at once, Flip cards, night. Clearing it plays the ending. |
 | 10 | Overtime | Endless. It keeps getting busier until five complaints. **Today's Shift** is a daily Overtime: the same building and opening guests for every run that day, with its own best. |
 
+Clocking in (and out) closes a pair of brass elevator doors over the screen, which name the shift on the way in.
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
 pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
 complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, muting the game while it's in the background, fullscreen, a **graphics** level, screen shake, the shuffle forecast, relaxed shifts,
+settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, muting the game while it's in the background, fullscreen, **graphics fidelity**, screen shake, the shuffle forecast, relaxed shifts,
 **reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still) and
 **larger text** (no text with capitals under 12 px on any screen: the HUD's, panel's and labels' small print grows by
 about a fifth at 1920×1080 and a third on a Steam Deck).
-GRAPHICS is HIGH by default (the look in the screenshots); BALANCED and LOW turn down antialiasing, shadows, bloom and,
-on LOW, the render resolution, for weaker GPUs and big screens.
+GRAPHICS FIDELITY is a four-notch slider (drag it, click a notch, or step it with the arrow keys or the d-pad). HIGH is
+the default and the look in the screenshots. MEDIUM and LOW turn down antialiasing, shadows, ambient occlusion, bloom and
+particles and, on LOW, the render resolution, for weaker GPUs and big screens. ULTRA adds 8× MSAA, a sharper four-cascade
+sun shadow, soft shadows from every floor's lamp, stronger ambient occlusion, depth of field on the far city, finer colour
+precision and denser particles:
+
+| Step | What it changes | Frame rate, 1920×1080 (load 17–38) | 2560×1440 (load 20–30) |
+| --- | --- | --- | --- |
+| LOW | no MSAA, 0.8 render scale, 1024 px hard shadows, no ambient occlusion, no bloom, half the particles | 49–51 fps | 51 fps |
+| MEDIUM | 2× MSAA, 2048 px shadows, half-resolution 4-sample ambient occlusion, quarter-resolution bloom, 0.8× particles | 43–46 fps | 41–53 fps |
+| HIGH (default) | 4× MSAA, 4096 px two-cascade soft shadows, 8-sample ambient occlusion, bloom | 47–48 fps | 38–50 fps |
+| ULTRA | 8× MSAA, 8192 px four-cascade shadows, lamp shadows, 12-sample ambient occlusion, depth of field, 64-point LUT and 64-bit colour, 1.6× particles | 33–36 fps | 29–32 fps |
+
+The frame rates are 30 s of the Graveyard Shift with vsync off on this machine's Radeon 8060S iGPU, shared with other
+work (two interleaved rounds each; `Tools/fidelity.sh perf`), so treat them as rough: the same step varied by up to
+1.3× between rounds. Captures of one frozen moment at every step are in
+[docs/media/improvements/round12](docs/media/improvements/round12/f1-fidelity-steps-graveyard.jpg).
 
 ## Screenshots
 
@@ -303,7 +319,7 @@ Tools/sim.sh balance       # four bot skill levels play every shift (also: human
 Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
                            # then drives the menus with a virtual gamepad and a virtual keyboard and runs the flow
                            # checks (late pass, time card, auto-pause, pad glyphs, arrow keys, WASD and Esc, settings and
-                           # the graphics level, patience badges, guest guide, restart and quit confirmation, the
+                           # every GRAPHICS FIDELITY step by mouse, keys and pad, the screen doors, patience badges, guest guide, restart and quit confirmation, the
                            # pause card's controls panel, STOP markers, the resume count, the close-up's edge alerts,
                            # the star track's chase of a seeded best, MUTE IN BACKGROUND read off the final mix, a real
                            # alt-tab and F11 / Alt+Enter (those two only inside the nested KWin),
@@ -320,6 +336,8 @@ Tools/autopilot.sh out text   # the text audit: every visible text's capital hei
 OMF_SIZE=1280x800 Tools/autopilot.sh out text   # the same at another window size (Steam Deck here)
 Tools/autopilot.sh out text-large                # the text audit with LARGER TEXT on (a 12 px floor)
 OMF_LARGE_TEXT=1 Tools/autopilot.sh out 8        # any run with LARGER TEXT on (here the Graveyard Shift)
+Tools/fidelity.sh shots out 8   # one frozen moment of a shift at every GRAPHICS FIDELITY step (tower and close-up)
+Tools/fidelity.sh perf out 8    # frame times per step, interleaved, plus HIGH without the city (OMF_SIZE, OMF_ROUNDS)
 ```
 
 The autopilot runs the game inside a private nested KWin (`Tools/nested.sh`: its own Wayland socket, D-Bus session and
@@ -334,7 +352,7 @@ helpers like `xdg-desktop-portal-kde` and `ksecretd` there, which would otherwis
 ```sh
 Tools/make_trailer.sh      # records every shot from the built game, then cuts docs/media/trailer.mp4,
                            # the poster, the teaser GIF and the screenshots (about 15 minutes)
-Tools/make_trailer.sh stills   # only the README screenshots (about 6 minutes)
+Tools/make_trailer.sh stills   # only the README screenshots (about 6 minutes, inside the nested KWin when there is one)
 ```
 
 Automation runs (`autopilot.sh`, `demo.sh`, `make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg`
@@ -434,10 +452,11 @@ gamepad support), and it passes its automated checks. Honest caveats:
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
   names.
-- **Rounds 4 to 11 are unplayed.** The star track (and its chase of your best after three stars), the Guest Guide,
+- **Rounds 4 to 12 are unplayed.** The star track (and its chase of your best after three stars), the Guest Guide,
   the save backup, the forecast tags on the floor
   labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
-  press-twice restart and quit, the GRAPHICS setting, the menus' restored text shadows and outlines, the repositioned
+  press-twice restart and quit, the GRAPHICS FIDELITY slider and its ULTRA look, the city behind the hotel, the screen
+  doors into and out of a shift, the menus' restored text shadows and outlines, the repositioned
   shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings, the bigger small text on
   small screens, LARGER TEXT, the 30 fps background rate, MUTE IN BACKGROUND and F11 / Alt+Enter were checked by the
   autopilot, unit tests and screenshots, not by a person. The background behaviour (pause, 30 fps, the mix fading out)
@@ -448,10 +467,13 @@ gamepad support), and it passes its automated checks. Honest caveats:
   hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
 - **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
   window averaged 103 and 104 fps in round 7 (load 0.5–31); round 6's runs, with other games sharing the GPU, averaged 23–32.
-  Fullscreen on this machine's 3072×1728 display runs at about 60 fps on HIGH. GRAPHICS LOW ran 1.5–1.9× faster
-  than HIGH there in the quieter runs, but only 1.15–1.25× at 1920×1080, where the CPU is the limit. LOW's 0.8
-  render scale also softens the HUD text slightly, because the UI is drawn in the same camera stack. No other GPU
-  has been tried.
+  Fullscreen on this machine's 3072×1728 display ran at about 60 fps on HIGH in round 7. Round 12's GRAPHICS FIDELITY
+  table (above, under Features) was measured under load 17–38 with other sessions on the GPU, where the same step
+  varied by up to 1.3× between rounds: LOW was the fastest step in every round and ULTRA the slowest (29–36 fps);
+  MEDIUM and HIGH couldn't be told apart at 1920×1080, where the CPU is the limit. The city behind the hotel costs less
+  than that noise. LOW's 0.8 render scale also softens the HUD text slightly, because the UI is drawn in the same
+  camera stack. No other GPU has been tried. Bloom only started reaching the screen in round 12 (URP had stripped the
+  shader variant it used), so HIGH now shows the glow it was designed with on the neon, the lamps and the coins.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
 - **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
@@ -468,7 +490,8 @@ gamepad support), and it passes its automated checks. Honest caveats:
   then use shorter words ("$20,660 TO GO", "NEXT STOP, THE HOTEL..."), the pause card's controls panel grows taller,
   and a forecast line that won't fit makes the next card two lines tall while the one after shows only its title. The
   panel dial's scale numbers keep the default size, as they'd crowd each other. None of this has been seen on a real Deck. The screenshots above are from the current
-  build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing. Drawing guests 15% bigger was
+  build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing (and none of round 12's city, doors or
+  bloom). Drawing guests 15% bigger was
   tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
   nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer
   floors at once, which is a design decision.
