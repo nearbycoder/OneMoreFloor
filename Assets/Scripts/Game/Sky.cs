@@ -47,9 +47,12 @@ namespace OneMoreFloor
             skyline = new GameObject("Skyline").transform;
             skyline.SetParent(transform, false);
             var rng = new System.Random(7);
+            // the low-rise city between the hotel and the skyline (its lit windows follow the time of day too)
+            var cityWindows = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-omfNoCity") >= 0
+                ? new Renderer[0] : City.Build(transform);   // -omfNoCity: automation's before/after comparisons
             if (ModelLibrary.Prefab("Tower0") != null)
             {
-                var wins = new System.Collections.Generic.List<Renderer>();
+                var wins = new System.Collections.Generic.List<Renderer>(cityWindows);
                 for (int i = 0; i < 34; i++)
                 {
                     float x = -190f + i * 11.5f + (float)rng.NextDouble() * 5f;
@@ -76,7 +79,7 @@ namespace OneMoreFloor
                 return;
             }
             var bodyMat = Mats.Lit(Palette.Hex(0x2B2F4A), 0.1f);
-            var winMats = new System.Collections.Generic.List<Renderer>();
+            var winMats = new System.Collections.Generic.List<Renderer>(cityWindows);
             for (int i = 0; i < 46; i++)
             {
                 float x = -150f + i * 6.6f + (float)rng.NextDouble() * 3f;
@@ -95,6 +98,9 @@ namespace OneMoreFloor
             }
             windows = winMats.ToArray();
         }
+
+        /// <summary>Every lighting preset, in shift order (Monday's morning to the Graveyard's night).</summary>
+        public static readonly string[] Ids = { "morning", "noon", "afternoon", "dusk", "evening", "beach", "golden", "overcast", "night" };
 
         public static Preset Get(string id)
         {

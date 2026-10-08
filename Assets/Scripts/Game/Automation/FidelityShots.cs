@@ -9,23 +9,62 @@ namespace OneMoreFloor
     /// camera drift off) and saves the back buffer at every GRAPHICS FIDELITY step, LOW to ULTRA, so the captures
     /// differ only by the setting. It does it twice: the whole tower, then the close-up. It also logs how many
     /// particles a 20-particle burst makes at each step. Then it quits. Runs on a throwaway save.
+    /// -omfSkyShots dir [shift]: the same frozen moment under every lighting preset, morning to night (add -omfNoCity
+    /// for the backdrop without the city, as it was before round 12).
     /// </summary>
     public sealed class FidelityShots : MonoBehaviour
     {
         string dir;
         int shift = 1;
+        bool sky;
 
         public static void TryStart(GameRoot root)
         {
             var args = System.Environment.GetCommandLineArgs();
             int i = System.Array.IndexOf(args, "-omfFidelityShots");
+            bool sky = false;
+            if (i < 0) { i = System.Array.IndexOf(args, "-omfSkyShots"); sky = true; }
             if (i < 0 || i + 1 >= args.Length) return;
             var p = root.gameObject.AddComponent<FidelityShots>();
             p.dir = args[i + 1];
+            p.sky = sky;
             if (i + 2 < args.Length) int.TryParse(args[i + 2], out p.shift);
         }
 
         IEnumerator Start()
+        {
+            if (sky) return SkyShots();
+            return FidelitySteps();
+        }
+
+        IEnumerator SkyShots()
+        {
+            SaveData.Ephemeral = true;
+            System.IO.Directory.CreateDirectory(dir);
+            yield return new WaitForSecondsRealtime(1f);
+            var root = GameRoot.Instance;
+            root.StartShift(shift, 4242);
+            root.Runner.AutoBot = Bot.Decent(3);
+            root.Rig.Still = true;
+            yield return new WaitForSecondsRealtime(6f);
+            Time.timeScale = 0f;
+            foreach (var id in Sky.Ids)
+            {
+                root.Sky.Apply(id, root.Sun, root.WorldCam);
+                for (int f = 0; f < 10; f++) yield return null;
+                yield return new WaitForEndOfFrame();
+                var tex = ScreenCapture.CaptureScreenshotAsTexture();
+                string name = System.IO.Path.Combine(dir, $"sky-{System.Array.IndexOf(Sky.Ids, id)}-{id}.png");
+                System.IO.File.WriteAllBytes(name, tex.EncodeToPNG());
+                Destroy(tex);
+                Debug.Log($"[Fidelity] sky {id} {Screen.width}x{Screen.height} saved to {name}");
+            }
+            Time.timeScale = 1f;
+            Debug.Log("[Fidelity] done");
+            Application.Quit(0);
+        }
+
+        IEnumerator FidelitySteps()
         {
             SaveData.Ephemeral = true;
             System.IO.Directory.CreateDirectory(dir);

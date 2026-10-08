@@ -32,7 +32,7 @@ namespace OneMoreFloor
             var args = System.Environment.GetCommandLineArgs();
             SaveData.Ephemeral = System.Array.IndexOf(args, "-omfAutopilot") >= 0 || System.Array.IndexOf(args, "-omfEphemeral") >= 0
                                  || System.Array.IndexOf(args, "-omfDemo") >= 0 || System.Array.IndexOf(args, "-omfTrailer") >= 0
-                                 || System.Array.IndexOf(args, "-omfFidelityShots") >= 0
+                                 || System.Array.IndexOf(args, "-omfFidelityShots") >= 0 || System.Array.IndexOf(args, "-omfSkyShots") >= 0
                                  || (Application.isEditor && Application.isBatchMode);   // headless editor captures
             // Pace frames ourselves: on Wayland a vsync'd swap blocks on compositor frame callbacks,
             // which some compositors throttle hard for unfocused windows. Compositors don't tear.
