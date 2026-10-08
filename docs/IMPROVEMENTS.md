@@ -1073,3 +1073,78 @@ release, and re-cutting the trailer, poster and teaser GIF. Whether LARGER TEXT 
 screens, whether "$20,660 TO GO" and the title-only THEN card read well, and everything rounds 4–9 left for a person
 (the resume count, STOP?, LOW's softer text) need the owner or a player. A real Steam Deck, a real 5:4 monitor and
 AZERTY are still untried, and nobody has played rounds 4 to 10.
+
+## Round 11 scope (2026-10-08, branch `improvements-11`)
+
+The ranked list's remaining items (#12–#16) still wait on the owner or on human ears, and guest scale, a 5:4 layout,
+LARGER TEXT's default, the short Deck wordings, the resume count, LOW's softer text and STOP? are the owner's call, so
+none of them change here. Baseline on `08958f8`: `build-linux` OK and the `ui` flow checks pass (55 checks, load 2–11,
+`Logs/r11/ap-baseline-ui.out`). A fresh look at a normal run found these:
+
+- **Nothing to chase after three stars.** The HUD's star track says ALL THREE STARS! and stops, while the score attack
+  is about beating your best. The best only shows on the time card, after the bell.
+- **Sound keeps playing in the background.** The shift pauses itself when the window loses focus and the frame rate
+  drops to 30, but the title's lounge music and the paused shift's muffled stems keep playing while the player is in
+  another window.
+- **Fullscreen by key goes out of step with Settings.** Unity's own Alt+Enter switch is on (`allowFullscreenSwitch`),
+  but the game never hears about it: Settings still says FULLSCREEN OFF, and the next `ApplySettings` (moving any
+  volume slider, say) drops the player back into a window. It isn't remembered for the next launch either. F11 does
+  nothing.
+- **The background behaviour was never tested with a real focus change.** Round 2 promised a manual alt-tab check and
+  round 10's 30 fps cap was checked through Unity's focus callback only. The nested KWin from round 9 can now do it for
+  real. Round 10's test desktops also left helper processes (ksecretd) running.
+
+Each item ends with `sim.sh fuzz`, `unity.sh test`, `build-linux` and the autopilot (all shifts, pad pass, `ui` flow
+checks) passing, and the real `save.json` and `prefs` hashing the same before and after every run. Screenshots go to
+`docs/media/improvements/round11/`. Load average is noted with every timing.
+
+### N1. Chase your best after three stars
+
+Once all three stars are lit, the star caption names the gap to the player's best on this shift ("$1,240 TO YOUR
+BEST"), and the bar fills towards it. Passing it plays the record sound once, punches the stars and reads NEW BEST!.
+Overtime uses its best and today's shift today's best; relaxed shifts don't save bests, so they keep RELAXED CLEAR!.
+With no best yet (a first clear), it still says ALL THREE STARS!.
+- **Acceptance:** the per-frame star-track check on every shift of the full autopilot expects the new caption
+  (half the shifts get a seeded best above their third star so both cases are measured), and a `ui` check with a
+  seeded best sees "TO YOUR BEST" turn into NEW BEST! once, with the sound. LARGER TEXT keeps the caption inside its
+  box at 1280×800 (text audit).
+- **Verify:** the autopilot's own output, the text audit with LARGER TEXT at 1280×800, and a capture.
+
+### N2. Quiet in the background
+
+A **MUTE IN BACKGROUND** setting under SOUND (on by default): when the window loses focus, the whole mix fades out
+over a quarter of a second, and fades back in when focus returns. It's a gain on the final mix, after every source,
+so the synced stems keep their timing. Recordings and the autopilot keep their sound (they run unfocused).
+- **Acceptance:** in the built game, the output peak measured on the final mix drops to silence (below −60 dBFS)
+  within 0.5 s of focus going and comes back when it returns; with the setting off it doesn't drop. The setting
+  survives a save round trip and an old save loads with it on. The settings card still fits and passes the click hit
+  test and the text audit (with and without LARGER TEXT) at 1920×1080, 1280×800 and 2560×1080.
+- **Verify:** an extended `ui` focus check reading the mix's meter, an EditMode save test, the text audit, captures.
+
+### N3. F11 and Alt+Enter switch fullscreen, and Settings remembers
+
+F11 and Alt+Enter toggle the FULLSCREEN setting itself (saved, applied, and shown on the settings card if it's open),
+in menus and in play. Unity's own Alt+Enter switch is turned off so there's only one path.
+- **Acceptance:** in the built game, inside the nested KWin only (so nothing goes fullscreen on a real desktop), F11
+  makes the window fullscreen at the nested display's size with the setting saved ON; moving the MASTER slider keeps
+  it fullscreen; Alt+Enter brings back the window at its clamped size with the setting OFF.
+- **Verify:** `ui` checks with the virtual keyboard, skipped (and reported) outside the nested KWin.
+
+### N4. A real alt-tab, scripted
+
+The nested KWin gets a helper the autopilot can ask to open a second window (a `kdialog` box, which takes focus as any
+new window does) and close it again. The `ui` pass then checks, on the compositor's own focus change, that the shift
+pauses, the frame rate drops to 30, the mix goes quiet (N2), and that closing the other window brings focus, the frame
+rate and the sound back. `Tools/nested.sh` also stops anything still running on its private D-Bus session when it ends,
+by PID, so helpers like ksecretd can't outlive it.
+- **Acceptance:** the `ui` pass reports the real focus change and passes; after every nested run this round, no
+  process started on that run's private bus is left (checked by its bus address).
+- **Verify:** the autopilot output and `nested.log`, and a process listing after each run.
+
+### N5. README, status and results
+
+The README's settings, controls and tests sections, "Status and known issues" and this file are updated to match.
+
+Not this round: bigger guests (#12, owner), a 5:4 layout (owner), Windows (#13), WebGL (#14), the listening pass
+(#15), the license (#16), LARGER TEXT's default, the Deck wordings, the resume count, LOW's softer text and STOP?
+(owner), signing, hosting, releases and the trailer.
