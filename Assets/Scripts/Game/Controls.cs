@@ -38,8 +38,7 @@ namespace OneMoreFloor
         /// <summary>Was there any directional/confirm input this frame (used to engage focus rings)?</summary>
         public static bool AnyNav => NavX != 0 || NavY != 0 || Submit || Cancel;
 
-        static Vector2Int held;
-        static float repeatAt;
+        static NavRepeat repeat;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
@@ -49,7 +48,7 @@ namespace OneMoreFloor
             LastPadUse = -1f;
             NavX = NavY = 0;
             Submit = Cancel = PausePressed = false;
-            held = Vector2Int.zero;
+            repeat = default;
             UiScreen.All.Clear();
         }
 
@@ -102,13 +101,39 @@ namespace OneMoreFloor
             var dir = new Vector2Int(Mathf.Abs(stick.x) > 0.55f ? (int)Mathf.Sign(stick.x) : 0, Mathf.Abs(stick.y) > 0.55f ? (int)Mathf.Sign(stick.y) : 0);
             if (dir.x != 0 && dir.y != 0) { if (Mathf.Abs(stick.x) > Mathf.Abs(stick.y)) dir.y = 0; else dir.x = 0; }
             NavX = NavY = 0;
-            float now = Time.unscaledTime;
-            if (dir != held) { held = dir; repeatAt = now + 0.38f; NavX = dir.x; NavY = dir.y; }
-            else if (dir != Vector2Int.zero && now >= repeatAt) { repeatAt = now + 0.12f; NavX = dir.x; NavY = dir.y; }
+            if (repeat.Step(dir, Time.unscaledDeltaTime)) { NavX = dir.x; NavY = dir.y; }
 
             Submit = (gp != null && gp.buttonSouth.wasPressedThisFrame) || (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame));
             Cancel = gp != null && gp.buttonEast.wasPressedThisFrame;
             PausePressed = gp != null && gp.startButton.wasPressedThisFrame;
+        }
+    }
+
+    /// <summary>
+    /// Key repeat for directional input: a step on press, another once it has been held for <see cref="Delay"/>, then
+    /// one every <see cref="Interval"/>. Each frame counts for at most <see cref="MaxFrame"/>, so a stalled frame (a load
+    /// hitch while a key is down) can't turn one press into two.
+    /// </summary>
+    public struct NavRepeat
+    {
+        public const float Delay = 0.38f, Interval = 0.12f, MaxFrame = 0.05f;
+        Vector2Int held;
+        float wait;
+
+        /// <summary>Feeds this frame's direction and length; true when it should step.</summary>
+        public bool Step(Vector2Int dir, float dt)
+        {
+            if (dir != held)
+            {
+                held = dir;
+                wait = Delay;
+                return dir != Vector2Int.zero;
+            }
+            if (dir == Vector2Int.zero) return false;
+            wait -= Mathf.Min(dt, MaxFrame);
+            if (wait > 0f) return false;
+            wait = Interval;
+            return true;
         }
     }
 }
