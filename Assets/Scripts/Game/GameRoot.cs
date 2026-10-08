@@ -336,6 +336,7 @@ namespace OneMoreFloor
             }
             Rig.ShakeScale = save.ScreenShake && !save.ReducedMotion ? 1f : 0f;
             Rig.Still = save.ReducedMotion;
+            TextFloor.Large = save.LargeText;
             if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
             GraphicsQuality.Apply(GraphicsOverride >= 0 ? GraphicsOverride : save.Graphics, Sun, Post);
             if (!Application.isEditor)

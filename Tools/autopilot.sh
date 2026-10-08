@@ -4,6 +4,7 @@
 #   Tools/autopilot.sh [outdir] [shiftIndex|pad|ui]   (the full run takes about 15 minutes)
 # It runs in a private nested KWin (Tools/nested.sh) when KWin is available, so no window opens on the real
 # desktop. OMF_NESTED=0 runs it on the real desktop instead. OMF_SIZE=WxH sets the window (default 1920x1080).
+# OMF_LARGE_TEXT=1 plays it with the LARGER TEXT setting on.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$ROOT/Logs/autopilot}"
@@ -12,6 +13,7 @@ OUT="$(realpath -m "$OUT")"
 rm -rf "$OUT"; mkdir -p "$OUT"
 extra=()
 [ -n "${2:-}" ] && extra=(-omfAutopilotShift "$2")
+[ "${OMF_LARGE_TEXT:-0}" = 1 ] && extra+=(-omfLargeText)
 SIZE="${OMF_SIZE:-1920x1080}"; W="${SIZE%x*}"; H="${SIZE#*x}"
 args=(-screen-width "$W" -screen-height "$H" -logFile "$OUT/player.log" -omfAutopilot "$OUT" "${extra[@]}")
 if [ "${OMF_NESTED:-1}" != 0 ] && command -v kwin_wayland > /dev/null && command -v dbus-run-session > /dev/null; then

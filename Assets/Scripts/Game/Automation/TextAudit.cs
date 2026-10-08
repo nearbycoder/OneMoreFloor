@@ -14,7 +14,11 @@ namespace OneMoreFloor
         public struct Entry
         {
             public string Name, Text;
+            /// <summary>For a text under the floor: its size, the size it was laid out at, and its scale against the canvas.</summary>
+            public string Detail;
             public float CapPx, SpillPx;
+            /// <summary>The floor this text is kept to (ornaments keep the default under LARGER TEXT).</summary>
+            public float FloorPx;
             /// <summary>The text floor is drawing it bigger than its code asked for.</summary>
             public bool Raised;
         }
@@ -30,13 +34,15 @@ namespace OneMoreFloor
                 var info = t.textInfo;
                 if (info == null || info.characterCount == 0) continue;
                 // the smallest capitals actually laid out (auto-sizing and <size> tags included)
-                float cap = float.MaxValue;
+                float cap = float.MaxValue, laid = 0f;
+                string face0 = "";
                 for (int i = 0; i < info.characterCount; i++)
                 {
                     var c = info.characterInfo[i];
                     if (!c.isVisible || c.fontAsset == null) continue;
                     var face = c.fontAsset.faceInfo;
-                    cap = Mathf.Min(cap, c.pointSize * face.capLine / face.pointSize);
+                    float cc = c.pointSize * face.capLine / face.pointSize;
+                    if (cc < cap) { cap = cc; laid = c.pointSize; face0 = $"{c.fontAsset.name} cap {face.capLine:0.00}/{face.pointSize:0.00} scale {c.scale:0.0000}"; }
                 }
                 if (cap == float.MaxValue) continue;
                 var rt = t.rectTransform;
@@ -54,7 +60,13 @@ namespace OneMoreFloor
                     var p = pr.rect;
                     spill = Mathf.Max(spill, Mathf.Max(p.xMin - Mathf.Min(lo.x, hi.x), Mathf.Max(lo.x, hi.x) - p.xMax) * PixelsPerUnit(pr, cam) / perUnit);
                 }
-                list.Add(new Entry { Name = PathOf(rt), Text = Clip(t.GetParsedText()), CapPx = cap * perUnit, SpillPx = spill * perUnit, Raised = TextFloor.Raised(t) });
+                var canvas = t.canvas != null ? t.canvas.rootCanvas.transform : null;
+                float rel = canvas != null ? rt.lossyScale.y / canvas.lossyScale.y : 1f;
+                string scaled = "";
+                for (var p = rt.transform; p != null && p != canvas; p = p.parent)
+                    if (Mathf.Abs(p.localScale.y - 1f) > 1e-4f || Mathf.Abs(p.localEulerAngles.z) > 1e-3f) scaled += $" {p.name} x{p.localScale.y:0.0000} {p.localEulerAngles.z:0.0}deg";
+                list.Add(new Entry { Name = PathOf(rt), Text = Clip(t.GetParsedText()), CapPx = cap * perUnit, SpillPx = spill * perUnit, Raised = TextFloor.Raised(t), FloorPx = TextFloor.CapFloorOf(t),
+                                     Detail = $"size {t.fontSize:0.00} (min {t.fontSizeMin:0.00}) laid out at {laid:0.00}, scale {rel:0.0000}, {perUnit:0.0000} px per unit, {face0},{scaled}" });
             }
             return list;
         }
@@ -70,7 +82,7 @@ namespace OneMoreFloor
             foreach (var e in entries)
             {
                 smallest = Mathf.Min(smallest, e.CapPx);
-                if (e.CapPx < floorPx - 0.05f) small.Add(e);
+                if (e.CapPx < Mathf.Min(floorPx, e.FloorPx) - 0.05f) small.Add(e);
                 if (e.SpillPx > 2f) spilled.Add(e);
                 if (e.Raised) raised++;
             }
@@ -79,7 +91,7 @@ namespace OneMoreFloor
             small.Sort((a, c) => a.CapPx.CompareTo(c.CapPx));
             var sb = new System.Text.StringBuilder();
             sb.Append($"{screen}: {entries.Count} texts, smallest capitals {(entries.Count > 0 ? smallest : 0f):0.0} px, {under} under {floorPx:0} px, {spills} spilling, {raised} drawn bigger by the text floor");
-            foreach (var e in small) sb.Append($"\n    small {e.CapPx:0.0} px  {e.Name}  '{e.Text}'");
+            foreach (var e in small) sb.Append($"\n    small {e.CapPx:0.00} px  {e.Name}  '{e.Text}'  ({e.Detail})");
             foreach (var e in spilled) sb.Append($"\n    spill {e.SpillPx:0.0} px  {e.Name}  '{e.Text}'");
             if (raised <= 6) foreach (var e in entries) if (e.Raised) sb.Append($"\n    bigger {e.CapPx:0.0} px  {e.Name}  '{e.Text}'");
             return sb.ToString();
@@ -100,9 +112,11 @@ namespace OneMoreFloor
 
         static float PixelsPerUnit(RectTransform rt, Camera cam)
         {
+            // over 100 units: one canvas unit is under a hundredth of a world unit, too small for float positions
+            // far from the origin (it read up to 1% low on some texts)
             Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(Vector3.zero));
-            Vector2 b = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(Vector3.up));
-            return (b - a).magnitude;
+            Vector2 b = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(Vector3.up * 100f));
+            return (b - a).magnitude / 100f;
         }
 
         static string PathOf(Transform t)

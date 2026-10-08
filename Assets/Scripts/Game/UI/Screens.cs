@@ -478,7 +478,7 @@ namespace OneMoreFloor
         UiScreen returnTo;
         GameRoot game;
         UiSlider master, music, sfx;
-        UiToggle full, shake, forecast, motion, relaxed;
+        UiToggle full, shake, forecast, motion, large, relaxed;
         UiChoice graphics;
 
         public static SettingsScreen Create(Transform parent, GameRoot game)
@@ -497,12 +497,13 @@ namespace OneMoreFloor
             s.sfx = UiSlider.Create(card, "EFFECTS", new Vector2(0, 112), save.Sfx, v => { save.Sfx = v; game.ApplySettings(); AudioDirector.Instance?.Sfx("coin", 0.6f, 1f, 0f, 0f, 0.15f); });
             Deco.Label("Game", card, "GAME", 18, new Vector2(720, 26), new Vector2(0, 50), TextAlignmentOptions.Left, Deco.Muted).characterSpacing = 12f;
             s.full = UiToggle.Create(card, "FULLSCREEN", new Vector2(0, 4), save.Fullscreen, v => { save.Fullscreen = v; game.ApplySettings(); });
-            s.graphics = UiChoice.Create(card, "GRAPHICS", new Vector2(0, -54), GraphicsQuality.Names, save.Graphics, v => { save.Graphics = v; game.ApplySettings(); });
-            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -112), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
-            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -170), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
-            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -228), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
-            s.relaxed = UiToggle.Create(card, "RELAXED SHIFTS", new Vector2(0, -286), save.Relaxed, v => { save.Relaxed = v; game.ApplySettings(); });
-            var done = UiButton.Create(card, "DONE", new Vector2(0, -386), new Vector2(300, 74), () => s.Close(), true, 30);
+            s.graphics = UiChoice.Create(card, "GRAPHICS", new Vector2(0, -50), GraphicsQuality.Names, save.Graphics, v => { save.Graphics = v; game.ApplySettings(); });
+            s.shake = UiToggle.Create(card, "SCREEN SHAKE", new Vector2(0, -104), save.ScreenShake, v => { save.ScreenShake = v; game.ApplySettings(); });
+            s.forecast = UiToggle.Create(card, "SHUFFLE FORECAST", new Vector2(0, -158), save.ShowForecast, v => { save.ShowForecast = v; game.ApplySettings(); });
+            s.motion = UiToggle.Create(card, "REDUCED MOTION", new Vector2(0, -212), save.ReducedMotion, v => { save.ReducedMotion = v; game.ApplySettings(); });
+            s.large = UiToggle.Create(card, "LARGER TEXT", new Vector2(0, -266), save.LargeText, v => { save.LargeText = v; game.ApplySettings(); });
+            s.relaxed = UiToggle.Create(card, "RELAXED SHIFTS", new Vector2(0, -320), save.Relaxed, v => { save.Relaxed = v; game.ApplySettings(); });
+            var done = UiButton.Create(card, "DONE", new Vector2(0, -398), new Vector2(300, 74), () => s.Close(), true, 30);
             done.Focused = true;
             s.Primary = () => s.Close();
             s.Back = () => s.Close();

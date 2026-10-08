@@ -140,7 +140,10 @@ namespace OneMoreFloor
                 img.preserveAspect = true;
                 var name = UiKit.Text("Name", row, open ? e.Name : "???", 30, open ? Palette.Cream : muted, UiKit.Display, TextAlignmentOptions.Left, new Vector2(310, 40), new Vector2(50, 36));
                 if (open) Deco.Shadowed(name);
-                var rule = UiKit.Text("Rule", row, open ? e.Rule : Arrives(e.Shift), 19, open ? Palette.Hex(0xE6DAC2) : muted, UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(300, 72), new Vector2(45, -22));
+                // LARGER TEXT: a third line's room, down to the next row's name, and the gap to the icon
+                var rule = TextFloor.Large
+                    ? UiKit.Text("Rule", row, open ? e.Rule : Arrives(e.Shift), 19, open ? Palette.Hex(0xE6DAC2) : muted, UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(330, 92), new Vector2(50, -32))
+                    : UiKit.Text("Rule", row, open ? e.Rule : Arrives(e.Shift), 19, open ? Palette.Hex(0xE6DAC2) : muted, UiKit.Body, TextAlignmentOptions.TopLeft, new Vector2(300, 72), new Vector2(45, -22));
                 rule.textWrappingMode = TextWrappingModes.Normal;
                 rule.enableAutoSizing = true;
                 rule.fontSizeMin = 15;

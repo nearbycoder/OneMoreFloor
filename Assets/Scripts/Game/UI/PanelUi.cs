@@ -13,7 +13,7 @@ namespace OneMoreFloor
         RectTransform root;
         TextMeshProUGUI dialNumber, dialName, nextLabel;
         // the forecast's heading, and the shorter words it uses when the text floor draws it bigger on a small screen
-        const string NextLong = "NEXT STOP, THE BUILDING WILL...", NextShort = "NEXT STOP, THE BUILDING...";
+        const string NextLong = "NEXT STOP, THE BUILDING WILL...", NextShort = "NEXT STOP, THE BUILDING...", NextShortest = "NEXT STOP, THE HOTEL...";
         RectTransform needle;
         float needleAngle;
         readonly ForecastCard[] cards = new ForecastCard[2];
@@ -72,8 +72,8 @@ namespace OneMoreFloor
             for (int i = 0; i < 9; i++)
             {
                 float a = Mathf.Lerp(150f, 30f, i / 8f) * Mathf.Deg2Rad;
-                UiKit.Text("Tick" + i, dial.transform, (i + 1).ToString(), 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center,
-                    new Vector2(24, 24), new Vector2(Mathf.Cos(a) * 66f, Mathf.Sin(a) * 66f - 18f));
+                TextFloor.Ornament(UiKit.Text("Tick" + i, dial.transform, (i + 1).ToString(), 15, Palette.Ink, UiKit.Signage, TextAlignmentOptions.Center,
+                    new Vector2(24, 24), new Vector2(Mathf.Cos(a) * 66f, Mathf.Sin(a) * 66f - 18f)));
             }
             needle = UiKit.Rect("Needle", dial.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0f), new Vector2(0, -18), new Vector2(7, 92));
             needle.gameObject.AddComponent<Image>().color = Palette.Hex(0xC0262D);
@@ -91,8 +91,7 @@ namespace OneMoreFloor
                 c.Root = c.Back.rectTransform;
                 c.Title = UiKit.Text("T", c.Root, "", 14, Palette.Oxblood, UiKit.Signage, TextAlignmentOptions.Left, new Vector2(292, 20), new Vector2(0, 13));
                 c.Title.characterSpacing = 4f;
-                c.Body = UiKit.Text("B", c.Root, "", 19, Palette.Ink, UiKit.Body, TextAlignmentOptions.Left, new Vector2(292, 26), new Vector2(0, -9));
-                c.Body.richText = true;
+                c.Body = CardBody(c.Root);
                 cards[i] = c;
             }
 
@@ -150,7 +149,43 @@ namespace OneMoreFloor
             if (slot >= 0 && slot < buttons.Length) buttons[slot].Press = 1f;
         }
 
-        string Describe(Card c, Building pred)
+        bool tallCards;
+        /// <summary>Self-test: the forecast cards are in their two-line layout (LARGER TEXT on a small screen).</summary>
+        public bool TallCards => tallCards;
+        public const float TallCardH = 92f, TallBodyH = 60f, TitleOnlyH = 28f;
+
+        /// <summary>Whether a card's line fits on one line (at the size it will be drawn).</summary>
+        public static bool FitsOneLine(TMP_Text body) => body.GetPreferredValues(body.text).x <= body.rectTransform.rect.width;
+
+        void LayoutCards(bool tall)
+        {
+            tallCards = tall;
+            var c0 = cards[0];
+            var c1 = cards[1];
+            // the first card's top edge stays put; both stop short of the buttons' caps
+            c0.Root.sizeDelta = new Vector2(320, tall ? TallCardH : 54);
+            c0.Root.anchoredPosition = new Vector2(0, tall ? 29f - TallCardH * 0.5f : 2f);
+            c0.Title.rectTransform.anchoredPosition = new Vector2(0, tall ? TallCardH * 0.5f - 14f : 13f);
+            c0.Body.textWrappingMode = tall ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+            c0.Body.alignment = tall ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.Left;
+            c0.Body.rectTransform.sizeDelta = new Vector2(292, tall ? TallBodyH : 26);
+            c0.Body.rectTransform.anchoredPosition = new Vector2(0, tall ? TallCardH * 0.5f - 26f - TallBodyH * 0.5f : -9f);
+            c1.Root.sizeDelta = new Vector2(320, tall ? TitleOnlyH : 54);
+            c1.Root.anchoredPosition = new Vector2(0, tall ? 29f - TallCardH - 4f - TitleOnlyH * 0.5f : -58f);
+            c1.Title.rectTransform.anchoredPosition = new Vector2(0, tall ? 0f : 13f);
+            c1.Body.gameObject.SetActive(!tall);
+        }
+
+        /// <summary>A forecast card's line of text ("Library and Boiler Room").</summary>
+        public static TextMeshProUGUI CardBody(Transform card)
+        {
+            var t = UiKit.Text("B", card, "", 19, Palette.Ink, UiKit.Body, TextAlignmentOptions.Left, new Vector2(292, 26), new Vector2(0, -9));
+            t.richText = true;
+            return t;
+        }
+
+        /// <summary>What a card does, for a forecast card's <see cref="CardBody"/>.</summary>
+        public static string Describe(Card c)
         {
             string F(FloorId f) => $"<b><color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(Palette.Floor(f), Palette.Ink, 0.4f))}>{Defs.Floor(f).Name}</color></b>";
             switch (c.Type)
@@ -181,7 +216,8 @@ namespace OneMoreFloor
         {
             var sim = runner.Sim;
             if (sim == null) return;
-            string heading = TextFloor.Raised(nextLabel) ? NextShort : NextLong;
+            // LARGER TEXT: the longest heading that fits
+            string heading = TextFloor.Large ? TextFloor.Fit(nextLabel, NextLong, NextShort, NextShortest) : TextFloor.Raised(nextLabel) ? NextShort : NextLong;
             if (nextLabel.text != heading) nextLabel.text = heading;
             var b = sim.B;
 
@@ -203,9 +239,16 @@ namespace OneMoreFloor
                 var c = sim.Forecast[i];
                 cards[i].Root.gameObject.SetActive(true);
                 cards[i].Title.text = (i == 0 ? "NEXT: " : "THEN: ") + TitleOf(c);
-                cards[i].Body.text = Describe(c, pred);
+                cards[i].Body.text = Describe(c);
                 pred.Apply(c, null, null);
             }
+            // LARGER TEXT on a small screen: a line that won't fit makes the next card two lines tall, and the one after
+            // shows only its title
+            bool tall = false;
+            if (TextFloor.Large && forecastOn)
+                for (int i = 0; i < cards.Length; i++)
+                    if (cards[i].Root.gameObject.activeSelf && !FitsOneLine(cards[i].Body)) tall = true;
+            if (tall != tallCards) LayoutCards(tall);
 
             // buttons
             int targetSlot = sim.Car.Target.HasValue ? b.SlotOf(sim.Car.Target.Value) : -1;

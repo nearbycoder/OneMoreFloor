@@ -35,6 +35,7 @@ namespace OneMoreFloor
             public Image Glyph, Symbol;
             public TextMeshProUGUI Key, Label;
             public string ShownKey, ShownLabel;
+            public float ShownSize;   // the label's font size its width was measured at (the text floor can change it)
             public float Width;
         }
 
@@ -214,8 +215,9 @@ namespace OneMoreFloor
                 if (g.Symbol != null) { p.Symbol.sprite = g.Symbol; p.Symbol.color = g.Ink; }
                 p.Glyph.rectTransform.sizeDelta = new Vector2(gw, 38f);
                 p.Glyph.rectTransform.anchoredPosition = new Vector2(gw * 0.5f, 0);
-                if (p.ShownKey != key || p.ShownLabel != label)
+                if (p.ShownKey != key || p.ShownLabel != label || !Mathf.Approximately(p.ShownSize, p.Label.fontSize))
                 {
+                    p.ShownSize = p.Label.fontSize;
                     // only re-layout text when it changes
                     p.ShownKey = key;
                     p.ShownLabel = label;

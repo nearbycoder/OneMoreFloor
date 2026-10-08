@@ -71,7 +71,9 @@ namespace OneMoreFloor
     public sealed class ControlsCard
     {
         public RectTransform Rt;
-        TextMeshProUGUI title;
+        TextMeshProUGUI title, head;
+        RectTransform divider;
+        float baseH, rowH = RowH;
         readonly List<(TextMeshProUGUI key, TextMeshProUGUI action)> cells = new List<(TextMeshProUGUI, TextMeshProUGUI)>();
         string shown;
         /// <summary>The key cells' text without the &lt;nobr&gt; tags, for <see cref="Text"/>.</summary>
@@ -80,11 +82,11 @@ namespace OneMoreFloor
 
         public static ControlsCard Create(Transform parent, Vector2 size, Vector2 pos)
         {
-            var c = new ControlsCard { Rt = Deco.Panel("Controls", parent, size, pos) };
-            var head = Deco.Label("Head", c.Rt, "CONTROLS", 20, new Vector2(size.x - 60, 28), new Vector2(0, size.y * 0.5f - 52), TextAlignmentOptions.Center);
-            head.characterSpacing = 14f;
+            var c = new ControlsCard { Rt = Deco.Panel("Controls", parent, size, pos), baseH = size.y };
+            c.head = Deco.Label("Head", c.Rt, "CONTROLS", 20, new Vector2(size.x - 60, 28), new Vector2(0, size.y * 0.5f - 52), TextAlignmentOptions.Center);
+            c.head.characterSpacing = 14f;
             c.title = UiKit.Text("Scheme", c.Rt, "", 18, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(size.x - 60, 26), new Vector2(0, size.y * 0.5f - 84));
-            Deco.Divider(c.Rt, size.x * 0.5f, new Vector2(0, size.y * 0.5f - 108));
+            c.divider = Deco.Divider(c.Rt, size.x * 0.5f, new Vector2(0, size.y * 0.5f - 108));
             float top = size.y * 0.5f - 152f;
             for (int i = 0; i < 8; i++)
             {
@@ -105,7 +107,8 @@ namespace OneMoreFloor
         {
             var s = ControlsSheet.Current;
             var f = PadGlyphs.Family;
-            string id = s + "/" + f;
+            // the text floor can change the cells' size too (LARGER TEXT, a window resize)
+            string id = s + "/" + f + "/" + cells[0].key.fontSize + "/" + cells[0].action.fontSize;
             if (id == shown) return;
             shown = id;
             title.text = ControlsSheet.Title(s, f);
@@ -115,9 +118,40 @@ namespace OneMoreFloor
             {
                 string key = i < rows.Count ? rows[i].Key : "";
                 plain.Add(key);
-                // a pair like "Q / E" never breaks across lines
-                cells[i].key.text = System.Text.RegularExpressions.Regex.Replace(key, @"(\S+ / \S+)", "<nobr>$1</nobr>");
+                // a pair like "Q / E" never breaks across lines (unless LARGER TEXT leaves no room for it on one)
+                var k = cells[i].key;
+                k.text = System.Text.RegularExpressions.Regex.Replace(key, @"(\S+ / \S+)", "<nobr>$1</nobr>");
+                if (k.text != key && k.GetPreferredValues(k.text, KeyW, 0f).x > KeyW + 1f) k.text = key;
                 cells[i].action.text = i < rows.Count ? rows[i].Action : "";
+            }
+            // rows grow (and the panel with them) when a cell needs a third line: only with LARGER TEXT on a small screen
+            float tallest = 0f;
+            foreach (var (kc, ac) in cells)
+                foreach (var t in new[] { kc, ac })
+                    tallest = Mathf.Max(tallest, t.GetPreferredValues(t.text, KeyOrActionW(t, kc), 0f).y);
+            float need = tallest > RowH - 3f ? Mathf.Ceil(tallest) + 4f : RowH;
+            if (!Mathf.Approximately(need, rowH)) Layout(need);
+        }
+
+        static float KeyOrActionW(TextMeshProUGUI t, TextMeshProUGUI key) => t == key ? KeyW : ActionW;
+
+        void Layout(float h)
+        {
+            rowH = h;
+            float panelH = baseH + 8 * (h - RowH), top = panelH * 0.5f;
+            Rt.sizeDelta = new Vector2(Rt.sizeDelta.x, panelH);
+            head.rectTransform.anchoredPosition = new Vector2(0, top - 52);
+            title.rectTransform.anchoredPosition = new Vector2(0, top - 84);
+            divider.anchoredPosition = new Vector2(0, top - 108);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                float y = top - 121f - h * 0.5f - i * h;
+                foreach (var t in new[] { cells[i].key, cells[i].action })
+                {
+                    var rt = t.rectTransform;
+                    rt.sizeDelta = new Vector2(rt.sizeDelta.x, h - 4);
+                    rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+                }
             }
         }
 

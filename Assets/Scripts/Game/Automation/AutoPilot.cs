@@ -23,7 +23,7 @@ namespace OneMoreFloor
         int shots;
         float speed = 3f;
         int onlyShift = -1;
-        bool padOnly, uiOnly, textOnly;
+        bool padOnly, uiOnly, textOnly, largeText;
         int frames;
         float frameTime, worst;
         bool popupShot, jamShot, bannerShot;
@@ -45,8 +45,11 @@ namespace OneMoreFloor
                 if (args[s + 1] == "pad") ap.padOnly = true;
                 else if (args[s + 1] == "ui") ap.uiOnly = true;
                 else if (args[s + 1] == "text") ap.textOnly = true;
+                else if (args[s + 1] == "text-large") ap.textOnly = ap.largeText = true;
                 else int.TryParse(args[s + 1], out ap.onlyShift);
             }
+            // -omfLargeText: the whole run with LARGER TEXT on
+            if (System.Array.IndexOf(args, "-omfLargeText") >= 0) SaveData.Current.LargeText = TextFloor.Large = true;
             int sp = System.Array.IndexOf(args, "-omfAutopilotSpeed");
             if (sp >= 0 && sp + 1 < args.Length) float.TryParse(args[sp + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ap.speed);
         }
@@ -917,6 +920,32 @@ namespace OneMoreFloor
             Check("reduced motion toggles on, stills the camera and survives a save round trip",
                 motion != null && save.ReducedMotion && back.ReducedMotion && root.Rig.Still && root.Rig.ShakeScale == 0f, "ui");
             Check($"every control on the settings card takes a click at its centre{HitMisses()}", hitMisses == 0, "ui");
+            // LARGER TEXT: the settings card's own small text grows to 12 px capitals at once, still fits, and goes back
+            {
+                UiToggle large = null;
+                foreach (var tg in settings.GetComponentsInChildren<UiToggle>(true)) if (tg.name.Contains("LARGER")) large = tg;
+                float Smallest(out int spills)
+                {
+                    float min = float.MaxValue;
+                    spills = 0;
+                    foreach (var e in TextAudit.Measure(settings.transform, root.UiCam)) { min = Mathf.Min(min, e.CapPx); if (e.SpillPx > 2f) spills++; }
+                    return min;
+                }
+                float before = Smallest(out _);
+                large?.Set(true);
+                yield return null;
+                yield return null;
+                float on = Smallest(out int spillsOn);
+                Shot("ui_settings_larger_text");
+                back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
+                bool saved = save.LargeText && back.LargeText;
+                large?.Set(false);
+                yield return null;
+                yield return null;
+                float off = Smallest(out _);
+                Check($"LARGER TEXT raises the settings card's smallest capitals {before:0.0} -> {on:0.0} px ({spillsOn} spilling), survives a save round trip ({saved}), and off puts {off:0.0} px back",
+                      large != null && saved && on >= TextFloor.LargeCapPx - 0.05f && spillsOn == 0 && Mathf.Abs(off - before) < 0.05f && !save.LargeText && !TextFloor.Large, "ui");
+            }
             // GRAPHICS: LOW changes the running pipeline, survives a save round trip, and HIGH puts the original look back
             var gfx = settings.GetComponentInChildren<UiChoice>(true);
             gfx?.Set(GraphicsQuality.Low);
@@ -970,16 +999,21 @@ namespace OneMoreFloor
 
         /// <summary>
         /// The text audit (see <see cref="TextAudit"/>) on every screen a player meets: each visible text's capitals in
-        /// screen pixels against a 9 px floor, and any text that runs out of its box.
+        /// screen pixels against the text floor (9 px, or 12 px with LARGER TEXT: "text-large"), and any text that runs
+        /// out of its box.
         /// </summary>
         IEnumerator TextChecks(GameRoot root)
         {
-            const float floorPx = 9f;
             var save = SaveData.Current;
+            // (not through ApplySettings, which would also put the window back to its default size)
+            save.LargeText = TextFloor.Large = largeText;
+            float floorPx = TextFloor.MinCapPx;
+            string mode = largeText ? ", larger text" : "";
             void Audit(string screen)
             {
                 var list = TextAudit.Measure(root.Canvas.transform, root.UiCam);
-                Debug.Log("[TextAudit] " + TextAudit.Report($"{screen} at {Screen.width}x{Screen.height}", list, floorPx, out float smallest, out int under, out int spills));
+                Debug.Log("[TextAudit] " + TextAudit.Report($"{screen} at {Screen.width}x{Screen.height}{mode}", list, floorPx, out float smallest, out int under, out int spills)
+                          + (under > 0 ? $"\n    canvas scale {root.Canvas.scaleFactor:0.0000}, the floor's {TextFloor.ScaleFor(Screen.width, Screen.height):0.0000}, pixel rect {root.Canvas.pixelRect.size}, frame {Time.frameCount}" : ""));
                 Check($"{screen}: smallest capitals {(list.Count > 0 ? smallest : 0f):0.0} px over {list.Count} texts, {under} under {floorPx:0} px, {spills} spilling",
                       list.Count > 0 && under == 0 && spills == 0, "text");
             }

@@ -25,6 +25,8 @@ namespace OneMoreFloor
         public bool ShowForecast = true;
         /// <summary>No camera drift, push-ins or shake, floors settle without overshoot, and the UI holds still.</summary>
         public bool ReducedMotion;
+        /// <summary>LARGER TEXT: small text is drawn with capitals at least 12 px high on any screen (see <see cref="TextFloor"/>).</summary>
+        public bool LargeText;
         /// <summary>The GRAPHICS setting: 0 HIGH, 1 BALANCED, 2 LOW (see <see cref="GraphicsQuality"/>).</summary>
         public int Graphics;
         /// <summary>Daily Overtime: the date of the runs below ("2026-10-06"), today's best and tries, and the best day.</summary>

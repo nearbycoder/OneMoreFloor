@@ -199,7 +199,7 @@ namespace OneMoreFloor
 
         public static UiToggle Create(Transform parent, string label, Vector2 pos, bool on, Action<bool> changed)
         {
-            var root = UiKit.Rect("Toggle_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 64));
+            var root = UiKit.Rect("Toggle_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 54));
             Deco.Label("Label", root, label, 26, new Vector2(480, 50), new Vector2(-120, 0), TextAlignmentOptions.Left, Palette.Cream);
             var hit = root.gameObject.AddComponent<Image>();
             hit.color = new Color(0, 0, 0, 0);
@@ -268,7 +268,7 @@ namespace OneMoreFloor
 
         public static UiChoice Create(Transform parent, string label, Vector2 pos, string[] options, int index, Action<int> changed)
         {
-            var root = UiKit.Rect("Choice_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 64));
+            var root = UiKit.Rect("Choice_" + label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(720, 54));
             Deco.Label("Label", root, label, 26, new Vector2(400, 50), new Vector2(-160, 0), TextAlignmentOptions.Left, Palette.Cream);
             var hit = root.gameObject.AddComponent<Image>();
             hit.color = new Color(0, 0, 0, 0);

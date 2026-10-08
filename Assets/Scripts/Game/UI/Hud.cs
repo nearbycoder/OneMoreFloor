@@ -555,7 +555,8 @@ namespace OneMoreFloor
             {
                 int need = targets[lit] - sim.Score;
                 starCaption.text = sim.Relaxed && lit >= 1 ? "RELAXED CLEAR!"
-                    : sim.Relaxed ? $"${need:N0} TO A RELAXED CLEAR"
+                    : sim.Relaxed ? (TextFloor.Large ? TextFloor.Fit(starCaption, $"${need:N0} TO A RELAXED CLEAR", $"${need:N0} TO CLEAR") : $"${need:N0} TO A RELAXED CLEAR")
+                    : TextFloor.Large ? TextFloor.Fit(starCaption, $"${need:N0} TO STAR {lit + 1}", $"${need:N0} TO GO")   // LARGER TEXT on a small screen
                     : $"${need:N0} TO STAR {lit + 1}";
                 starCaption.color = sim.Relaxed && lit >= 1 ? Palette.Hex(0x8FD6C4) : Deco.Muted;
                 int from = lit > 0 ? targets[lit - 1] : 0;
@@ -840,8 +841,11 @@ namespace OneMoreFloor
             UpdateStarTrack(sim, dt);
 
             // on a small screen the floor draws this label bigger, and the long line wouldn't fit the card
-            bool tight = TextFloor.Raised(clockLabel);
-            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR" : !sim.ClockRunning ? (tight ? "CLOCK STARTS AT FIRST DROP" : "CLOCK STARTS ON YOUR FIRST DROP")
+            // (and with LARGER TEXT, the longest wording that fits)
+            bool tight = TextFloor.Raised(clockLabel) || TextFloor.Large;
+            clockLabel.text = sim.Def.Endless ? "ON SHIFT FOR"
+                            : !sim.ClockRunning ? (TextFloor.Large ? TextFloor.Fit(clockLabel, "CLOCK STARTS ON YOUR FIRST DROP", "CLOCK STARTS AT FIRST DROP", "STARTS AT FIRST DROP")
+                                                   : tight ? "CLOCK STARTS AT FIRST DROP" : "CLOCK STARTS ON YOUR FIRST DROP")
                             : sim.RushHour ? "RUSH HOUR! TIPS x1.5" : "SHIFT ENDS IN";
             clockLabel.characterSpacing = tight && !sim.ClockRunning ? 2f : 6f;
             if (sim.Def.Endless)

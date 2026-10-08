@@ -44,6 +44,8 @@ namespace OneMoreFloor
             public Image ChipBg, ChipArrow;
             public TextMeshProUGUI ChipText;
             public string ChipShown = "";
+            /// <summary>The font sizes the tag's and the chip's widths were worked out at (the text floor can change them).</summary>
+            public float TagSize, ChipSize;
             public bool Moving;
             public float ChipPop;
         }
@@ -171,9 +173,10 @@ namespace OneMoreFloor
                 {
                     int stops = sim.B.Leaving[(int)f];
                     string t = f == FloorId.Ocean ? (stops <= 1 ? "TIDE OUT NEXT STOP" : $"TIDE OUT IN {stops}") : (stops <= 1 ? "LEAVING NEXT STOP" : $"LEAVING IN {stops}");
-                    if (l.TagText.text != t)
+                    if (l.TagText.text != t || !Mathf.Approximately(l.TagSize, l.TagText.fontSize))
                     {
                         l.TagText.text = t;
+                        l.TagSize = l.TagText.fontSize;
                         l.Tag.rectTransform.sizeDelta = new Vector2(l.TagText.GetPreferredValues(t).x + 20f, 24f);
                     }
                 }
@@ -205,9 +208,10 @@ namespace OneMoreFloor
         void ShowChip(Label l, string chip, float dt)
         {
             bool on = chip.Length > 0;
-            if (chip != l.ChipShown)
+            if (chip != l.ChipShown || (chip.Length > 0 && !Mathf.Approximately(l.ChipSize, l.ChipText.fontSize)))
             {
                 l.ChipShown = chip;
+                l.ChipSize = l.ChipText.fontSize;
                 l.Chip.gameObject.SetActive(on);
                 if (on)
                 {
