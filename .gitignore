@@ -65,3 +65,6 @@ desktop.ini
 /Tools/simharness/obj/
 /Assets/Screenshots/
 /Assets/Screenshots.meta
+
+# Burst's by-product of the WebGL build (Tools/build-pages.sh)
+/Data/Plugins/lib_burst_generated*

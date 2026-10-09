@@ -18,8 +18,13 @@ namespace OneMoreFloor
         /// <summary>Fade the whole mix out (the window is in the background and MUTE IN BACKGROUND is on), or back in.</summary>
         public bool Muted
         {
-            get => limiter != null && limiter.OutputGain < 0.5f;
-            set { if (limiter != null) limiter.OutputGain = value ? 0f : 1f; }
+            get => Web.IsWeb ? AudioListener.volume < 0.5f : limiter != null && limiter.OutputGain < 0.5f;
+            set
+            {
+                // a browser's audio never reaches the limiter (no OnAudioFilterRead there): the listener mutes instead
+                if (Web.IsWeb) AudioListener.volume = value ? 0f : 1f;
+                else if (limiter != null) limiter.OutputGain = value ? 0f : 1f;
+            }
         }
 
         /// <summary>Self-test: the largest sample of the final mix in the last audio buffer.</summary>
@@ -173,7 +178,8 @@ namespace OneMoreFloor
             for (int i = 0; i < stems.Length; i++)
             {
                 stems[i].volume = stemVol[i] * gameplayMix * music;
-                stems[i].pitch = wobble;
+                // a browser can't bend the pitch of streamed music (it warns every time it's asked): no warble there
+                if (!Web.IsWeb) stems[i].pitch = wobble;
                 stemLp[i].cutoffFrequency = cutoff;
             }
             if (gameplayMix <= 0f && !gameplay && stems[0].isPlaying) foreach (var s in stems) s.Stop();

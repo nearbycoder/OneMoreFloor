@@ -39,6 +39,10 @@ namespace OneMoreFloor
             QualitySettings.vSyncCount = 0;
             double hz = Screen.currentResolution.refreshRateRatio.value;
             Application.targetFrameRate = Mathf.Clamp((int)System.Math.Round(hz > 1 ? hz : 60), 60, 240);
+            // in a browser the page's animation frames pace the game at the display's rate (a set rate uses timers instead)
+            if (Web.IsWeb) Application.targetFrameRate = -1;
+            // a page can only go fullscreen when the player asks, so every visit starts in the window
+            if (Web.IsWeb) SaveData.Current.Fullscreen = false;
             // recordings and self-tests run unattended, often without focus
             AutoPause = System.Array.IndexOf(args, "-omfAutopilot") < 0 && System.Array.IndexOf(args, "-omfDemo") < 0
                         && System.Array.IndexOf(args, "-omfTrailer") < 0 && !(Application.isEditor && Application.isBatchMode);
@@ -370,7 +374,16 @@ namespace OneMoreFloor
             TextFloor.Large = save.LargeText;
             if (Runner != null && Runner.Hud != null) Runner.Hud.Panel.ShowForecast(save.ShowForecast);
             GraphicsQuality.Apply(GraphicsOverride >= 0 ? GraphicsOverride : save.Fidelity, Sun, Post, WorldCam);
-            if (!Application.isEditor)
+            if (Web.IsWeb)
+            {
+                // the page fills the browser window; FULLSCREEN asks the browser for the whole screen
+                if (save.Fullscreen != Web.IsFullscreen)
+                {
+                    Web.RequestFullscreen(save.Fullscreen);
+                    fullscreenAskedAt = Time.unscaledTime;
+                }
+            }
+            else if (!Application.isEditor)
             {
                 var mode = save.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
                 int dw = Display.main.systemWidth, dh = Display.main.systemHeight;
@@ -386,6 +399,34 @@ namespace OneMoreFloor
                     Screen.SetResolution(w.x, w.y, mode);
                 }
             }
+        }
+
+        float fullscreenAskedAt = -10f, reportedAt = -10f;
+
+        /// <summary>In a browser, twice a second: what's on screen, for the page and its checks (Web.Status).</summary>
+        void ReportToPage()
+        {
+            if (!Web.IsWeb || Time.unscaledTime - reportedAt < 0.5f) return;
+            reportedAt = Time.unscaledTime;
+            string screen = title.Visible ? "title" : roster.Visible ? "roster" : intro.Visible ? "intro" : settings.Visible ? "settings"
+                          : guide.Visible ? "guide" : pause.Visible ? "pause" : results.Visible ? "results" : ending.Visible ? "ending"
+                          : InShift ? "shift" : "other";
+            var sim = InShift ? Runner.Sim : null;
+            var save = SaveData.Current;
+            Web.Status("{\"screen\":\"" + screen + "\",\"score\":" + (sim != null ? sim.Score : 0) + ",\"delivered\":" + (sim != null ? sim.DeliveredCount : 0)
+                       + ",\"time\":" + (sim != null ? sim.Time : 0f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
+                       + ",\"fidelity\":" + GraphicsQuality.Applied + ",\"fullscreen\":" + (save.Fullscreen ? "true" : "false")
+                       + ",\"largeText\":" + (save.LargeText ? "true" : "false") + "}");
+        }
+
+        /// <summary>In a browser, Esc or the browser's own controls can leave fullscreen: FULLSCREEN follows the page.</summary>
+        void FollowPageFullscreen()
+        {
+            if (!Web.IsWeb || Time.unscaledTime - fullscreenAskedAt < 1.5f) return;   // the browser takes a moment to switch
+            bool on = Web.IsFullscreen;
+            if (SaveData.Current.Fullscreen == on) return;
+            SaveData.Current.Fullscreen = on;
+            settings.SyncFromSave();
         }
 
         /// <summary>F11 / Alt+Enter: flip the FULLSCREEN setting itself, so Settings shows it and the next launch keeps it.</summary>
@@ -551,6 +592,8 @@ namespace OneMoreFloor
             else if (InShift && Controls.PausePressed && pause.Visible && !settings.Visible && !guide.Visible)
                 Resume();
             if (Controls.FullscreenPressed) ToggleFullscreen();
+            FollowPageFullscreen();
+            ReportToPage();
             if (kb == null) return;
             // developer shortcuts: F1..F10 start a shift
             for (int i = 0; i < 10; i++)

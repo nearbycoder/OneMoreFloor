@@ -14,7 +14,13 @@ namespace OneMoreFloor
     public static class GraphicsQuality
     {
         public const int Low = 0, Medium = 1, High = 2, Ultra = 3;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        /// <summary>In a browser MEDIUM: WebGL costs more per pixel than the desktop renderer, and the page renders at the
+        /// screen's pixel density. HIGH and ULTRA stay one click away in Settings.</summary>
+        public const int Default = Medium;
+#else
         public const int Default = High;
+#endif
         public static readonly string[] Names = { "LOW", "MEDIUM", "HIGH", "ULTRA" };
 
         /// <summary>The old GRAPHICS setting (0 HIGH, 1 BALANCED, 2 LOW) as a step of this one.</summary>

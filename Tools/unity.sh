@@ -12,6 +12,7 @@
 #   Tools/unity.sh build-linux     batch-build Builds/Linux/OneMoreFloor.x86_64
 #   Tools/unity.sh build-mac       batch-build Builds/Mac/OneMoreFloor.app (universal, unsigned)
 #   Tools/unity.sh build-windows   batch-build Builds/Windows/OneMoreFloor.exe (needs Windows Build Support)
+#   Tools/unity.sh build-webgl     batch-build the browser build into Builds/Pages (Tools/build-pages.sh wraps it)
 #   Tools/unity.sh test            run EditMode tests, results in Logs/test-results.xml
 set -euo pipefail
 
@@ -40,6 +41,10 @@ case "${1:-open}" in
     exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" \
       -executeMethod OneMoreFloor.EditorTools.BuildScript.BuildWindows -logFile -
     ;;
+  build-webgl)
+    exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" -buildTarget WebGL \
+      -executeMethod OneMoreFloor.EditorTools.BuildScript.BuildWebGL -logFile -
+    ;;
   test)
     "$UNITY" -batchmode -nographics -projectPath "$PROJECT" -runTests -testPlatform EditMode \
       -testResults "$PROJECT/Logs/test-results.xml" -logFile "$PROJECT/Logs/test-run.log" || true
@@ -58,7 +63,7 @@ sys.exit(0 if root.get('failed') == '0' else 1)
 PY
     ;;
   *)
-    echo "usage: $0 [open|batch <Method>|build-linux|build-mac|build-windows|test]" >&2
+    echo "usage: $0 [open|batch <Method>|build-linux|build-mac|build-windows|build-webgl|test]" >&2
     exit 2
     ;;
 esac

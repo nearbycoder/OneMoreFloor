@@ -1,0 +1,9 @@
+<!-- Engine classes the code never names but still needs: GameObject.CreatePrimitive adds a collider to the capsule and
+     cylinder it makes (Prims in Util.cs), and the WebGL build strips engine code it can't see used. -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all"/>
+    <type fullname="UnityEngine.SphereCollider" preserve="all"/>
+    <type fullname="UnityEngine.MeshCollider" preserve="all"/>
+  </assembly>
+</linker>

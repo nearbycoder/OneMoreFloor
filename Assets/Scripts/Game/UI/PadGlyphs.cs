@@ -25,8 +25,10 @@ namespace OneMoreFloor
         {
             if (gp == null) return PadFamily.Xbox;
             if (gp is DualShockGamepad) return PadFamily.PlayStation;
+#if !(UNITY_WEBGL && !UNITY_EDITOR)
             if (gp is SwitchProControllerHID) return PadFamily.Nintendo;
-            // on Linux, pads often arrive as generic devices: go by the name
+#endif
+            // on Linux and in browsers, pads often arrive as generic devices: go by the name
             string id = (gp.description.manufacturer + " " + gp.description.product + " " + gp.displayName).ToLowerInvariant();
             if (id.Contains("sony") || id.Contains("playstation") || id.Contains("dualshock") || id.Contains("dualsense")) return PadFamily.PlayStation;
             if (id.Contains("nintendo") || id.Contains("pro controller") || id.Contains("joy-con")) return PadFamily.Nintendo;

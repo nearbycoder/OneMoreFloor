@@ -8,6 +8,9 @@ namespace OneMoreFloor.EditorTools
     /// </summary>
     public class ModelImportSettings : AssetPostprocessor
     {
+        /// <summary>Raised when the settings change, so every model imports again.</summary>
+        public override uint GetVersion() => 2;
+
         static bool IsCharacter(string path) => System.IO.Path.GetFileName(path).StartsWith("Char_");
 
         void OnPreprocessModel()
@@ -25,7 +28,8 @@ namespace OneMoreFloor.EditorTools
             importer.importBlendShapes = false;
             importer.importVisibility = false;
             importer.addCollider = false;
-            importer.isReadable = false;
+            // the particle meshes (bats, coins) are read by their particle systems on the CPU; WebGL refuses them otherwise
+            importer.isReadable = System.IO.Path.GetFileName(assetPath) == "FxMeshes.fbx";
             importer.importNormals = ModelImporterNormals.Import;
             importer.importTangents = ModelImporterTangents.None;
             importer.meshCompression = ModelImporterMeshCompression.Off;

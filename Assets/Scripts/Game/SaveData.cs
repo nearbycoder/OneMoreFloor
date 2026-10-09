@@ -62,6 +62,8 @@ namespace OneMoreFloor
         {
             if (Ephemeral) return;
             SaveTo(Application.persistentDataPath);
+            // in a browser the folder is in memory until it's pushed to IndexedDB (the page doesn't sync on its own)
+            Web.SyncFileSystem();
         }
 
         /// <summary>
@@ -130,6 +132,14 @@ namespace OneMoreFloor
                     fs.Flush(true);
                 }
                 if (!File.Exists(path)) { File.Move(tmp, path); return; }
+                if (Web.IsWeb)
+                {
+                    // the browser's file system has no atomic replace (IndexedDB gets the result in one sync anyway)
+                    File.Copy(path, bak, true);
+                    File.Copy(tmp, path, true);
+                    File.Delete(tmp);
+                    return;
+                }
                 try { File.Replace(tmp, path, bak); }
                 catch (Exception ex) when (ex is PlatformNotSupportedException || ex is IOException)
                 {

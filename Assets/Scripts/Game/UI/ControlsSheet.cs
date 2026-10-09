@@ -51,7 +51,7 @@ namespace OneMoreFloor
                     Add("BACKSPACE", "Unpick");
                     Add("Z, - / =", "Zoom in and out");
                     Add("ESC / P", "Pause");
-                    Add("F11 / ALT+ENTER", "Fullscreen on or off");
+                    Add(Web.IsWeb ? "ALT+ENTER" : "F11 / ALT+ENTER", "Fullscreen on or off");
                     break;
                 default:
                     Add("CLICK A GUEST", "Let them in at your floor, or go and get them");
@@ -62,7 +62,7 @@ namespace OneMoreFloor
                     Add("HOVER", "Preview the trip and the next shuffle");
                     Add("WHEEL, Z, - / =", "Zoom in and out");
                     Add("ESC / P", "Pause");
-                    Add("F11 / ALT+ENTER", "Fullscreen on or off");
+                    Add(Web.IsWeb ? "ALT+ENTER" : "F11 / ALT+ENTER", "Fullscreen on or off");
                     break;
             }
             return rows;

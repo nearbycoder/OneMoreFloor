@@ -107,7 +107,8 @@ namespace OneMoreFloor
 
             bool alt = kb != null && (kb.leftAltKey.isPressed || kb.rightAltKey.isPressed);
             bool enter = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame);
-            FullscreenPressed = kb != null && (kb.f11Key.wasPressedThisFrame || (alt && enter));
+            // in a browser F11 is the browser's own fullscreen; Alt+Enter is the game's
+            FullscreenPressed = kb != null && ((kb.f11Key.wasPressedThisFrame && !Web.IsWeb) || (alt && enter));
             Submit = (gp != null && gp.buttonSouth.wasPressedThisFrame) || (enter && !alt);
             Cancel = gp != null && gp.buttonEast.wasPressedThisFrame;
             PausePressed = gp != null && gp.startButton.wasPressedThisFrame;

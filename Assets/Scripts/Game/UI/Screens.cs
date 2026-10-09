@@ -109,7 +109,8 @@ namespace OneMoreFloor
             startSub = UiKit.Text("Sub", left, "", 22, Deco.Muted, UiKit.Body, TextAlignmentOptions.Center, new Vector2(480, 30), new Vector2(L(480), -190));
             UiButton.Create(left, "DUTY ROSTER", new Vector2(L(480), -260), new Vector2(480, 70), () => game.ShowRoster(), false, 28);
             UiButton.Create(left, "SETTINGS", new Vector2(L(480), -345), new Vector2(480, 70), () => game.ShowSettings(this), false, 28);
-            UiButton.Create(left, "QUIT", new Vector2(L(480), -430), new Vector2(480, 70), () => game.Quit(), false, 28);
+            // a browser tab can't quit: the player closes it
+            if (!Web.IsWeb) UiButton.Create(left, "QUIT", new Vector2(L(480), -430), new Vector2(480, 70), () => game.Quit(), false, 28);
 
             // bottom right: star total over the credit line
             var foot = UiKit.Rect("Foot", Root, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-40, 24), new Vector2(900, 80));

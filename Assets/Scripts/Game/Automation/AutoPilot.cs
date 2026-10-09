@@ -1001,7 +1001,12 @@ namespace OneMoreFloor
             runner.InputEnabled = false;
             Controls.ForcePad = true;
             runner.ScriptCursor(1, -1);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // a browser has no HID pad layouts (the self-test is a desktop tool; these checks fail there)
+            var ds = InputSystem.AddDevice<Gamepad>();
+#else
             var ds = InputSystem.AddDevice<DualShock4GamepadHID>();
+#endif
             ds.MakeCurrent();
             yield return Wait(0.8f);
             Check("a DualShock 4 shows PlayStation prompts", PadGlyphs.Family == PadFamily.PlayStation && PadGlyphs.Face(GamepadButton.South).Symbol != null
@@ -1018,7 +1023,11 @@ namespace OneMoreFloor
             Shot("ui_pause_controls_playstation");
             root.Resume();
             yield return Wait(0.4f);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            var nx = InputSystem.AddDevice<Gamepad>();
+#else
             var nx = InputSystem.AddDevice<SwitchProControllerHID>();
+#endif
             nx.MakeCurrent();
             yield return Wait(0.8f);
             Check("a Switch Pro Controller shows Nintendo prompts (B on the bottom)", PadGlyphs.Family == PadFamily.Nintendo
