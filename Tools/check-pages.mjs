@@ -326,6 +326,10 @@ async function check(engine, url) {
       }
       await sleep(4000);  // the doors and the countdown
       await shot("06_shift");
+      // the touchscreen's on-screen controls (the page's #touch) never show for a mouse and keyboard
+      const touchShown = await page.evaluate(() => { const t = document.querySelector("#touch");
+                                                     return !!t && getComputedStyle(t).display !== "none"; }).catch(() => null);
+      ok(touchShown === false, "no on-screen touch controls during a shift played with mouse and keyboard");
       // a simple player: let everyone in, pick a rider in the car and send the car to their floor; now and then
       // go and fetch whoever is waiting on another floor
       for (let i = 0; i < 14; i++) {
