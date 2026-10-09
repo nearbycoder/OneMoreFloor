@@ -1322,3 +1322,53 @@ release, and re-cutting the trailer, poster and teaser GIF (still 0.1.0, without
 ULTRA's look is worth its cost, whether the city competes with the hotel, whether the doors feel quick enough on the
 hundredth shift, and the default bloom need a person, as do everything rounds 4–11 left (the resume count, STOP?,
 LOW's softer text, LARGER TEXT's and MUTE IN BACKGROUND's defaults, the Deck wordings). No other GPU has been tried.
+
+## Phones and tablets (2026-10-09, branch `web-mobile`)
+
+The owner opened one of the fifteen browser games on an iPhone and the tab crashed; every game should work on a phone,
+with on-screen controls that appear only there. `Tools/check-mobile.mjs` (new) measures the build in headless WebKit
+26.6 with iPhone 15 and iPad Pro 11 profiles (Playwright 1.63, held sideways) and in Chromium with a Pixel 7 profile,
+and plays it by real touch events.
+
+### Before (`main` at `42637b4`)
+
+- **WebKit:** the web process aborted within half a minute of loading in all five runs (four iPhone, one iPad). The cause on this
+  machine is its Linux WebKit's missing GStreamer `autoaudiosink` (Web Audio), not the game: with Web Audio taken away
+  (`--no-webaudio`) both reach the title. That says nothing about iOS, so memory was measured instead.
+- **Rendering:** the page drew at the screen's full density: 2202×1029 on the iPhone, 2297×1605 on the iPad, 2265×945
+  on the Pixel, at MEDIUM (2× MSAA, ambient occlusion, bloom, 2048 shadow maps). WebGL memory at the title: 187, 269
+  and 251 MB, most of it screen-sized targets (106 MB of MSAA renderbuffers on the Pixel); wasm heap 217 MB.
+- **By touch:** the menus and the panel answered taps, and a tap on the tower sent the car (as a click), but nothing
+  previewed a trip or showed a guest's card (hover), nothing let a rider off (right-click), let everyone in (Space),
+  paused (Esc) or zoomed (wheel, Z); the tips said "Click" and "Space"; nothing asked for landscape.
+
+### What changed
+
+- **Lighter on phones:** a touch-first device starts at LOW and renders at most 2 pixels per CSS pixel and 1.5 million
+  pixels. WebGL memory at the title is now 91 (iPhone), 110 (iPad) and 98 MB (Pixel), peaking at 104, 125 and 112 MB in
+  play. A tab that died without `pagehide`, a lost WebGL context or an out-of-memory error leads to a message, a
+  RELOAD button and a lighter next start (LOW, fewer pixels). The wasm heap's ceiling went from 2048 to 1024 MB.
+- **Touch:** the page recognises taps, long presses and pinches and passes them to a `WebBridge` object. A first tap
+  picks a guest or floor (card and trip preview), a second acts; a long press on a rider at the open car lets them
+  off; the panel buttons answer over their whole cell. On-screen ALL IN, LET OFF, zoom and pause buttons (52 to 64 CSS
+  px, inside the safe area, each finger separate) show only during a shift on a touch-first device or after a touch,
+  and hide when a mouse moves or a key or gamepad button is pressed. The tips, guest card, intro, pause hint and the
+  controls panel have touch wording; held upright the page asks for landscape and pauses the shift.
+
+### Results (game code at `167fd40`)
+
+- `check-mobile --play` (`Logs/mobile/tip-mobile.txt`): iPhone, iPad, Pixel and the upright iPhone all PASS: every
+  menu by tap, a guest and a floor by two taps, the panel, LET OFF, a long press, ALL IN, the zoom button, a pinch,
+  ZOOM with another finger down, pause, resume, quit and its confirmation, the controls hiding for a mouse and a key,
+  sound waiting for the first touch (Chromium), and the rotate card. WebKit ran without Web Audio.
+- `check-mobile --desktop` and `check-pages --play` (twice): Chromium and Firefox PASS, no controls on the desktop.
+  Before `167fd40` the status line carried every guest's screen position and Firefox's console stream fell behind in
+  both full `check-pages` runs (a Firefox-only run passed); positions now come only with `-omfTouchTest`.
+- EditMode 70/70 and `autopilot.sh ui` 62 checks PASS at `167fd40` (Monday's shift PASS at `1fe17b8`); the real
+  save's hash unchanged.
+
+Only a real phone can say: whether iOS Safari keeps the tab (headless WebKit has no memory limit and draws on the CPU
+at 2 to 6 fps, so its frame rate and process memory say nothing about an iPhone), real frame rates, how the notch and
+home indicator sit, sound with the silent switch, haptics, how the 36×38-point panel cells and 17-point Settings rows
+feel under a thumb, and whether two taps per guest feel slow.
+

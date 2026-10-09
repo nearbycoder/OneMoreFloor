@@ -37,16 +37,52 @@ game on `main`, built for the web (WebGL 2), no install.
   later visits start faster. The title came up in about 3 to 5 seconds from a local server on the test machine.
 - **Tested** headless in Chromium 151 and Firefox 157 on Linux (AMD Radeon 8060S): loading, the title, a scripted shift
   by keyboard, sound waiting for the first click (Firefox lets Web Audio start without one by default) and then
-  playing, and settings surviving a reload. Not tried on Safari, Windows,
-  macOS or phones.
+  playing, and settings surviving a reload. Phones and tablets were tested in headless WebKit 26.6 with iPhone 15 and
+  iPad Pro 11 profiles and in Chromium with a Pixel 7 profile (see below). Not tried on a real phone, Safari on a Mac,
+  Windows or macOS.
 - **What's different from the desktop game:** it starts at **MEDIUM** graphics fidelity (LOW to ULTRA are all in
   Settings) and renders at most 2560×1440 pixels. Progress and settings are saved in the browser (IndexedDB), separate
   from a desktop save, and clearing the site's data erases them. There's no QUIT button (close the tab). **FULLSCREEN**
   and **Alt+Enter** ask the browser for fullscreen; F11 is the browser's own, and Esc leaves fullscreen there. Sound
-  starts with your first click or key press, as browsers require. The music's "tape warble" in a crisis and the
+  starts with your first click, tap or key press, as browsers require. The music's "tape warble" in a crisis and the
   muffled sound behind menus aren't there, nor the master limiter (browsers don't run those audio filters). Mouse and
   keyboard work as on the desktop; a gamepad goes through the browser's Gamepad API and hasn't been tried in a
-  browser yet. There are no touch controls (the desktop game has none either).
+  browser yet.
+
+### On a phone or tablet
+
+Hold it sideways: the game is played in landscape, and held upright the page asks you to turn it (a running shift
+pauses). On a touchscreen the page shows a few on-screen buttons during a shift, and plays by tap:
+
+| Touch | Action |
+| --- | --- |
+| **Tap a guest** | Pick them: their card and their trip preview show (what hovering does with a mouse) |
+| **Tap them again** | Let them in at the open car, go and get them, or take a rider to their floor |
+| **Tap a floor**, then **tap it again** | Preview the trip there, then send the car |
+| **Panel button** | Hold to preview the trip, let go to send the car |
+| **Hold a rider** (at the open car), or pick one and tap **LET OFF** | Let them off here (the right-click) |
+| **ALL IN** | Let in everyone who fits (Space) |
+| **Pinch**, or the **zoom** button | The whole tower or the close-up |
+| **Pause** button | Pause; every menu is played by tap |
+
+The buttons (ALL IN and LET OFF bottom left, zoom and pause top right) light up when they have something to act on,
+are at least 52 CSS pixels (points) square, and keep clear of the notch, rounded corners and home indicator; the game
+itself is drawn inside the same safe area. Each finger works on its own, so a finger left on the game doesn't block a
+button. They only appear on a touch-first device (a coarse pointer and no mouse or trackpad) or after a real touch, and
+go away as soon as a mouse moves or a key or gamepad button is pressed; the coach's tips, the guest card and the pause
+card's controls panel switch to touch wording with them. The page doesn't scroll, zoom, select text or open long-press
+menus. The panel's floor buttons and the menus are the game's own UI, scaled with the screen: on a phone held sideways
+a panel button answers over its whole cell, about 36×38 points (under the 44 recommended; the floors in the tower are
+the bigger target), and the Settings rows are 17 to 19 points tall.
+
+Phones get lighter defaults, as a phone browser closes a tab that uses too much memory (iOS allows a tab roughly a
+gigabyte or less): **LOW** graphics (no MSAA, ambient occlusion or bloom, smaller shadow maps; Settings can raise it)
+and at most two pixels per CSS pixel, 1.5 million in all (about 1700×790 on an iPhone held sideways). That cut the
+game's WebGL memory (textures, buffers and render targets, most of them screen-sized) at the title from 251 to 98 MB on
+the Pixel 7 profile, 187 to 91 MB on the iPhone 15 and 269 to 110 MB on the iPad Pro 11; the wasm heap stays at
+217 MB. `node Tools/check-mobile.mjs --serve Builds/Pages --play` measures it and plays by touch in all three. If the
+browser does close the tab, the reload notices, says so and starts at LOW with fewer pixels still; a lost WebGL context
+or an out-of-memory error shows a message and a RELOAD button instead of a frozen picture.
 
 ## Trailer
 
@@ -173,7 +209,8 @@ ask for a second press, so a stray button can't throw a run away.
 A strip along the bottom says what each button will do right now. It names the buttons for the controller you're
 holding: Xbox letters, PlayStation shapes (✕ ○ □ △), or Nintendo letters, with B on the bottom. The table above uses Xbox
 names. Menus have a focus ring that the d-pad, stick, arrow keys and WASD move. WASD goes by key position, so on an
-AZERTY keyboard it's ZQSD. There's no touch input.
+AZERTY keyboard it's ZQSD. The desktop game has no touch input; the browser version does (see
+[On a phone or tablet](#on-a-phone-or-tablet)).
 
 <p align="center">
   <img src="docs/media/screenshots/gamepad-closeup.jpg" alt="Gamepad play zoomed in: gold floor brackets, a guest card and the button prompt strip" width="720">
