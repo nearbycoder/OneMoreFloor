@@ -1,5 +1,7 @@
 // Checks the browser build as GitHub Pages serves it: loads it in headless Chromium and/or Firefox and exits 0 only when
-// every browser reaches the title screen with no console errors, page errors or failed requests.
+// every browser reaches the title screen with no console errors, page errors or failed requests. Two aborts nobody
+// waits for aren't failures, and are listed as INFO: a request cut off by the page navigating away (the reload), and
+// the engine's cache revalidating its copy of the game data with a 304 (see failures() below).
 //
 //   node Tools/check-pages.mjs https://nearbycoder.github.io/OneMoreFloor/      the live site
 //   node Tools/check-pages.mjs --serve Builds/Pages                             the local build, served at /OneMoreFloor/
@@ -84,7 +86,7 @@ function cachedChromium() {
 // --------------------------------------------------------------------------------------- a static server like Pages
 
 // Serves <dir> at /OneMoreFloor/ only, case-sensitively, with no Content-Encoding headers (GitHub Pages sets none for
-// .br files), so the build has to decompress itself, as it will online.
+// .br files), so the build has to decompress itself, as it will online; with Last-Modified, ETag and 304s, as Pages has.
 function serve(dir) {
   const base = "/OneMoreFloor/";
   const types = { ".html": "text/html; charset=utf-8", ".js": "application/javascript", ".json": "application/json",
@@ -98,8 +100,17 @@ function serve(dir) {
     try { if (statSync(file).isDirectory()) file = path.join(file, "index.html"); } catch (e) { }
     let st;
     try { st = statSync(file); } catch (e) { res.writeHead(404); return res.end("not found"); }
+    // validators and conditional answers as GitHub Pages gives them: the engine's cache (UnityCache) revalidates the
+    // .data it keeps in IndexedDB on every later load, and Pages answers "304 Not Modified"
+    const etag = `"${Math.floor(st.mtimeMs / 1000).toString(16)}-${st.size.toString(16)}"`;
+    const modified = new Date(Math.floor(st.mtimeMs / 1000) * 1000);
+    const since = Date.parse(req.headers["if-modified-since"] || "");
+    if (req.headers["if-none-match"] === etag || (!req.headers["if-none-match"] && since >= modified.getTime())) {
+      res.writeHead(304, { ETag: etag, "Cache-Control": "max-age=600" });
+      return res.end();
+    }
     res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream", "Content-Length": st.size,
-                         "Cache-Control": "max-age=600" });
+                         "Cache-Control": "max-age=600", "Last-Modified": modified.toUTCString(), ETag: etag });
     createReadStream(file).pipe(res);
   });
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
@@ -206,19 +217,56 @@ async function check(engine, url) {
     const page = await context.newPage();
     const errors = [];
     let latest = { status: null, error: null, audio: { peak: 0, states: [] }, blocks: null };
+    const revalidated = new Set();   // URLs the engine's cache says it revalidated and served from IndexedDB
     page.on("console", (m) => {
       const text = m.text();
       if (text.startsWith("[check] ")) { try { latest = JSON.parse(text.slice(8)); } catch (e) { } return; }
       note(`[${m.type()}] ${text}`);
       if (m.type() === "error") errors.push("console: " + m.text());
+      const rv = text.match(/^\[UnityCache\] '([^']+)' successfully revalidated and served from the browser cache/);
+      if (rv) revalidated.add(rv[1]);
     });
     page.on("pageerror", (e) => { note("[pageerror] " + e); errors.push("page: " + e); });
     let bytes = 0, requests = 0;
+    // Failed downloads are judged when the check reads them (failures() below), as whether one matters can depend on
+    // what happened next. The engine's loader revokes its own blob: URLs once it's done with them; only real downloads
+    // (http and https) count.
+    const started = new Map(), navigations = [], failed = [];
+    page.on("request", (r) => {
+      started.set(r, Date.now());
+      if (r.isNavigationRequest() && r.frame() === page.mainFrame()) navigations.push(Date.now());
+    });
     page.on("requestfailed", (r) => {
       note(`[requestfailed] ${r.url()} ${r.failure()?.errorText}`);
-      // the engine's loader revokes its own blob: URLs once it's done with them; only real downloads count
-      if (/^https?:/.test(r.url())) errors.push("request failed: " + r.url());
+      if (/^https?:/.test(r.url())) failed.push({ r, at: Date.now(), error: r.failure()?.errorText || "" });
     });
+    // A failed request counts unless it's one of two aborts nobody waits for (net::ERR_ABORTED in Chromium,
+    // NS_BINDING_ABORTED in Firefox): a request the previous page made, cut off because the main frame navigated
+    // (a reload) after it started; or the engine's cache revalidating its IndexedDB copy of the game data, which the
+    // server answered "304 Not Modified" and the engine logged as served from its cache (Chromium reports that
+    // conditional request as aborted). Anything else: 4xx/5xx, a network error, or any other abort, is a failure.
+    const explained = new Set();
+    const failures = async () => {
+      const out = [];
+      for (const f of failed) {
+        const url = f.r.url();
+        const aborted = /ERR_ABORTED|NS_BINDING_ABORTED/.test(f.error);
+        const t0 = started.get(f.r) ?? f.at;
+        const navigatedAway = aborted && !f.r.isNavigationRequest() && navigations.some((n) => n > t0 && n <= f.at);
+        const response = aborted ? await f.r.response().catch(() => null) : null;
+        const notModified = aborted && response && response.status() === 304 && revalidated.has(url);
+        if (navigatedAway || notModified) {
+          if (!explained.has(f)) {
+            explained.add(f);
+            console.log(`[${engine}] INFO not counted: ${url} ${f.error} (${navigatedAway ? "cut off by the page navigating away"
+                        : "the engine's cache revalidated it: 304 Not Modified, served from IndexedDB"})`);
+          }
+          continue;
+        }
+        out.push(`request failed (${f.error || "no reason given"}): ${url}`);
+      }
+      return out;
+    };
     page.on("response", async (r) => {
       requests++;
       if (r.status() >= 400) { note(`[http ${r.status()}] ${r.url()}`); errors.push(`HTTP ${r.status()}: ${r.url()}`); }
@@ -226,6 +274,7 @@ async function check(engine, url) {
       if (len) bytes += len;
       else { try { bytes += (await r.request().sizes()).responseBodySize; } catch (e) { } }
     });
+    const key = (k) => page.keyboard.press(k, { delay: 80 });   // down for 80 ms, then up (see Alt+Enter below)
     const shot = (name) => page.screenshot({ path: path.join(out, name + ".png") }).catch(() => {});
     const status = async () => latest.status;
     const waitScreen = async (screen, ms) => {
@@ -259,7 +308,9 @@ async function check(engine, url) {
     console.log(`[${engine}] ${summary.version}, renderer ${summary.renderer}: ${atTitle ? "title" : "no title"} after ${summary.loadSeconds} s, ` +
                 `${summary.downloadMB} MB in ${requests} requests`);
     ok(!!atTitle && !pageError && overlay === "none", `reached the title screen${pageError ? " (page says: " + pageError + ")" : ""}`);
-    ok(errors.length === 0, `no console errors, page errors or failed requests${errors.length ? ": " + errors.slice(0, 5).join(" | ") : ""}`);
+    const problems = async () => [...errors, ...(await failures())];
+    const atTitleProblems = await problems();
+    ok(atTitleProblems.length === 0, `no console errors, page errors or failed requests${atTitleProblems.length ? ": " + atTitleProblems.slice(0, 5).join(" | ") : ""}`);
     summary.fidelityAtStart = atTitle ? atTitle.fidelity : null;
 
     if (play && atTitle) {
@@ -306,12 +357,23 @@ async function check(engine, url) {
          `after a reload GRAPHICS FIDELITY is ${again?.fidelity} and LARGER TEXT ${again?.largeText} (kept in IndexedDB)`);
 
       // ---- Alt+Enter asks the browser for fullscreen (for information: a headless browser has no real screen) ----
-      await page.keyboard.press("Alt+Enter");
+      // Keys are held down across a few frames, as a hand holds them. Playwright's keyboard.press puts the key down and
+      // up again at once, and on an idle machine both land in one frame: the game reads held keys (Alt, the arrows) once
+      // a frame, so it missed them, took Alt+Enter for a plain Enter (on the title: START SHIFT) and never moved the
+      // arrow-key cursor.
+      const altEnter = async () => {
+        await page.keyboard.down("Alt");
+        await sleep(100);
+        await key("Enter");
+        await sleep(100);
+        await page.keyboard.up("Alt");
+      };
+      await altEnter();
       await sleep(2500);
       const fs = await page.evaluate(() => !!document.fullscreenElement);
       const fsStatus = await status();
       console.log(`[${engine}] INFO Alt+Enter: the page ${fs ? "went" : "did not go"} fullscreen, FULLSCREEN reads ${fsStatus?.fullscreen}`);
-      if (fs) { await page.keyboard.press("Alt+Enter"); await sleep(2500); }
+      if (fs) { await altEnter(); await sleep(2500); }
       const fsAfter = await page.evaluate(() => !!document.fullscreenElement);
       console.log(`[${engine}] INFO after a second Alt+Enter the page is ${fsAfter ? "still" : "not"} fullscreen, FULLSCREEN reads ${(await status())?.fullscreen}`);
 
@@ -321,7 +383,7 @@ async function check(engine, url) {
       await shot("05_intro");
       let inShift = null;
       for (let i = 0; i < 12 && !inShift; i++) {
-        await page.keyboard.press("Enter");        // through the intro card(s)
+        await key("Enter");        // through the intro card(s)
         inShift = await waitScreen("shift", 1500);
       }
       await sleep(4000);  // the doors and the countdown
@@ -331,32 +393,49 @@ async function check(engine, url) {
                                                      return !!t && getComputedStyle(t).display !== "none"; }).catch(() => null);
       ok(touchShown === false, "no on-screen touch controls during a shift played with mouse and keyboard");
       // a simple player: let everyone in, pick a rider in the car and send the car to their floor; now and then
-      // go and fetch whoever is waiting on another floor
-      for (let i = 0; i < 14; i++) {
-        await page.keyboard.press("Space");
+      // go and fetch whoever is waiting on another floor. It plays blind, so a bad seed can get it fired: the score is
+      // read while the shift runs, and it stops pressing keys once the shift is over (its next Enter would be the time
+      // card's ONE MORE SHIFT, starting the shift again from zero)
+      let played = null, ended = null;
+      const step = async () => {
+        const s = await status();
+        if (s && s.screen === "shift") played = s;
+        else if (s && s.screen === "results") ended = s;
+        return !ended;
+      };
+      for (let i = 0; i < 14 && (await step()); i++) {
+        await key("Space");
         await sleep(1200);
-        await page.keyboard.press("ArrowRight");
+        await key("ArrowRight");
         await sleep(200);
-        await page.keyboard.press("Enter");
+        await key("Enter");
         await sleep(2400);
-        if (i % 3 === 2) {
-          await page.keyboard.press(i % 2 ? "ArrowUp" : "ArrowDown");
+        if (i % 3 === 2 && (await step())) {
+          await key(i % 2 ? "ArrowUp" : "ArrowDown");
           await sleep(200);
-          await page.keyboard.press("Enter");
+          await key("Enter");
           await sleep(2400);
         }
         if (i === 7) await shot("07_playing");
       }
-      const played = await status();
+      await step();
       ok(!!inShift, "START SHIFT and Enter through the intro start a shift");
-      ok(!!played && played.screen === "shift" && played.time > (inShift?.time ?? 0) + 10 && (played.delivered > 0 || played.score > 0),
-         `the scripted player scores (shift clock ${played?.time} s, ${played?.delivered} delivered, score ${played?.score})`);
-      await page.keyboard.press("Escape");
+      ok(!!played && played.time > (inShift?.time ?? 0) + 10 && (played.delivered > 0 || played.score > 0),
+         `the scripted player scores (shift clock ${played?.time} s, ${played?.delivered} delivered, score ${played?.score}` +
+         `${ended ? "; then the shift ended and the time card came up" : ""})`);
+      if (ended) {
+        // ONE MORE SHIFT, through the doors and the count, for a shift to pause
+        await key("Enter");
+        await waitScreen("shift", 10000);
+        await sleep(4000);
+      }
+      await key("Escape");
       const paused = await waitScreen("pause", 3000);
       await sleep(800);
       await shot("08_paused");
       ok(!!paused, "Esc pauses the shift");
-      ok(errors.length === 0, `still no console errors, page errors or failed requests${errors.length ? ": " + errors.slice(0, 5).join(" | ") : ""}`);
+      const endProblems = await problems();
+      ok(endProblems.length === 0, `still no console errors, page errors or failed requests${endProblems.length ? ": " + endProblems.slice(0, 5).join(" | ") : ""}`);
     }
     await context.close();
   } catch (e) {
