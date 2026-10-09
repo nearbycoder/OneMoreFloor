@@ -30,9 +30,10 @@ namespace OneMoreFloor
         sealed class Tip
         {
             public string Id, Text;
-            /// <summary>Wording for gamepad players and for arrow-key players (null = same as Text).</summary>
-            public string Pad, Keys;
-            public string For() => Controls.Pad && Pad != null ? PadGlyphs.Words(Pad) : Controls.KeyNav && Keys != null ? Keys : Text;
+            /// <summary>Wording for gamepad players, arrow-key players and touchscreen players (null = same as Text).</summary>
+            public string Pad, Keys, Touch;
+            public string For() => Controls.Pad && Pad != null ? PadGlyphs.Words(Pad) : Controls.KeyNav && Keys != null ? Keys
+                                 : Controls.Touch && Touch != null ? Touch : Text;
             public Func<Vector3?> World;      // world target (arrow points down at it)
             public Func<RectTransform> Ui;    // or a UI target
             public float MinTime = 1.2f, MaxTime = 7f;
@@ -129,6 +130,7 @@ namespace OneMoreFloor
             Id = "board", Text = "A guest! <b>Click them</b> to let them in. (Space boards everyone.)",
             Pad = "A guest! Press <b>A</b> to let them in. (<b>LB/RB</b> picks one guest.)",
             Keys = "A guest! Press <b>Enter</b> to let them in. (<b>Left/Right</b> picks one guest.)",
+            Touch = "A guest! <b>Tap them twice</b> to let them in. (<b>ALL IN</b> boards everyone.)",
             World = FirstWaiting, Done = () => runner.Sim.Car.Riders.Count > 0, MaxTime = 999f, Once = false,
         };
 
@@ -137,6 +139,7 @@ namespace OneMoreFloor
             Id = "send", Text = "Their bubble shows where they're going. <b>Click that floor</b>, or press its number.",
             Pad = "Their bubble shows where they're going. Pick that floor with <b>up/down</b> and press <b>A</b>.",
             Keys = "Their bubble shows where they're going. Pick that floor with <b>Up/Down</b> and press <b>Enter</b>, or press its number.",
+            Touch = "Their bubble shows where they're going. <b>Tap that floor twice</b>, or its button on the panel.",
             World = FloorOfFirstRider, Done = () => runner.Sim.Car.State != CarState.Docked && runner.Sim.Car.State != CarState.Opening, MaxTime = 999f, Once = false,
         };
 
@@ -152,9 +155,9 @@ namespace OneMoreFloor
             Ui = () => runner.Hud.FloorLabels.FirstChip, MinTime = 4f, MaxTime = 6f, Once = false,
         };
 
-        Tip Simple(string id, string text, Func<Vector3?> world = null, float dur = 5.5f, string pad = null, string keys = null) => new Tip
+        Tip Simple(string id, string text, Func<Vector3?> world = null, float dur = 5.5f, string pad = null, string keys = null, string touch = null) => new Tip
         {
-            Id = id, Text = text, World = world, MinTime = 3.5f, MaxTime = dur, Pad = pad, Keys = keys,
+            Id = id, Text = text, World = world, MinTime = 3.5f, MaxTime = dur, Pad = pad, Keys = keys, Touch = touch,
         };
 
         Vector3? PassengerTarget(int pid)
@@ -181,7 +184,8 @@ namespace OneMoreFloor
                     if (sim.Car.Has(Kind.Kid) && sim.Car.Has(Kind.Vampire))
                         Push(Simple("vampkid", "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Hover a floor to preview the trip.",
                             pad: "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Pick a floor to preview the trip.",
-                            keys: "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Pick a floor to preview the trip."));
+                            keys: "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Pick a floor to preview the trip.",
+                            touch: "Careful: with a kid aboard you stop at <b>every</b> floor, sunny ones included. Tap a floor once to preview the trip."));
                     break;
                 case Ev.Arrived:
                     if (monday && step == "send") step = "shuffle-wait";
@@ -207,7 +211,8 @@ namespace OneMoreFloor
                     if (e.Aux == (int)BoardResult.Full)
                         Push(Simple("full", "The car is full. Drop someone off first, or <b>right-click a rider</b> to let them off here.", () => PassengerTarget(e.Pid),
                             pad: "The car is full. Drop someone off first, or pick a rider and press <b>X</b> to let them off here.",
-                            keys: "The car is full. Drop someone off first, or pick a rider and press <b>F</b> to let them off here."));
+                            keys: "The car is full. Drop someone off first, or pick a rider and press <b>F</b> to let them off here.",
+                            touch: "The car is full. Drop someone off first, or <b>hold a rider</b> to let them off here."));
                     else
                         Push(Simple("conflict", "Vampires and mirrors <b>won't ride together</b>.", () => PassengerTarget(e.Pid)));
                     break;

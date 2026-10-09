@@ -38,6 +38,9 @@ namespace OneMoreFloor.EditorTools
             PlayerSettings.WebGL.threadsSupport = false;
             PlayerSettings.WebGL.nameFilesAsHashes = true;   // a new build never meets an old file in the browser's cache
             PlayerSettings.WebGL.dataCaching = true;
+            // the heap peaks near 220 MB: a ceiling well above that, so a runaway allocation ends in the page's
+            // out-of-memory message rather than a phone closing the tab
+            PlayerSettings.WebGL.maximumMemorySize = 1024;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
             PlayerSettings.WebGL.showDiagnostics = false;
             PlayerSettings.WebGL.template = "PROJECT:OneMoreFloor";

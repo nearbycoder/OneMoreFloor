@@ -705,7 +705,7 @@ namespace OneMoreFloor
             string where = p.State == PState.Riding ? "Riding to" : "Waiting for";
             string extra = p.Kind == Kind.Houseplant && !p.Sunned ? " ·\u00A0needs\u00A0sun" : p.Kind == Kind.Tycoon && p.ExpressBroken ? " ·\u00A0express\u00A0ruined" : "";
             tipBody.text = $"{kd.Rule}\n<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(Palette.Floor(p.Dest), Color.white, 0.35f))}>{where} {Defs.Floor(p.Dest).Name}</color>{extra}" +
-                           (p.State == PState.Riding && sim.Car.IsOpen ? $"\n<size=80%><color=#C9BBA0>{(Controls.Pad ? "Press X" : Controls.KeyNav ? "Press F" : "Right-click")} to let them off here</color></size>" : "");
+                           (p.State == PState.Riding && sim.Car.IsOpen ? $"\n<size=80%><color=#C9BBA0>{(Controls.Touch ? "Hold them or tap LET OFF" : Controls.Pad ? "Press X" : Controls.KeyNav ? "Press F" : "Right-click")} to let them off here</color></size>" : "");
             tipBody.richText = true;
             var screen = worldCam.WorldToScreenPoint(v.BubbleAnchor);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, CanvasCam, out var local);

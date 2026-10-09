@@ -43,6 +43,8 @@ namespace OneMoreFloor
             if (Web.IsWeb) Application.targetFrameRate = -1;
             // a page can only go fullscreen when the player asks, so every visit starts in the window
             if (Web.IsWeb) SaveData.Current.Fullscreen = false;
+            // the last visit in this tab stopped without the page closing (a phone that ran out of memory): start light
+            if (Web.IsWeb && Web.Lite) SaveData.Current.Fidelity = GraphicsQuality.Low;
             // recordings and self-tests run unattended, often without focus
             AutoPause = System.Array.IndexOf(args, "-omfAutopilot") < 0 && System.Array.IndexOf(args, "-omfDemo") < 0
                         && System.Array.IndexOf(args, "-omfTrailer") < 0 && !(Application.isEditor && Application.isBatchMode);
@@ -53,6 +55,7 @@ namespace OneMoreFloor
             BuildWorld();
             BuildUi();
             gameObject.AddComponent<UiNav>();
+            WebBridge.Create(this);
         }
 
         TitleScreen title;
@@ -416,7 +419,45 @@ namespace OneMoreFloor
             Web.Status("{\"screen\":\"" + screen + "\",\"score\":" + (sim != null ? sim.Score : 0) + ",\"delivered\":" + (sim != null ? sim.DeliveredCount : 0)
                        + ",\"time\":" + (sim != null ? sim.Time : 0f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
                        + ",\"fidelity\":" + GraphicsQuality.Applied + ",\"fullscreen\":" + (save.Fullscreen ? "true" : "false")
-                       + ",\"largeText\":" + (save.LargeText ? "true" : "false") + "}");
+                       + ",\"largeText\":" + (save.LargeText ? "true" : "false")
+                       // touch play, for Tools/check-mobile.mjs: riders aboard, the car's floor and doors, what a tap picked
+                       + ",\"touch\":" + (Controls.Touch ? "true" : "false") + ",\"riders\":" + (sim != null ? sim.Car.Riders.Count : 0)
+                       + ",\"car\":" + (sim != null ? sim.Car.Pos : 0f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
+                       + ",\"open\":" + (sim != null && sim.Car.IsOpen ? "true" : "false")
+                       + ",\"picked\":" + (InShift ? Runner.TouchPid : -1) + ",\"pickedFloor\":" + (InShift && Runner.TouchFloor.HasValue ? (int)Runner.TouchFloor.Value : -1)
+                       + ",\"zoom\":" + Rig.Zoom.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                       + (sim != null ? WhereThingsAre(sim) : "") + "}");
+        }
+
+        /// <summary>
+        /// For the touch checks: where each guest and floor is on the screen (canvas pixels from the bottom left), so a test
+        /// can tap them. Guests as [id, riding, x, y]; floors as [slot, floor, x, y], a point on the floor clear of its queue.
+        /// </summary>
+        string WhereThingsAre(Core.ShiftSim sim)
+        {
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder(",\"guests\":[");
+            bool first = true;
+            void Add(int a, int b, Vector3 world)
+            {
+                var p = WorldCam.WorldToScreenPoint(world);
+                if (p.z <= 0f) return;
+                sb.Append(first ? "" : ",").Append('[').Append(a).Append(',').Append(b).Append(',')
+                  .Append(p.x.ToString("0", ci)).Append(',').Append(p.y.ToString("0", ci)).Append(']');
+                first = false;
+            }
+            for (int f = 0; f < sim.Waiting.Length; f++)
+                foreach (var g in sim.Waiting[f]) { var at = Runner.GuestPoint(g.Id); if (at.HasValue) Add(g.Id, 0, at.Value); }
+            foreach (var g in sim.Car.Riders) { var at = Runner.GuestPoint(g.Id); if (at.HasValue) Add(g.Id, 1, at.Value); }
+            sb.Append("],\"floors\":[");
+            first = true;
+            for (int slot = 0; slot < sim.B.Count; slot++)
+            {
+                var fv = Building[sim.B.At(slot)];
+                if (fv) Add(slot, (int)fv.Id, fv.transform.position + new Vector3(-5f, Layout.SlotHeight * 0.7f, Layout.FrontZ));
+            }
+            sb.Append("],\"here\":").Append(sim.Car.IsOpen ? sim.Waiting[(int)sim.DockedFloor].Count : 0);
+            return sb.ToString();
         }
 
         /// <summary>In a browser, Esc or the browser's own controls can leave fullscreen: FULLSCREEN follows the page.</summary>

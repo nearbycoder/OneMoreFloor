@@ -16,8 +16,10 @@ namespace OneMoreFloor
         public const int Low = 0, Medium = 1, High = 2, Ultra = 3;
 #if UNITY_WEBGL && !UNITY_EDITOR
         /// <summary>In a browser MEDIUM: WebGL costs more per pixel than the desktop renderer, and the page renders at the
-        /// screen's pixel density. HIGH and ULTRA stay one click away in Settings.</summary>
-        public const int Default = Medium;
+        /// screen's pixel density. HIGH and ULTRA stay one click away in Settings. On a phone or tablet LOW: no MSAA,
+        /// ambient occlusion or bloom, and smaller shadow maps, so the full-screen buffers fit in a mobile browser's
+        /// memory (a tab that outgrows it is closed without warning) and the GPU keeps up.</summary>
+        public static int Default => Web.TouchFirst ? Low : Medium;
 #else
         public const int Default = High;
 #endif

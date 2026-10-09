@@ -81,6 +81,9 @@ namespace OneMoreFloor
             Paused = false;
             Holding = 0f;
             CursorSlot = CursorPid = -1;
+            TouchPid = -1;
+            TouchFloor = null;
+            touchQueue.Clear();
             Drain();
             Car.Sync(Sim, 0.016f);
             SyncViews(1f);
@@ -170,7 +173,9 @@ namespace OneMoreFloor
         public bool RequestSend(int slot, bool fromPanel)
         {
             if (Sim == null || Sim.Ended || Paused) return false;
-            if (!Sim.SendTo(slot)) return false;
+            bool sent = Sim.SendTo(slot);
+            if (touchLog) Debug.Log($"[Touch] send to slot {slot} ({(fromPanel ? "panel" : "world")}): {(sent ? "going" : "refused")}, car {Sim.Car.State}");
+            if (!sent) return false;
             if (!Attract && AutoBot == null) Log.Action("send");
             Hud.Panel.Press(slot);
             Audio?.Sfx("btn_press", 1f, 1f + slot * 0.02f, 0.6f);
@@ -208,6 +213,10 @@ namespace OneMoreFloor
             if (gp != null && gp.buttonNorth.wasPressedThisFrame) PlayerBoardAll();
             HandleZoom(kb, gp);
 
+            if (Controls.Touch) { HandleTouch(); return; }
+            touchQueue.Clear();
+            TouchPid = -1;
+            TouchFloor = null;
             if (CursorMode) { HandleCursor(kb, gp); return; }
             CursorSlot = CursorPid = -1;
 
@@ -219,18 +228,7 @@ namespace OneMoreFloor
             if (Hud.Panel.HoverSlot >= 0 && Hud.Panel.HoverSlot < Sim.B.Count) HoverFloor = Sim.B.At(Hud.Panel.HoverSlot);
             if (overUi) { SetHover(hoverPid); return; }
 
-            var ray = Cam.ScreenPointToRay(mouse.position.ReadValue());
-            var hits = Physics.RaycastAll(ray, 500f);
-            PassengerView hitP = null;
-            FloorView hitF = null;
-            float bestP = float.MaxValue, bestF = float.MaxValue;
-            foreach (var h in hits)
-            {
-                var pv = h.collider.GetComponentInParent<PassengerView>();
-                if (pv != null && !pv.Leaving && h.distance < bestP) { bestP = h.distance; hitP = pv; continue; }
-                var fv = h.collider.GetComponent<FloorView>();
-                if (fv != null && fv.InBuilding && h.distance < bestF) { bestF = h.distance; hitF = fv; }
-            }
+            Pick(mouse.position.ReadValue(), out var hitP, out var hitF);
             if (hitP != null) hoverPid = hitP.P.Id;
             else if (hitF != null) HoverFloor = hitF.Id;
             SetHover(hoverPid);
@@ -242,18 +240,178 @@ namespace OneMoreFloor
                 return;
             }
             if (!mouse.leftButton.wasPressedThisFrame) return;
-            if (hitP != null)
-            {
-                var p = hitP.P;
-                if (p.State == PState.Waiting && Sim.Car.IsOpen && p.At == Sim.DockedFloor) PlayerBoard(p.Id);
-                else if (p.State == PState.Waiting) RequestSend(Sim.B.SlotOf(p.At), false);
-                else if (p.State == PState.Riding && Sim.B.Has(p.Dest)) RequestSend(Sim.B.SlotOf(p.Dest), false);
-            }
+            if (hitP != null) ClickGuest(hitP.P);
             else if (hitF != null)
             {
                 int slot = Sim.B.SlotOf(hitF.Id);
                 if (slot >= 0) RequestSend(slot, false);
             }
+        }
+
+        /// <summary>The guest (nearest first) or else the floor under a screen point.</summary>
+        void Pick(Vector2 screen, out PassengerView hitP, out FloorView hitF)
+        {
+            hitP = null;
+            hitF = null;
+            if (Cam == null) return;
+            var ray = Cam.ScreenPointToRay(screen);
+            var hits = Physics.RaycastAll(ray, 500f);
+            float bestP = float.MaxValue, bestF = float.MaxValue;
+            foreach (var h in hits)
+            {
+                var pv = h.collider.GetComponentInParent<PassengerView>();
+                if (pv != null && !pv.Leaving && h.distance < bestP) { bestP = h.distance; hitP = pv; continue; }
+                var fv = h.collider.GetComponent<FloorView>();
+                if (fv != null && fv.InBuilding && h.distance < bestF) { bestF = h.distance; hitF = fv; }
+            }
+        }
+
+        /// <summary>A click on a guest: let them in at the open car, go and get them, or take a rider to their floor.</summary>
+        void ClickGuest(Passenger p)
+        {
+            if (p.State == PState.Waiting && Sim.Car.IsOpen && p.At == Sim.DockedFloor) PlayerBoard(p.Id);
+            else if (p.State == PState.Waiting) RequestSend(Sim.B.SlotOf(p.At), false);
+            else if (p.State == PState.Riding && Sim.B.Has(p.Dest)) RequestSend(Sim.B.SlotOf(p.Dest), false);
+        }
+
+        // ---------------------------------------------------------------- touch
+
+        /// <summary>Touch play: the guest a first tap picked (-1 = none); a second tap on them acts, as a click would.</summary>
+        public int TouchPid { get; private set; } = -1;
+        /// <summary>Touch play: the floor a first tap picked (its trip is previewed); a second tap sends the car there.</summary>
+        public FloorId? TouchFloor { get; private set; }
+        readonly Queue<(Vector2 pos, bool hold)> touchQueue = new Queue<(Vector2, bool)>();
+        /// <summary>-omfTouchLog: log what each tap and long press did (the browser's console; Tools/check-mobile.mjs passes it).</summary>
+        static readonly bool touchLog = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-omfTouchLog") >= 0;
+
+        /// <summary>The shift takes the player's input right now (not paused, not between screens, not the title's tower).</summary>
+        public bool TakesInput => Sim != null && !Sim.Ended && InputEnabled && !Paused && !Attract && !ScreenDoors.Busy;
+
+        /// <summary>A tap (or a long press) on the game at a screen point, in pixels from the bottom left. Handled next frame.</summary>
+        public void TouchAt(Vector2 screen, bool hold)
+        {
+            if (TakesInput && touchQueue.Count < 8) touchQueue.Enqueue((screen, hold));
+        }
+
+        /// <summary>The LET OFF button: let the picked rider off here, while the doors are open.</summary>
+        public bool TouchLetOff()
+        {
+            if (!TakesInput || TouchPid < 0) return false;
+            var p = Sim.Find(TouchPid);
+            if (p == null || p.State != PState.Riding || !Sim.Car.IsOpen) return false;
+            PlayerDrop(p.Id);
+            TouchPid = -1;
+            return true;
+        }
+
+        /// <summary>The ALL IN button: let everyone in who fits (Space).</summary>
+        public void TouchBoardAll()
+        {
+            if (TakesInput) PlayerBoardAll();
+        }
+
+        /// <summary>The ZOOM button: the whole tower or the close-up (Z).</summary>
+        public void TouchZoomToggle()
+        {
+            if (TakesInput) Rig.Zoom = Rig.Zoom < 0.5f ? 1f : 0f;
+        }
+
+        /// <summary>Two fingers pinching: the zoom follows the change in their spread (1.25 = 25% further apart).</summary>
+        public void TouchPinch(float factor)
+        {
+            if (TakesInput && factor > 0f) Rig.Zoom += Mathf.Log(factor, 2f) * 1.4f;
+        }
+
+        /// <summary>The rider picked for the LET OFF button can get off here now.</summary>
+        public bool CanLetOff
+        {
+            get
+            {
+                if (!TakesInput || TouchPid < 0) return false;
+                var p = Sim.Find(TouchPid);
+                return p != null && p.State == PState.Riding && Sim.Car.IsOpen;
+            }
+        }
+
+        /// <summary>Someone is waiting at the open car (the ALL IN button has someone to let in).</summary>
+        public bool CanBoard => TakesInput && Sim.Car.IsOpen && Sim.Waiting[(int)Sim.DockedFloor].Count > 0;
+
+        /// <summary>
+        /// Touch play. A tap picks a guest or a floor: the guest's card and the trip preview show, as a mouse hover would.
+        /// A second tap on the same guest or floor acts (lets them in, goes to get them, takes them home, or sends the car
+        /// there). A long press on a rider at the open car lets them off (the right-click), and on anything else picks it.
+        /// A tap on empty space unpicks. A finger held on a panel button previews that floor's trip; lifting it on the
+        /// button sends the car (the UI's own touch handling).
+        /// </summary>
+        void HandleTouch()
+        {
+            CursorSlot = CursorPid = -1;
+            if (TouchPid >= 0)
+            {
+                var p = Sim.Find(TouchPid);
+                var v = ViewOf(TouchPid);
+                if (p == null || p.State == PState.Done || v == null || v.Leaving) TouchPid = -1;
+            }
+            if (TouchFloor.HasValue && !Sim.B.Has(TouchFloor.Value)) TouchFloor = null;
+            while (touchQueue.Count > 0)
+            {
+                var t = touchQueue.Dequeue();
+                TouchOne(t.pos, t.hold);
+            }
+            HoverFloor = null;
+            bool panel = Hud.Panel.HoverSlot >= 0 && Hud.Panel.HoverSlot < Sim.B.Count;
+            if (panel) HoverFloor = Sim.B.At(Hud.Panel.HoverSlot);
+            else if (TouchPid < 0) HoverFloor = TouchFloor;
+            SetHover(panel ? -1 : TouchPid);
+        }
+
+        void TouchOne(Vector2 screen, bool hold)
+        {
+            if (OverUi(screen))
+            {
+                if (touchLog) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: on the UI ({uiHits[0].gameObject.name})");
+                return;
+            }
+            Pick(screen, out var hitP, out var hitF);
+            if (touchLog) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: guest {(hitP != null ? hitP.P.Id : -1)}, floor {(hitF != null ? hitF.Id.ToString() : "none")}; " +
+                                    $"picked guest {TouchPid}, floor {(TouchFloor.HasValue ? TouchFloor.Value.ToString() : "none")}; car {Sim.Car.State} at {Sim.Car.Pos:0.0}");
+            if (hold && hitP != null && hitP.P.State == PState.Riding && Sim.Car.IsOpen)
+            {
+                PlayerDrop(hitP.P.Id);
+                TouchPid = -1;
+                return;
+            }
+            if (hitP != null)
+            {
+                if (!hold && TouchPid == hitP.P.Id) { TouchPid = -1; ClickGuest(hitP.P); return; }
+                if (TouchPid != hitP.P.Id) Audio?.Sfx("ui_hover", 0.4f, 1.15f, 0f, 0.02f, 0.03f);
+                TouchPid = hitP.P.Id;
+                TouchFloor = null;
+                return;
+            }
+            if (hitF != null)
+            {
+                int slot = Sim.B.SlotOf(hitF.Id);
+                if (!hold && TouchPid < 0 && TouchFloor == hitF.Id && slot >= 0) { TouchFloor = null; RequestSend(slot, false); return; }
+                if (TouchFloor != hitF.Id || TouchPid >= 0) Audio?.Sfx("ui_hover", 0.35f, 0.9f + slot * 0.04f, 0f, 0.02f, 0.03f);
+                TouchFloor = hitF.Id;
+                TouchPid = -1;
+                return;
+            }
+            TouchPid = -1;
+            TouchFloor = null;
+        }
+
+        static readonly List<RaycastResult> uiHits = new List<RaycastResult>();
+
+        /// <summary>Whether the UI (the panel, the cards, a label) is under a screen point: the UI handles taps there.</summary>
+        static bool OverUi(Vector2 screen)
+        {
+            var es = EventSystem.current;
+            if (es == null) return false;
+            uiHits.Clear();
+            es.RaycastAll(new PointerEventData(es) { position = screen }, uiHits);
+            return uiHits.Count > 0;
         }
 
         /// <summary>Scroll wheel, Z (toggle) and -/= on the keyboard, triggers or the right stick on a pad.</summary>
@@ -347,9 +505,7 @@ namespace OneMoreFloor
             if (!confirm) return;
             if (guest != null)
             {
-                if (guest.State == PState.Waiting && Sim.Car.IsOpen && guest.At == Sim.DockedFloor) PlayerBoard(guest.Id);
-                else if (guest.State == PState.Waiting) RequestSend(Sim.B.SlotOf(guest.At), false);
-                else if (guest.State == PState.Riding && Sim.B.Has(guest.Dest)) RequestSend(Sim.B.SlotOf(guest.Dest), false);
+                ClickGuest(guest);
                 return;
             }
             var floor = Sim.B.At(CursorSlot);

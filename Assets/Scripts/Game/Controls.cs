@@ -28,6 +28,20 @@ namespace OneMoreFloor
         /// <see cref="Pad"/>, a mouse nudge doesn't clear it, so a disconnect can still be traced to the pad in use.</summary>
         public static InputDevice LastPadDevice { get; private set; }
         public static float LastPadUse { get; private set; } = -1f;
+        /// <summary>
+        /// The player is on a touchscreen (browser build): the page's on-screen controls are showing and a tap picks a
+        /// guest or floor before a second tap acts (<see cref="ShiftRunner"/>). The page sets it (WebBridge) on a
+        /// touch-first device or a real touch, and clears it when a mouse moves; a key or gamepad press clears it here too.
+        /// </summary>
+        public static bool Touch { get; private set; }
+
+        /// <summary>The page switched touch play on or off.</summary>
+        public static void SetTouch(bool on)
+        {
+            Touch = on;
+            if (on) Pad = KeyNav = false;
+        }
+
         /// <summary>Recordings: behave as if a gamepad is in use (prompts, cursor mode) without any real input.</summary>
         public static bool ForcePad;
 
@@ -45,7 +59,7 @@ namespace OneMoreFloor
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
-            Pad = KeyNav = false;
+            Pad = KeyNav = Touch = false;
             LastPadDevice = null;
             LastPadUse = -1f;
             NavX = NavY = 0;
@@ -91,6 +105,8 @@ namespace OneMoreFloor
             if (padUsed) { LastPadDevice = gp; LastPadUse = Time.realtimeSinceStartup; }
             if (ForcePad) { Pad = KeyNav = true; NavX = NavY = 0; Submit = Cancel = PausePressed = FullscreenPressed = false; return; }
             if (padUsed && !Pad) { Pad = true; if (!Application.isEditor) Cursor.visible = false; }
+            // a key or a gamepad takes over from the touchscreen (the page hides its controls on the same press)
+            if (Touch && (padUsed || keysUsed || (kb != null && kb.anyKey.wasPressedThisFrame))) Touch = false;
             if (padUsed || keysUsed) KeyNav = true;
             if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
             {

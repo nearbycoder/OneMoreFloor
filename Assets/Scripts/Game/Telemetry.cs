@@ -26,7 +26,7 @@ namespace OneMoreFloor
             public float seconds;
             public int stormedOff, fumed, poofed, packageLost, sweptAway;
             public int sends, boards, boardAlls, drops, refused;
-            public int mouseActions, padActions, keyActions;
+            public int mouseActions, padActions, keyActions, touchActions;
             public float firstActionMean, actionGapMean;
             public int firstActionSamples, actionGapSamples;
             public float zoomMean;
@@ -77,6 +77,7 @@ namespace OneMoreFloor
                 case "drop": r.drops++; break;
             }
             if (Controls.Pad) r.padActions++;
+            else if (Controls.Touch) r.touchActions++;
             else if (Controls.KeyNav || kind == "boardall" && !Controls.Pad) r.keyActions++;
             else r.mouseActions++;
             float now = sim.Time;

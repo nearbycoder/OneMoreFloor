@@ -38,4 +38,11 @@ mergeInto(LibraryManager.library, {
     window.oneMoreFloor = s;
     if (first && window.oneMoreFloorReady) window.oneMoreFloorReady(s.screen);
   },
+
+  // Whenever it changes, what the on-screen controls can do now (WebBridge.cs): the page shows them during a shift
+  // and greys out the ones with nothing to act on ({shift, board, letOff, picked, zoomed}).
+  OneMoreFloor_TouchState: function (json) {
+    var s = JSON.parse(UTF8ToString(json));
+    if (window.oneMoreFloorTouch) window.oneMoreFloorTouch.update(s);
+  },
 });

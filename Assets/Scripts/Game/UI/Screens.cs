@@ -346,6 +346,7 @@ namespace OneMoreFloor
             }
             newRule.text = def.Id == "monday" && Controls.Pad ? "Press A to let a guest in, then pick their floor with up/down and press A."
                          : def.Id == "monday" && Controls.KeyNav ? "Press Enter to let a guest in, then pick their floor with Up/Down and press Enter."
+                         : def.Id == "monday" && Controls.Touch ? "Tap a guest twice to let them in, then tap their floor twice to send the car."
                          : def.NewText;
             relaxedLine.text = SaveData.Current.Relaxed && !def.Endless
                 ? "RELAXED SHIFT  ·  MORE PATIENCE  ·  NO FIRING  ·  A 1-STAR SCORE OPENS THE NEXT SHIFT  ·  STARS AREN'T SAVED" : "";
@@ -387,7 +388,7 @@ namespace OneMoreFloor
         ControlsCard controls;
         Component armedFocus;
         float armedAt;
-        const string Idle = "ESC TO RESUME";
+        static string Idle => Controls.Touch ? "TAP RESUME TO PLAY ON" : "ESC TO RESUME";
         static readonly Color ArmedFace = Palette.Hex(0xF07075);
 
         /// <summary>Why the game paused on its own ("" when the player paused).</summary>
@@ -443,7 +444,7 @@ namespace OneMoreFloor
             armedAt = UiTime.Now;
             b.SetText(ask);
             b.SetColors(ArmedFace, ArmedFace);
-            hint.text = "PRESS AGAIN \u00B7 THIS RUN WON'T COUNT";
+            hint.text = (Controls.Touch ? "TAP AGAIN" : "PRESS AGAIN") + " \u00B7 THIS RUN WON'T COUNT";
             hint.color = ArmedFace;
         }
 
@@ -457,7 +458,7 @@ namespace OneMoreFloor
             hint.color = Deco.Muted;
         }
 
-        public override void Show() { Disarm(); controls.Refresh(); base.Show(); }
+        public override void Show() { Disarm(); hint.text = Idle; controls.Refresh(); base.Show(); }
         public override void Hide() { Disarm(); base.Hide(); }
 
         protected override void Update()

@@ -5,7 +5,7 @@ using UnityEngine.InputSystem.LowLevel;
 
 namespace OneMoreFloor
 {
-    public enum ControlScheme { Mouse, Keys, Pad }
+    public enum ControlScheme { Mouse, Keys, Pad, Touch }
 
     /// <summary>
     /// What every input does, written for one way of playing: mouse and keyboard, arrow keys (or WASD), or a gamepad named the
@@ -16,12 +16,14 @@ namespace OneMoreFloor
         public struct Row { public string Key, Action; }
 
         /// <summary>The scheme the player is using right now.</summary>
-        public static ControlScheme Current => Controls.Pad ? ControlScheme.Pad : Controls.KeyNav ? ControlScheme.Keys : ControlScheme.Mouse;
+        public static ControlScheme Current => Controls.Pad ? ControlScheme.Pad : Controls.KeyNav ? ControlScheme.Keys
+                                             : Controls.Touch ? ControlScheme.Touch : ControlScheme.Mouse;
 
         public static string Title(ControlScheme s, PadFamily f)
         {
             if (s == ControlScheme.Mouse) return "MOUSE AND KEYBOARD";
             if (s == ControlScheme.Keys) return "ARROW KEYS OR WASD";
+            if (s == ControlScheme.Touch) return "TOUCHSCREEN";
             return f == PadFamily.PlayStation ? "PLAYSTATION CONTROLLER" : f == PadFamily.Nintendo ? "NINTENDO CONTROLLER" : "CONTROLLER";
         }
 
@@ -52,6 +54,16 @@ namespace OneMoreFloor
                     Add("Z, - / =", "Zoom in and out");
                     Add("ESC / P", "Pause");
                     Add(Web.IsWeb ? "ALT+ENTER" : "F11 / ALT+ENTER", "Fullscreen on or off");
+                    break;
+                case ControlScheme.Touch:
+                    Add("TAP A GUEST", "Pick them: their card and their trip show");
+                    Add("TAP THEM AGAIN", "Let them in, go and get them, or take them home");
+                    Add("TAP A FLOOR TWICE", "Preview the trip, then send the car there");
+                    Add("PANEL BUTTON", "Hold to preview the trip, let go to send the car");
+                    Add("HOLD A RIDER", "Let them off here (or tap them, then LET OFF)");
+                    Add("ALL IN", "Let everyone in who fits");
+                    Add("PINCH, ZOOM", "Zoom in and out");
+                    Add("PAUSE BUTTON", "Pause");
                     break;
                 default:
                     Add("CLICK A GUEST", "Let them in at your floor, or go and get them");

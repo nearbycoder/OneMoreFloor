@@ -28,6 +28,8 @@ namespace OneMoreFloor
         {
             public RectTransform Root;
             public Image Cap, Plate, Glow, Ring, Icon;
+            /// <summary>Touch play: the whole cell (cap, name plate and badges) answers a finger, not just the cap.</summary>
+            public Image Hit;
             public TextMeshProUGUI Number, Name;
             public WaitBadge WaitBadge;
             public Image[] Pips = new Image[4];
@@ -115,6 +117,9 @@ namespace OneMoreFloor
                 b.WaitBadge = WaitBadge.Create(b.Root, new Vector2(36, 50));
                 for (int k = 0; k < 4; k++)
                     b.Pips[k] = UiKit.Image("Pip" + k, b.Root, UiKit.Circle, Palette.Good, new Vector2(12, 12), new Vector2(-42, 50 - k * 14));
+                b.Hit = UiKit.Image("Hit", b.Cap.transform, null, Color.clear, new Vector2(106, 112), new Vector2(0, -18), true);
+                b.Hit.transform.SetAsFirstSibling();
+                b.Hit.raycastTarget = false;
                 int slot = s;
                 var trig = b.Cap.gameObject.AddComponent<EventTrigger>();
                 AddTrigger(trig, EventTriggerType.PointerClick, _ => runner.RequestSend(slot, true));
@@ -267,6 +272,7 @@ namespace OneMoreFloor
                 btn.Lit = Mathf.Lerp(btn.Lit, lit ? 1f : 0f, Ease.Damp(14f, dt));
                 btn.Press = Mathf.Max(0f, btn.Press - dt * 5f);
                 bool hover = HoverSlot == s || runner.HoverFloor == f;
+                btn.Hit.raycastTarget = Controls.Touch;
                 if (unlitSprite != null)
                 {
                     btn.Cap.sprite = btn.Lit > 0.5f ? litSprite : unlitSprite;
