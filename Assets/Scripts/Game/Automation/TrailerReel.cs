@@ -530,6 +530,10 @@ namespace OneMoreFloor
         string shotName;
         int frames;
         double audioStart;
+        // the audio pass plays in real time; ShiftRunner steps at most 0.25 s of game per frame, so a longer frame
+        // leaves the game behind the shot clock (and its sounds late against the video): logged per shot
+        float lagged, longest, lagFirst;
+        int hitches;
         Process ffmpeg;
         Stream pipe;
         readonly StringBuilder manifest = new StringBuilder();
@@ -599,6 +603,9 @@ namespace OneMoreFloor
                 pipe = ffmpeg.StandardInput.BaseStream;
             }
             else audioStart = AudioTap.Instance ? AudioTap.Instance.SecondsWritten : 0.0;
+            lagged = longest = 0f;
+            lagFirst = -1f;
+            hitches = 0;
             Debug.Log($"[Trailer] shot {name} at sim {(Runner.Sim != null ? Runner.Sim.Time : 0f):0.00}s");
         }
 
@@ -616,7 +623,8 @@ namespace OneMoreFloor
             else
             {
                 double end = AudioTap.Instance ? AudioTap.Instance.SecondsWritten : 0.0;
-                manifest.AppendLine(string.Format(inv, "{0} start={1:0.0000} end={2:0.0000}", shotName, audioStart, end));
+                manifest.AppendLine(string.Format(inv, "{0} start={1:0.0000} end={2:0.0000} lag={3:0.000} longest={4:0.000} hitches={5} lagfrom={6:0.000}",
+                    shotName, audioStart, end, lagged, longest, hitches, lagFirst));
             }
             File.WriteAllText(Path.Combine(outDir, video ? "video_shots.txt" : "audio_shots.txt"), manifest.ToString());
         }
@@ -631,6 +639,12 @@ namespace OneMoreFloor
         void Update()
         {
             if (recording) shotClock += UiTime.Dt;
+            if (recording && !video)
+            {
+                float dt = Time.unscaledDeltaTime;
+                longest = Mathf.Max(longest, dt);
+                if (dt > 0.25f) { if (hitches++ == 0) lagFirst = shotClock; lagged += dt - 0.25f; }   // the game runs late from the first one on
+            }
         }
 
         void LateUpdate()

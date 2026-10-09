@@ -8,7 +8,8 @@
 #
 #   Tools/make_trailer.sh            capture + assemble (about 20 minutes)
 #   Tools/make_trailer.sh capture    only capture (capture video / capture audio: one pass; the audio pass plays in
-#                                    real time, so it can wait for a quiet machine)
+#                                    real time, so it can wait for a quiet machine; capture audio shot1,shot2 re-records
+#                                    just those shots and splices them into the existing audio.wav)
 #   Tools/make_trailer.sh assemble   re-assemble from an existing capture
 #   Tools/make_trailer.sh stills     only the README screenshots: the video pass, then docs/media/screenshots
 #                                    (the trailer, its poster and the teaser GIF are left as they are; ~6 minutes).
@@ -81,6 +82,40 @@ if [ "${1:-}" != "assemble" ] && [[ " $PASSES " == *" video "* ]]; then
   run_game "$WORK/video-nested.log" -logFile "$WORK/video.log" -omfTrailer "$WORK" -omfTrailerPass video
   grep -q "\[Trailer\] done" "$WORK/video.log" || { echo "video pass failed (see $WORK/video.log)"; exit 1; }
   grep -h "\[Trailer\] GRAPHICS FIDELITY" "$WORK/video.log" || true
+fi
+if [ "${1:-}" = "capture" ] && [ "${2:-}" = audio ] && [ -n "${3:-}" ]; then
+  # redo some shots of the audio pass: record them on their own, append them to audio.wav, point the manifest at them
+  [ -f "$WORK/audio.wav" ] && [ -f "$WORK/audio_shots.txt" ] || { echo "no audio pass in $WORK to patch"; exit 1; }
+  REDO="$WORK/redo"; rm -rf "$REDO" && mkdir -p "$REDO"
+  echo "audio pass for $3 (real time; load $(cut -d' ' -f1-3 /proc/loadavg))..."
+  mute_stream "$REDO/audio-nested.log" & MUTER=$!
+  ( export "${AUDIO_ENV[@]}"
+    run_game "$REDO/audio-nested.log" -logFile "$REDO/audio.log" -omfTrailer "$REDO" -omfTrailerPass audio -omfTrailerOnly "$3" \
+      -omfRecordAudio "$REDO/audio.wav" -omfRecordSeconds 300 )
+  wait "$MUTER" 2> /dev/null || true
+  [ -f "$REDO/audio.wav" ] || { echo "audio redo failed (see $REDO/audio.log)"; exit 1; }
+  python3 - "$WORK" <<'PY'
+import os, sys, wave
+work = sys.argv[1]; redo = os.path.join(work, "redo")
+main, patch = wave.open(os.path.join(work, "audio.wav")), wave.open(os.path.join(redo, "audio.wav"))
+assert (main.getframerate(), main.getnchannels()) == (patch.getframerate(), patch.getnchannels())
+offset = main.getnframes() / main.getframerate()
+frames = main.readframes(main.getnframes()) + patch.readframes(patch.getnframes())
+params = main.getparams(); main.close(); patch.close()
+out = wave.open(os.path.join(work, "audio.wav.new"), "wb"); out.setparams(params); out.writeframes(frames); out.close()
+os.replace(os.path.join(work, "audio.wav.new"), os.path.join(work, "audio.wav"))
+lines = {l.split()[0]: l.split() for l in open(os.path.join(work, "audio_shots.txt")) if l.strip()}
+for l in open(os.path.join(redo, "audio_shots.txt")):
+    p = l.split()
+    if not p: continue
+    kv = dict(x.split("=") for x in p[1:])
+    kv["start"] = f"{float(kv['start']) + offset:.4f}"; kv["end"] = f"{float(kv['end']) + offset:.4f}"
+    lines[p[0]] = [p[0]] + [f"{k}={v}" for k, v in kv.items()]
+    print(f"  {p[0]}: re-recorded, now at {kv['start']} s")
+open(os.path.join(work, "audio_shots.txt"), "w").write("".join(" ".join(v) + "\n" for v in lines.values()))
+PY
+  cat "$REDO/audio.log" >> "$WORK/audio.log"
+  exit 0
 fi
 if [ "${1:-}" != "assemble" ] && [[ " $PASSES " == *" audio "* ]]; then
   [ -f "$WORK/video_shots.txt" ] || { echo "no video pass in $WORK yet"; exit 1; }
