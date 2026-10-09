@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/teaser.gif" alt="One More Floor: the doors open onto the ocean, five floors flip, a vampire bursts into bats, a triple drop pays out" width="720">
+  <img src="docs/media/teaser.gif" alt="One More Floor: the doors open onto the ocean, floors flip at night, a vampire bursts into bats, a triple drop pays out" width="720">
 </p>
 
 <h1 align="center">One More Floor</h1>
@@ -16,13 +16,14 @@
   <img alt="Input: mouse, keyboard, gamepad" src="https://img.shields.io/badge/input-mouse%20%C2%B7%20keyboard%20%C2%B7%20gamepad-6e2a33">
   <img alt="Art: Blender 4.5, built by script" src="https://img.shields.io/badge/art-Blender%204.5%20(scripted)-e87d0d?logo=blender&logoColor=white">
   <img alt="Audio: synthesized in Python" src="https://img.shields.io/badge/audio-synthesized%20from%20scratch-2d6e73">
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-f2c66b">
+  <img alt="Released version 0.1.0" src="https://img.shields.io/badge/release-0.1.0-f2c66b">
 </p>
 
 <p align="center">
-  <a href="https://github.com/nearbycoder/OneMoreFloor/releases/latest"><b>Download for Linux</b></a> ·
   <a href="docs/media/trailer.mp4"><b>Watch the trailer</b></a> ·
+  <a href="#play-it"><b>Play it</b></a> ·
   <a href="#how-to-play">How to play</a> ·
+  <a href="#settings-and-accessibility">Settings</a> ·
   <a href="#build-from-source">Build from source</a>
 </p>
 
@@ -32,9 +33,12 @@
   <a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" alt="Play the One More Floor feature trailer" width="800"></a>
 </p>
 
-A 1:56 feature trailer (1080p30, H.264/AAC, 37 MB) that walks through every guest, every shuffle card, the
-reactive music, the week of shifts and the endless Overtime. It's cut from scripted gameplay recorded by the game
-itself, with the game's own music and sound. Click the poster to open the MP4.
+A 2:04 feature trailer (1080p30, H.264/AAC, 42.6 MB), recorded from the current game at the **ULTRA** graphics
+step. It walks through every guest and shuffle card, tips and group drops, the trip preview, the gamepad close-up, the
+settings card (the GRAPHICS FIDELITY slider stepping from ULTRA down to LOW and back, then LARGER TEXT), the week of shifts
+with the brass elevator doors that open on each one, the time card, the Graveyard Shift and Overtime. Every frame is the
+game rendering itself from scripted, seeded play, with the game's own music and sound effects and no narration. Click
+the poster to open the MP4.
 
 ## About
 
@@ -42,22 +46,58 @@ The Shuffleton is a mid-century Art Deco hotel with a problem: **every time the 
 shuffles.** Two floors swap, the Penthouse rises to the top, a block of floors rolls over, and late in the week a
 whole stack flips upside down. Your guests still expect to get where they're going.
 
-You're the new operator. Board guests, send the car, and watch the forecast on your brass panel to see what the
-building will do at your next stop. Every guest has one rule that fits on an icon. A vampire won't share the car with
-a mirror. A houseplant won't get off until it has had some sun, and the sun turns vampires into bats. A courier's
-floor is about to leave the building. The fun is in the combinations.
+You're the new operator. Board guests, send the car, and watch the forecast on your brass panel and the tags beside
+the floors to see what the building will do at your next stop. Every guest has one rule that fits on an icon. A
+vampire won't share the car with a mirror. A houseplant won't get off until it has had some sun, and the sun turns
+vampires into bats. A courier's floor is about to leave the building. The fun is in the combinations.
 
-Shifts last two to three minutes. You get tips, stars and a best score, and a big **One More Shift** button.
+Shifts last two to three minutes. You get tips, stars and a best score to chase, and a big **One More Shift** button.
 
 - **One verb that feels good:** press a button and the car goes, with a clack, a whoosh, the needle sweeping and a
   ding. Floors lurch and settle with a puff of dust.
 - **A building that misbehaves:** six kinds of shuffle card, a forecast you can plan around, and the anchor rule:
   the floor you're docked at can't move.
 - **Eight guests, one rule each,** and combinations nobody planned for.
-- **A week at the hotel:** ten shifts, each introducing one new guest or twist, then the Graveyard Shift and an
-  endless Overtime.
+- **A week at the hotel:** ten shifts, each introducing one new guest or twist, then the Graveyard Shift, an
+  endless Overtime and a daily **Today's Shift**.
 - **Lounge muzak that panics:** a five-stem soundtrack that layers in strings, a ticking woodblock and a tape
   warble as guests lose patience.
+- **Made to be read and played your way:** four graphics steps from LOW to ULTRA, larger text, reduced motion,
+  relaxed shifts, and mouse, keyboard or gamepad with the right button names.
+
+## Play it
+
+**The download is older than this page.** The [latest release](https://github.com/nearbycoder/OneMoreFloor/releases/latest)
+is **0.1.0** from October 4, 2026 (`OneMoreFloor-v0.1.0-linux-x86_64.zip`, 55 MB). Everything this README describes is
+the game on `main`, which has had twelve rounds of work since then that aren't in any release yet: among them the late
+pass and the time card's advice, auto-pause, relaxed shifts and Today's Shift, the star track and chasing your best,
+the Guest Guide, the forecast tags on the floors, the pause card's controls panel, WASD, LARGER TEXT, MUTE IN
+BACKGROUND, F11, GRAPHICS FIDELITY with ULTRA, the city behind the hotel, the brass doors, and bloom that actually reaches the screen. To play
+that version, [build it from source](#build-from-source). The rounds are written up in
+[docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md).
+
+To run the 0.1.0 release:
+
+```sh
+unzip OneMoreFloor-v0.1.0-linux-x86_64.zip
+cd OneMoreFloor-v0.1.0-linux-x86_64
+./OneMoreFloor.x86_64              # add -force-wayland on a Wayland desktop if the window doesn't appear
+```
+
+### System requirements
+
+- 64-bit Linux (x86_64) and a GPU with OpenGL 4.5 (the build uses Unity's default Linux graphics APIs; on the test
+  machine it runs on OpenGL Core).
+- About 150 MB of disk space for the current build (0.1.0's zip is 55 MB).
+- Tested on one machine only: an AMD Radeon 8060S iGPU (Mesa radeonsi) on KDE Plasma under Wayland. Rough frame
+  rates there are in the [GRAPHICS FIDELITY table](#settings-and-accessibility). No other GPU, distribution or desktop
+  has been tried.
+- Saves go to `~/.config/unity3d/Nearby/One More Floor/` (`save.json`, plus `save.json.bak`, the save before it).
+  **F12** saves a 1920×1080 screenshot (`shot_HHMMSS.png`) to the same folder.
+
+**macOS:** the project builds a universal (Intel and Apple silicon) app, but it hasn't been released or run on a Mac.
+It's unsigned and un-notarized, so macOS blocks it at first (the zip's README.txt explains how to open it anyway).
+**Windows:** the build entry point exists (`Tools/unity.sh build-windows`), but no Windows build has been made.
 
 ## How to play
 
@@ -81,20 +121,19 @@ move: a card that names it **jams**, so docking somewhere is how you protect it.
 | **Hover** a guest or a floor | See where they're going and preview the trip: every stop on the way, sunlight danger for vampires, sun for plants, who gets off |
 | **Scroll wheel**, **Z**, **− / =** | Zoom between the whole tower and a close-up that follows the car |
 | **Esc / P** | Pause (resume, guest guide, restart, settings, quit to roster) |
+| **F11** or **Alt+Enter** | Fullscreen on or off (anywhere in the game) |
 
-**F11** or **Alt+Enter** switches fullscreen anywhere in the game; it's the same as the FULLSCREEN setting, so Settings
-shows it and the next launch keeps it. The pause card's controls panel lists it too.
+F11 and Alt+Enter flip the FULLSCREEN setting itself, so Settings shows it and the next launch keeps it.
 
 The shift also pauses itself if the window loses focus or the controller you're playing with disconnects, and while the
 window is in the background the game draws at most 30 frames a second and its sound fades out (the **MUTE IN
-BACKGROUND** setting, on by default). Resuming
-counts down 3, 2, 1 over the tower before the clock runs again, so you can find your place first. The pause
-card has a **controls panel** beside it with these tables, written for whatever you're playing with (mouse and
-keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit ask for a second press, so a stray
-button can't throw a run away.
+BACKGROUND** setting, on by default). Resuming counts down 3, 2, 1 over the tower before the clock runs again, so you
+can find your place first. The pause card has a **controls panel** beside it with these tables, written for whatever
+you're playing with (mouse and keyboard, arrow keys or WASD, or your controller's own button names). Restart and quit
+ask for a second press, so a stray button can't throw a run away.
 
 <p align="center">
-  <img src="docs/media/screenshots/pause-controls.jpg" alt="The pause card with the controls panel beside it, written for mouse and keyboard" width="720">
+  <img src="docs/media/screenshots/pause-controls.jpg" alt="The pause card with the controls panel beside it, written for mouse and keyboard, ending with F11 / Alt+Enter" width="720">
 </p>
 
 ### Gamepad (or arrow keys / WASD)
@@ -113,7 +152,7 @@ button can't throw a run away.
 A strip along the bottom says what each button will do right now. It names the buttons for the controller you're
 holding: Xbox letters, PlayStation shapes (✕ ○ □ △), or Nintendo letters, with B on the bottom. The table above uses Xbox
 names. Menus have a focus ring that the d-pad, stick, arrow keys and WASD move. WASD goes by key position, so on an
-AZERTY keyboard it's ZQSD.
+AZERTY keyboard it's ZQSD. There's no touch input.
 
 <p align="center">
   <img src="docs/media/screenshots/gamepad-closeup.jpg" alt="Gamepad play zoomed in: gold floor brackets, a guest card and the button prompt strip" width="720">
@@ -132,9 +171,8 @@ docked at stays put, so a card that names it **jams** with sparks and a grinding
 the tower show the next card too: a cream tag with an arrow and the slot each floor will land in, or a red **JAM**
 on a named floor the car is about to dock at. The floor the tags assume you stop at is marked: a brass **STOP** on
 the car's target (where the tags are exact), and a dark **STOP?** on a floor you're hovering or have picked, as a
-what-if for stopping there instead. Floors also **leave the
-building** on a countdown, drifting off into the clouds while another floor slides in, and the **Ocean** visits for
-a few stops.
+what-if for stopping there instead. Floors also **leave the building** on a countdown, drifting off into the clouds
+while another floor slides in, and the **Ocean** visits for a few stops.
 
 ### Eight guests, one rule each
 
@@ -165,13 +203,9 @@ times **group drops** (+25% for each extra guest delivered at the same stop). Th
 worth ×1.5. Each stop's tips add up in a single popup, and the drop banner upgrades from DOUBLE to TRIPLE to
 FULL HOUSE. Stars come from your tips, and **one star unlocks the next shift**. A star track under your tips lights
 each star as you pass its target and says how much the next one needs. Once all three are lit it counts down to your
-best on that shift ("$1,240 TO YOUR BEST"; today's best on Today's Shift) and calls **NEW BEST!** as you pass it. If a shift won't give you a star,
-clock out on it three times and The Management gives you a **late pass** to the next one (Overtime still needs a
-star on the Graveyard Shift).
-
-**Relaxed shifts** (Settings) are an assist for anyone who keeps getting fired. Guests' patience lasts 1.5× longer,
-complaints never end the shift, and reaching the 1★ score opens the next shift (a "relaxed clear"). Relaxed runs
-don't save stars or best scores, and Overtime always plays standard.
+best on that shift ("$1,240 TO YOUR BEST"; today's best on Today's Shift) and calls **NEW BEST!** as you pass it. If a
+shift won't give you a star, clock out on it three times and The Management gives you a **late pass** to the next one
+(Overtime still needs a star on the Graveyard Shift).
 
 ### Plan every trip
 
@@ -196,7 +230,8 @@ melody and adds a tape warble. When you recover, it relaxes back into lounge mus
 ## Content overview
 
 Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀, Penthouse, Crypt and Daycare, plus the
-**Ocean** ☀, which isn't really a floor.
+**Ocean** ☀, which isn't really a floor. Behind the hotel, a city runs to the horizon, lit for each shift's time of
+day from morning to night (with lit windows after dark).
 
 | # | Shift | What's new |
 | --- | --- | --- |
@@ -214,17 +249,36 @@ Ten floors: the Lobby, Office, Library, Laundromat, Boiler Room, Greenhouse ☀,
 Clocking in (and out) closes a pair of brass elevator doors over the screen, which name the shift on the way in.
 Each shift opens with a sticky note from The Management and a "New today" card, then a short scripted moment that
 shows the new rule. The first time a rule matters in play, a one-line tip points at it. The **Guest Guide** (on the
-pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card lists what each
-complaint was about, with a tip for the biggest cause and how far you are from the next star. Progress, best scores and
-settings are saved locally, with the previous save kept as a backup that loads if the file is ever damaged. The window opens at 1600×900, or 90% of a smaller screen. Settings cover volume, muting the game while it's in the background, fullscreen, **graphics fidelity**, screen shake, the shuffle forecast, relaxed shifts,
-**reduced motion** (no camera drift, push-ins or shake, floors settle without bouncing, and the menus hold still) and
-**larger text** (no text with capitals under 12 px on any screen: the HUD's, panel's and labels' small print grows by
-about a fifth at 1920×1080 and a third on a Steam Deck).
-GRAPHICS FIDELITY is a four-notch slider (drag it, click a notch, or step it with the arrow keys or the d-pad). HIGH is
-the default and the look in the screenshots. MEDIUM and LOW turn down antialiasing, shadows, ambient occlusion, bloom and
-particles and, on LOW, the render resolution, for weaker GPUs and big screens. ULTRA adds 8× MSAA, a sharper four-cascade
-sun shadow, soft shadows from every floor's lamp, stronger ambient occlusion, depth of field on the far city, finer colour
-precision and denser particles:
+pause card and the roster) lists every guest and shuffle card you've met, with its rule. At clock-out, the time card
+lists what each complaint was about, with a tip for the biggest cause and how far you are from the next star.
+Progress, best scores and settings are saved locally, with the previous save kept as a backup that loads if the file
+is ever damaged.
+
+## Settings and accessibility
+
+Settings open from the title screen and the pause card:
+
+| Setting | What it does |
+| --- | --- |
+| **MASTER, MUSIC, EFFECTS** | Volume sliders |
+| **MUTE IN BACKGROUND** | The sound fades out while the window is in the background (on by default) |
+| **FULLSCREEN** | Fullscreen or a window (also F11 / Alt+Enter). The window opens at 1600×900, or 90% of a smaller screen. |
+| **GRAPHICS FIDELITY** | LOW, MEDIUM, HIGH (default) or ULTRA; see below |
+| **SCREEN SHAKE** | The camera shake on shuffles (hardest on a flip), jams, departing floors, bats and the like |
+| **SHUFFLE FORECAST** | The panel's forecast cards and the tags on the floor labels |
+| **REDUCED MOTION** | No camera drift, push-ins or shake, floors settle without bouncing, the menus hold still, and the elevator doors become a short fade |
+| **LARGER TEXT** | No text with capitals under 12 px on any screen: the HUD's, panel's and labels' small print grows by about a fifth at 1920×1080 and a third on a Steam Deck |
+| **RELAXED SHIFTS** | An assist for anyone who keeps getting fired: patience lasts 1.5× longer, complaints never end the shift, and reaching the 1★ score opens the next shift (a "relaxed clear"). Relaxed runs don't save stars or best scores, and Overtime always plays standard. |
+
+Small text is kept readable on small screens even without LARGER TEXT: below 1920×1080 the UI scales down, so text
+that would come out with capitals under 9 px is drawn bigger (Valve's Steam Deck guidance). Layouts were checked at
+1920×1080, 1600×900, 1440×900, 2560×1080, 1280×800 (Steam Deck size, in a window) and 1280×1024.
+
+**GRAPHICS FIDELITY** is a four-notch slider (drag it, click a notch, or step it with the arrow keys or the d-pad). HIGH
+is the default. MEDIUM and LOW turn down antialiasing, shadows, ambient occlusion, bloom and particles and, on LOW, the
+render resolution, for weaker GPUs and big screens. ULTRA adds 8× MSAA, a sharper four-cascade sun shadow, soft shadows
+from every floor's lamp, stronger ambient occlusion, depth of field on the far city, finer colour precision and denser
+particles. The trailer and the screenshots below are ULTRA; the pause-card picture above is HIGH.
 
 | Step | What it changes | Frame rate, 1920×1080 (load 17–38) | 2560×1440 (load 20–30) |
 | --- | --- | --- | --- |
@@ -235,10 +289,14 @@ precision and denser particles:
 
 The frame rates are 30 s of the Graveyard Shift with vsync off on this machine's Radeon 8060S iGPU, shared with other
 work (two interleaved rounds each; `Tools/fidelity.sh perf`), so treat them as rough: the same step varied by up to
-1.3× between rounds. Captures of one frozen moment at every step are in
+1.3× between rounds, and MEDIUM and HIGH couldn't be told apart at 1920×1080, where the CPU is the limit. Captures of
+one frozen moment at every step are in
 [docs/media/improvements/round12](docs/media/improvements/round12/f1-fidelity-steps-graveyard.jpg).
 
 ## Screenshots
+
+All but the pause card above are from the current build at ULTRA, taken by the trailer recorder
+(`Tools/make_trailer.sh`).
 
 | | |
 | --- | --- |
@@ -247,25 +305,6 @@ work (two interleaved rounds each; `Tools/fidelity.sh perf`), so treat them as r
 | ![POOF: a vampire meets the Greenhouse sunlight](docs/media/screenshots/vampire-poof.jpg) | ![A houseplant gets its sun in the Greenhouse](docs/media/screenshots/houseplant-sun.jpg) |
 | ![Friday the 13th: five floors flip at night](docs/media/screenshots/graveyard-flip.jpg) | ![Hovering a floor previews every stop on the way with a kid aboard](docs/media/screenshots/route-preview.jpg) |
 | ![Gamepad play in close-up: floor brackets, a guest card and the prompt strip](docs/media/screenshots/gamepad-closeup.jpg) | ![The duty roster: ten shifts with stars, bests and locks](docs/media/screenshots/roster.jpg) |
-
-## Play it
-
-Download `OneMoreFloor-v0.1.0-linux-x86_64.zip` from the
-[latest release](https://github.com/nearbycoder/OneMoreFloor/releases/latest), unzip it and run:
-
-```sh
-unzip OneMoreFloor-v0.1.0-linux-x86_64.zip
-cd OneMoreFloor-v0.1.0-linux-x86_64
-./OneMoreFloor.x86_64              # add -force-wayland on a Wayland desktop if the window doesn't appear
-```
-
-It needs 64-bit Linux with a Vulkan- or OpenGL 4.5-capable GPU. Saves go to
-`~/.config/unity3d/Nearby/One More Floor/` (`save.json`, plus `save.json.bak`, the save before it).
-
-**macOS:** the project now builds a universal (Intel and Apple silicon) app, but it hasn't been released or run on a
-Mac. It's unsigned and un-notarized, so macOS blocks it at first (the zip's README.txt explains how to open it
-anyway). **Windows:** the build entry point exists (`Tools/unity.sh build-windows`), but no Windows build has been
-made.
 
 ## Build from source
 
@@ -282,8 +321,9 @@ Tools/unity.sh build-windows      # Builds/Windows/OneMoreFloor.exe (needs Windo
 Tools/release.sh                  # build Linux then macOS, and write versioned zips + .sha256 to Builds/Release
 ```
 
-`Tools/release.sh` takes the version from the project settings, never overwrites an existing zip and uploads
-nothing. Set `OUT=dir` to package somewhere else, and `SKIP_BUILD=1` to package the builds you already have.
+`Tools/release.sh` takes the version from the project settings (still 0.1.0, so it won't overwrite the published
+0.1.0 zip until the version is raised), never overwrites an existing zip and uploads nothing. Set `OUT=dir` to package
+somewhere else, and `SKIP_BUILD=1` to package the builds you already have.
 
 `Tools/unity.sh` looks for the editor at `~/Unity/Hub/Editor/6000.6.2f1/Editor/Unity`; set `UNITY=/path/to/Unity`
 to point it elsewhere. Or open the folder in Unity Hub and use **File → Build Profiles**. The `Main` scene holds a
@@ -319,17 +359,16 @@ Tools/sim.sh balance       # four bot skill levels play every shift (also: human
 Tools/autopilot.sh         # plays all ten shifts in the built game (each timed one to the bell, about 15 minutes),
                            # then drives the menus with a virtual gamepad and a virtual keyboard and runs the flow
                            # checks (late pass, time card, auto-pause, pad glyphs, arrow keys, WASD and Esc, settings and
-                           # every GRAPHICS FIDELITY step by mouse, keys and pad, the screen doors, patience badges, guest guide, restart and quit confirmation, the
-                           # pause card's controls panel, STOP markers, the resume count, the close-up's edge alerts,
-                           # the star track's chase of a seeded best, MUTE IN BACKGROUND read off the final mix, a real
-                           # alt-tab and F11 / Alt+Enter (those two only inside the nested KWin),
-                           # a click at the centre of every control on every menu); every frame of every shift is
-                           # also checked: reward popups never overlap
-                           # (and flying coins never draw over them), the HUD's star
-                           # track agrees with the score, the forecast tags agree with the rules (and floors land
-                           # where they said), the coach tip never covers a floor label (tips are reset
-                           # before each shift so every shift's tips get measured), and a shift banner (ON THE
-                           # CLOCK!, RUSH HOUR!...) never covers the HUD card or the panel
+                           # every GRAPHICS FIDELITY step by mouse, keys and pad, the screen doors, patience badges, guest
+                           # guide, restart and quit confirmation, the pause card's controls panel, STOP markers, the
+                           # resume count, the close-up's edge alerts, the star track's chase of a seeded best, MUTE IN
+                           # BACKGROUND read off the final mix, a real alt-tab and F11 / Alt+Enter (those two only inside
+                           # the nested KWin), a click at the centre of every control on every menu); every frame of every
+                           # shift is also checked: reward popups never overlap (and flying coins never draw over them),
+                           # the HUD's star track agrees with the score, the forecast tags agree with the rules (and floors
+                           # land where they said), the coach tip never covers a floor label (tips are reset before each
+                           # shift so every shift's tips get measured), and a shift banner (ON THE CLOCK!, RUSH HOUR!...)
+                           # never covers the HUD card or the panel
 Tools/autopilot.sh out ui  # just the flow checks (a few minutes)
 Tools/autopilot.sh out text   # the text audit: every visible text's capital height in pixels and any that spill out
                               # of its box or card, on the title, roster, intro, play, pause, guide, settings and time card
@@ -350,18 +389,26 @@ helpers like `xdg-desktop-portal-kde` and `ksecretd` there, which would otherwis
 ### Trailer and README media
 
 ```sh
-Tools/make_trailer.sh      # records every shot from the built game, then cuts docs/media/trailer.mp4,
-                           # the poster, the teaser GIF and the screenshots (about 15 minutes)
-Tools/make_trailer.sh stills   # only the README screenshots (about 6 minutes, inside the nested KWin when there is one)
+Tools/make_trailer.sh                  # records every shot from the built game, then cuts docs/media/trailer.mp4,
+                                       # the poster, the teaser GIF and the screenshots (about 40 minutes at ULTRA here)
+Tools/make_trailer.sh capture video    # one capture pass (video, or audio); `assemble` re-cuts an existing capture
+Tools/make_trailer.sh capture audio plant,pad   # re-record only these shots' sound and splice them in
+Tools/make_trailer.sh stills           # only the README screenshots
+OMF_FIDELITY=2 Tools/make_trailer.sh   # record at another GRAPHICS FIDELITY step (0 LOW .. 3 ULTRA, default 3)
 ```
 
-Automation runs (`autopilot.sh`, `demo.sh`, `make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg`
-(or the nested KWin's scratch folder), so they never touch your save or Unity's prefs in `~/.config/unity3d`.
+Every pass runs in a 1920×1080 window inside the nested KWin, and automation runs (`autopilot.sh`, `demo.sh`,
+`make_trailer.sh`) point `XDG_CONFIG_HOME` at the gitignored `Logs/xdg` (or the nested KWin's scratch folder), so they
+never touch your save or Unity's prefs in `~/.config/unity3d`.
 
 `TrailerReel` (in the game) plays each shot from a fixed seed, skips ahead to a moment it found by playing the same
-seed headlessly, and records it twice: once rendered offline at a locked 30 fps, and once in real time to capture
-the sound. `Tools/trailer/build.py` cuts the shots on the beat of the game's 104 BPM track, mixes the music bed from
-the game's own stems with ducking under the effects, and encodes the result.
+seed headlessly, and records it twice: once rendered offline at a locked 30 fps (so ULTRA costs render time, not frame
+rate), and once in real time to capture the sound. The real-time pass's own output stream is muted on the sound server
+while the game's final mix is recorded inside the game, so it isn't heard on the machine. Because that pass runs in
+real time, a frame longer than the game's 0.25 s step limit leaves the game (and its sounds) behind the video; the pass
+logs how much and from when for each shot in `audio_shots.txt`, so those shots can be re-recorded. `Tools/trailer/build.py` cuts
+the shots on the beat of the game's 104 BPM track, mixes the music bed from the game's own stems with ducking under the
+effects, and encodes the result.
 
 ## Project structure
 
@@ -370,29 +417,32 @@ Assets/
   Scripts/Core/          the game rules in plain C# (no UnityEngine): building and shuffle cards, car motion,
                          passengers, scoring, the spawn director, scripted openings, the bot player
   Scripts/Game/          presentation: GameRoot (bootstrap and flow), ShiftRunner (sim -> views, input),
-                         building/floor/car/passenger views, CharacterRig (Playables), CameraRig, Controls, Sky, Fx
-  Scripts/Game/UI/       HUD, operator panel, speech bubbles, coach tips, menus, the Art Deco painter (Deco)
+                         building/floor/car/passenger views, CharacterRig (Playables), CameraRig, Controls, Sky, Fx,
+                         GraphicsQuality (the fidelity steps)
+  Scripts/Game/UI/       HUD, operator panel, speech bubbles, coach tips, menus, screen doors, the Art Deco painter (Deco)
   Scripts/Game/Audio/    AudioDirector (synced stems, the reactive mix, pooled effects), MasterLimiter
   Scripts/Game/Automation/
-                         AutoPilot (self-test), PadSim (virtual gamepad), DemoReel and TrailerReel (recordings),
-                         AudioTap (records the final mix), PerfProbe
+                         AutoPilot (self-test), PadSim and KeySim (virtual gamepad and keyboard), DemoReel and
+                         TrailerReel (recordings), AudioTap (records the final mix), PerfProbe, FidelityShots, TextAudit
   Tests/EditMode/        rules tests, determinism, "every shift is beatable", fuzz
   Editor/                ProjectSetup, BuildScript, import settings
   Resources/             Models (FBX), Icons, Audio, Fonts (OFL), template materials
 ArtSource/               Blender generators (bpy) and the .blend files they write
 Tools/
   unity.sh, play.sh      editor launcher (build, test, batch) and the build runner
+  nested.sh              a private nested KWin for test and capture windows
   synth/                 the audio synthesizer (numpy) and audit.py
   simharness/, sim.sh    the rules harness on .NET: balance tables, star thresholds, traces, fuzz
   trailer/, make_trailer.sh, demo.sh
                          trailer and demo recording
-  autopilot.sh, uicheck.sh, gallery.sh, shot.sh
-                         built-game self-test, menu hit-testing, screenshots
+  autopilot.sh, fidelity.sh, uicheck.sh, gallery.sh, shot.sh
+                         built-game self-test, fidelity captures and timing, menu hit-testing, screenshots
   playtest_report.py     summarises local playtest logs and suggests star thresholds
 docs/
   PLAN.md                the design and technical plan
   BRIEF.md               the original brief
-  media/                 trailer, poster, teaser and screenshots
+  IMPROVEMENTS.md        the twelve improvement rounds since 0.1.0: plans, results and what's still open
+  media/                 trailer, poster, teaser, screenshots and each round's captures
 ```
 
 ## Tech highlights
@@ -414,8 +464,11 @@ docs/
   seams, leading silence, spectral balance, and every effect at the volume the game plays it.
 - **Reactive music, sample-locked.** The five stems start on the same DSP tick and share one pitch, so the tape
   warble can bend them without drift. A lookahead limiter on the master holds the peak.
+- **Graphics steps without touching the project.** GRAPHICS FIDELITY changes a runtime copy of the URP pipeline and
+  picks among renderer assets per step, so the build keeps every shader variant it needs and the shipped asset never
+  changes.
 - **Verification in the built game.** `AutoPilot` plays all ten shifts with the bot through the full presentation,
-  fails on any logged exception, and drives the menus and a shift with a virtual Input System gamepad.
+  fails on any logged exception, and drives the menus and a shift with a virtual Input System gamepad and keyboard.
 - **A trailer recorded by the game.** `TrailerReel` scripts each shot through the same fixed step as the bot, so
   an offline 30 fps video pass and a real-time audio pass play out identically and line up when muxed.
 
@@ -437,64 +490,44 @@ Built with Unity 6.6 (URP), Blender 4.5, Python and numpy (inside Blender), .NET
 
 ## Status and known issues
 
-Version **0.1.0**: the full scope is in (ten floors, eight guests, ten shifts and Overtime, menus, saves, settings,
-gamepad support), and it passes its automated checks. Honest caveats:
+The full scope is in (ten floors, eight guests, ten shifts, Overtime and Today's Shift, menus, saves, settings,
+gamepad support), and it passed its automated checks after the last gameplay change (round 12: EditMode 69/69,
+`sim.sh fuzz`, and 180 autopilot checks across all ten shifts in the built game). The only release is still **0.1.0**
+from launch day; a version bump and a new release are the owner's call. What each improvement round changed, how it
+was checked, and what it left open is in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md). Honest caveats:
 
 - **No human playtests yet.** Difficulty and star thresholds are fitted to a model of a player, not real people.
   The model is grounded in standard human-factors numbers, but it plays smarter than a first-timer. The local
   playtest log is there so the first real sessions can correct it. The late pass (three tries opens the next
   shift) is the safety net until then. Relaxed shifts (1.5× patience, no firing) are tuned the same way: modelled
   new players are never fired and reach the 1★ score on 59–96% of shifts, but no person has tried them.
+- **Nothing since 0.1.0 has been played by a person.** Everything rounds 1–12 added was checked by the autopilot, unit
+  tests and screenshots only. Open questions for a player or the owner: whether the forecast tags help or clutter the
+  labels and whether STOP? reads as a what-if, whether the resume count helps or holds you up, whether LOW's softer
+  text (its 0.8 render scale also draws the HUD) is acceptable, the defaults of LARGER TEXT and MUTE IN BACKGROUND,
+  whether ULTRA is worth its cost, whether the city competes with the hotel, and whether the doors still feel quick on
+  the hundredth shift. The background behaviour (pause, 30 fps, the mix fading out) and F11 / Alt+Enter are tested
+  inside a private nested KWin, not with a person's alt-tab on a real desktop or on other compositors.
 - **The audio has been measured, not listened to critically.** Every sound passes the objective audit (loudness,
   peaks, clicks, seams, balance), but nobody has judged how it sounds on the hundredth play.
 - **Gamepad support is tested with virtual pads.** Every path runs through the Input System in the autopilot, but
   no physical controller has been tried. Prompts switch to PlayStation or Nintendo names for virtual DualShock 4
   and Switch Pro devices. A real pad that Linux reports as a generic device is recognized by its product name
   ("Sony", "DualSense", "Nintendo", ...), which hasn't been tried with hardware. Anything unrecognized gets Xbox
-  names.
-- **Rounds 4 to 12 are unplayed.** The star track (and its chase of your best after three stars), the Guest Guide,
-  the save backup, the forecast tags on the floor
-  labels and their STOP / STOP? markers, the narrower coach tip, the pause card's controls panel, the
-  press-twice restart and quit, the GRAPHICS FIDELITY slider and its ULTRA look, the city behind the hotel, the screen
-  doors into and out of a shift, the menus' restored text shadows and outlines, the repositioned
-  shift banners, WASD, the 3-2-1 count after resuming, the edge alerts' patience rings, the bigger small text on
-  small screens, LARGER TEXT, the 30 fps background rate, MUTE IN BACKGROUND and F11 / Alt+Enter were checked by the
-  autopilot, unit tests and screenshots, not by a person. The background behaviour (pause, 30 fps, the mix fading out)
-  is checked with a real focus change inside a private nested KWin, where another window opens and takes focus;
-  it hasn't been tried with a person's alt-tab on a real desktop, or on other compositors. F11 / Alt+Enter is only
-  tested inside that nested KWin, so nothing goes fullscreen on the shared desktop. Nobody has judged whether
-  the resume count feels like a help or a hold-up. Nobody has judged yet whether the tags help or clutter the labels (the SHUFFLE FORECAST setting
-  hides them along with the panel's cards), or whether the STOP? what-if while pointing at a floor reads clearly.
-- **Frame rate is measured on one shared machine.** On the Radeon 8060S iGPU, full autopilot runs in a 1920×1080
-  window averaged 103 and 104 fps in round 7 (load 0.5–31); round 6's runs, with other games sharing the GPU, averaged 23–32.
-  Fullscreen on this machine's 3072×1728 display ran at about 60 fps on HIGH in round 7. Round 12's GRAPHICS FIDELITY
-  table (above, under Features) was measured under load 17–38 with other sessions on the GPU, where the same step
-  varied by up to 1.3× between rounds: LOW was the fastest step in every round and ULTRA the slowest (29–36 fps);
-  MEDIUM and HIGH couldn't be told apart at 1920×1080, where the CPU is the limit. The city behind the hotel costs less
-  than that noise. LOW's 0.8 render scale also softens the HUD text slightly, because the UI is drawn in the same
-  camera stack. No other GPU has been tried. Bloom only started reaching the screen in round 12 (URP had stripped the
-  shader variant it used), so HIGH now shows the glow it was designed with on the neon, the lamps and the coins.
+  names. AZERTY (ZQSD) hasn't been tried on a real keyboard.
+- **Frame rate is measured on one shared machine.** See the GRAPHICS FIDELITY table above: on the Radeon 8060S iGPU,
+  shared with other work, no step averaged under 29 fps at 1920×1080 or 2560×1440, and fullscreen at this display's
+  3072×1728 ran at about 60 fps on HIGH in round 7 (before bloom reached the screen). No other GPU has been tried.
 - **Simple rigs.** Characters have armatures with elbows and knees, but no facial rigs or fingers. Props held in
   hand (the courier's parcel, the mirror, the kid's balloons) lock that arm.
-- **Guests are still small at full zoom-out.** Play frames the tower more tightly than the menus do, so with nine
-  floors it's about 25% bigger than in 0.1.0 (floors 116 px apart at 1080p, up from 92, or 112 px with the gamepad
-  prompt strip showing). Guests are about 60–75 px tall, and the close-up zoom roughly doubles that. Layouts were
-  checked at 1920×1080, 1440×900, 2560×1080, 1280×800 (Steam Deck size, in a window) and 1280×1024, not on real
-  screens of those sizes. On a 5:4 screen the tower is fitted to the narrower strip between the labels and the panel,
-  so floors are only about 53 px apart at 1280×1024; on the Deck size they're about 75 px apart. On windows smaller
-  than 1920×1080 the UI scales down, so small text is drawn bigger there to keep its capitals at least 9 px high
-  (Valve's Steam Deck guidance; the text audit measured 7.2 px at 1280×800 before). Two labels switch to shorter
-  words when that happens ("CLOCK STARTS AT FIRST DROP", "NEXT STOP, THE BUILDING..."), and a locked roster card's
-  hint wraps onto a second line. At 1920×1080 and up nothing changes; the default 1600×900 window draws four small
-  labels slightly bigger. The LARGER TEXT setting raises that floor to 12 px everywhere; on a small screen a few labels
-  then use shorter words ("$20,660 TO GO", "NEXT STOP, THE HOTEL..."), the pause card's controls panel grows taller,
-  and a forecast line that won't fit makes the next card two lines tall while the one after shows only its title. The
-  panel dial's scale numbers keep the default size, as they'd crowd each other. None of this has been seen on a real Deck. The screenshots above are from the current
-  build, but the trailer, its poster and the teaser GIF still show the 0.1.0 framing (and none of round 12's city, doors or
-  bloom). Drawing guests 15% bigger was
-  tried and dropped: a full car pushes heads up to its ceiling. The room is 2.5 units tall and the car 2.4, and
-  nine floors have to fit the screen's height, so bigger guests mean re-proportioning the floors or showing fewer
-  floors at once, which is a design decision.
+- **Guests are small at full zoom-out.** Play frames the tower more tightly than the menus do (floors 116 px apart at
+  1080p, or 112 px with the gamepad prompt strip showing), so guests are about 60–75 px tall, and the close-up zoom
+  roughly doubles that. Drawing guests bigger was tried and dropped: a full car pushes heads up to its ceiling, so it
+  would mean re-proportioning the floors or showing fewer at once, which is a design decision. On a 5:4 screen the
+  tower is fitted to the narrower strip between the labels and the panel, so floors are only about 53 px apart at
+  1280×1024 (about 75 px at the Deck's size). Small-screen layouts were checked in windows, not on a real Deck or 5:4
+  monitor. With LARGER TEXT on a small screen a few labels use shorter words ("$20,660 TO GO", "NEXT STOP, THE
+  HOTEL..."), and the panel dial's scale numbers keep the default size, as they'd crowd each other.
 - **Linux is the only released platform.** A universal macOS app builds (both architectures confirmed with `file`,
   bundle id `com.nearbycoder.onemorefloor`), but it has never been run on a Mac, and it's unsigned and
   un-notarized. No Windows build has been made: this machine's editor doesn't have Windows Build Support.
