@@ -20,12 +20,32 @@
 </p>
 
 <p align="center">
+  <a href="https://nearbycoder.github.io/OneMoreFloor/"><b>Play in your browser</b></a> ·
   <a href="docs/media/trailer.mp4"><b>Watch the trailer</b></a> ·
   <a href="#play-it"><b>Play it</b></a> ·
   <a href="#how-to-play">How to play</a> ·
   <a href="#settings-and-accessibility">Settings</a> ·
   <a href="#build-from-source">Build from source</a>
 </p>
+
+## Play in your browser
+
+**[Play One More Floor at nearbycoder.github.io/OneMoreFloor](https://nearbycoder.github.io/OneMoreFloor/)**: the
+game on `main`, built for the web (WebGL 2), no install.
+
+- **Download:** about 25 MB the first time (Brotli-compressed, unpacked by the page itself); the browser keeps it, so
+  later visits start faster. The title came up in about 3 to 5 seconds from a local server on the test machine.
+- **Tested** headless in Chromium 151 and Firefox 157 on Linux (AMD Radeon 8060S): loading, the title, a scripted shift
+  by keyboard, sound starting after the first click, and settings surviving a reload. Not tried on Safari, Windows,
+  macOS or phones.
+- **What's different from the desktop game:** it starts at **MEDIUM** graphics fidelity (LOW to ULTRA are all in
+  Settings) and renders at most 2560×1440 pixels. Progress and settings are saved in the browser (IndexedDB), separate
+  from a desktop save, and clearing the site's data erases them. There's no QUIT button (close the tab). **FULLSCREEN**
+  and **Alt+Enter** ask the browser for fullscreen; F11 is the browser's own, and Esc leaves fullscreen there. Sound
+  starts with your first click or key press, as browsers require. The music's "tape warble" in a crisis and the
+  muffled sound behind menus aren't there, nor the master limiter (browsers don't run those audio filters). Mouse and
+  keyboard work as on the desktop; a gamepad goes through the browser's Gamepad API and hasn't been tried in a
+  browser yet. There are no touch controls (the desktop game has none either).
 
 ## Trailer
 
@@ -319,6 +339,9 @@ Tools/play.sh                     # run it (1600x900 window, native Wayland when
 Tools/unity.sh build-mac          # universal macOS app -> Builds/Mac/OneMoreFloor.app (unsigned)
 Tools/unity.sh build-windows      # Builds/Windows/OneMoreFloor.exe (needs Windows Build Support)
 Tools/release.sh                  # build Linux then macOS, and write versioned zips + .sha256 to Builds/Release
+Tools/build-pages.sh              # the browser build -> Builds/Pages (index.html + .nojekyll), the GitHub Pages site
+node Tools/check-pages.mjs --serve Builds/Pages --play   # test it as Pages serves it, in headless Chromium and Firefox
+node Tools/check-pages.mjs https://nearbycoder.github.io/OneMoreFloor/   # the live site: exits 0 at the title, no errors
 ```
 
 `Tools/release.sh` takes the version from the project settings (still 0.1.0, so it won't overwrite the published
