@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>One More Floor</title>
+    <meta name="description" content="Run the elevator in a hotel that rearranges itself between stops. A score-attack elevator game.">
+    <meta name="theme-color" content="#120914">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23120914'/%3E%3Cpath d='M16 6 23 14H9Z M16 26 9 18H23Z' fill='%23F2C66B'/%3E%3C/svg%3E">
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #120914; color: #EADFC8;
+                   font: 16px/1.4 Georgia, "Times New Roman", serif; overscroll-behavior: none;
+                   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+      #game { position: fixed; inset: 0; }
+      #unity-canvas { width: 100%; height: 100%; display: block; background: #120914; outline: none; }
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                 gap: 18px; background: radial-gradient(ellipse at center, #2A1429 0%, #120914 70%); text-align: center;
+                 padding: 24px; box-sizing: border-box; z-index: 2; }
+      .eyebrow { letter-spacing: 0.4em; font-size: 13px; color: #A8916E; }
+      .logo { font-size: clamp(44px, 8vw, 96px); line-height: 0.95; color: #F2C66B; text-shadow: 0 3px 0 #6B4A1E; }
+      .tagline { color: #C9BBA3; font-size: clamp(15px, 2vw, 20px); max-width: 560px; }
+      #progress { width: min(420px, 70vw); height: 8px; border-radius: 4px; background: #2E1B2C; overflow: hidden;
+                  box-shadow: inset 0 0 0 1px #4A3247; }
+      #progress div { width: 0; height: 100%; background: #F2C66B; transition: width 0.2s; }
+      #status { color: #A8916E; font-size: 15px; min-height: 1.4em; max-width: 640px; }
+      #status.error { color: #FF7A6B; font-size: 17px; }
+      #hint { color: #7E6B78; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div id="game"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+    <div id="loading" class="overlay">
+      <div class="eyebrow">THE SHUFFLETON &middot; EST. 1929</div>
+      <div class="logo">One More<br>Floor</div>
+      <div class="tagline">Run the elevator in a hotel that rearranges itself between stops.</div>
+      <div id="progress"><div></div></div>
+      <div id="status">Loading&hellip;</div>
+      <div id="hint">Sound starts with your first click or key press.</div>
+    </div>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var loading = document.querySelector("#loading");
+      var statusEl = document.querySelector("#status");
+      var bar = document.querySelector("#progress div");
+      var failed = false;
+
+      function fail(msg) {
+        failed = true;
+        window.oneMoreFloorError = msg;
+        statusEl.textContent = msg;
+        statusEl.className = "error";
+        document.querySelector("#progress").style.display = "none";
+        document.querySelector("#hint").style.display = "none";
+        loading.style.display = "flex";
+      }
+
+      function showBanner(msg, type) {
+        if (type === "error") fail(msg);
+        else console.warn(msg);
+      }
+
+      // the game needs WebGL 2; say so plainly instead of leaving a blank page
+      function hasWebGL2() {
+        try { return !!document.createElement("canvas").getContext("webgl2"); } catch (e) { return false; }
+      }
+
+      // Render at the screen's pixel density, up to a 1440p budget (2560x1440 pixels): a Retina laptop stays sharp, and a
+      // big high-DPI window doesn't ask a laptop GPU for 4K. Never below one pixel per CSS pixel.
+      var maxPixels = 2560 * 1440;
+      function pixelRatio() {
+        var dpr = window.devicePixelRatio || 1;
+        var css = Math.max(1, window.innerWidth * window.innerHeight);
+        return Math.max(1, Math.min(dpr, Math.sqrt(maxPixels / css)));
+      }
+
+      var buildUrl = "Build";
+      var config = {
+        // test tools may pass player arguments in the URL (?arg=-omfEphemeral); players never need this
+        arguments: new URLSearchParams(location.search).getAll("arg"),
+        dataUrl: buildUrl + "/3b3682c8866a00cb876db92aa56309fb.data.unityweb",
+        frameworkUrl: buildUrl + "/c2f652f35b4c82b0988495c079f67afc.framework.js.unityweb",
+        codeUrl: buildUrl + "/da19f9bf3b2b90755c2752e5d0e3d78c.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Nearby",
+        productName: "One More Floor",
+        productVersion: "0.1.0",
+        showBanner: showBanner,
+        // the game pushes each finished save to IndexedDB itself (Web.SyncFileSystem)
+        autoSyncPersistentDataPath: false,
+        devicePixelRatio: pixelRatio(),
+      };
+
+      // the game calls this when its title screen is up (Assets/Plugins/WebGL/OneMoreFloorWeb.jslib)
+      window.oneMoreFloorReady = function (screen) {
+        if (!failed) loading.style.display = "none";
+        canvas.focus();
+      };
+
+      if (!hasWebGL2()) {
+        fail("One More Floor needs WebGL 2, which this browser doesn't offer or has turned off. "
+             + "Try a current Chrome, Edge, Firefox or Safari, and check that hardware acceleration is on.");
+      } else {
+        var script = document.createElement("script");
+        script.src = buildUrl + "/bf8890e2af724bf7d325459b89b52b2f.loader.js";
+        script.onload = function () {
+          createUnityInstance(canvas, config, function (progress) {
+            bar.style.width = Math.round(100 * progress) + "%";
+            statusEl.textContent = progress < 0.9 ? "Loading… " + Math.round(100 * progress) + "%" : "Opening the hotel…";
+          }).then(function (unityInstance) {
+            window.unityInstance = unityInstance;
+            window.addEventListener("resize", function () { unityInstance.Module.devicePixelRatio = pixelRatio(); });
+            canvas.addEventListener("pointerdown", function () { canvas.focus(); });
+          }).catch(function (message) {
+            fail("The game couldn't start: " + message);
+          });
+        };
+        script.onerror = function () { fail("The game files couldn't be downloaded. Check your connection and reload the page."); };
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>
