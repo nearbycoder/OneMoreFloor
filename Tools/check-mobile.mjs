@@ -442,8 +442,8 @@ async function check(key, url) {
 
     // ---- to the title ---------------------------------------------------------------------------------------
     const t0 = Date.now();
-    // -omfTouchLog: the game logs what each tap did (into console.log here)
-    await page.goto(url + (url.includes("?") ? "&" : "?") + "arg=-omfTouchLog", { waitUntil: "load", timeout: 120000 });
+    // -omfTouchTest: the game logs what each tap did (into console.log here) and reports where guests and floors are
+    await page.goto(url + (url.includes("?") ? "&" : "?") + "arg=-omfTouchTest", { waitUntil: "load", timeout: 120000 });
     if (prof.portrait) {
       // held upright: the page asks the player to turn the phone; the game itself still loads behind the card
       await sleep(4000);

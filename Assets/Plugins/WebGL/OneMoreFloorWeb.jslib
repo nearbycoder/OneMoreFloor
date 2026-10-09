@@ -33,7 +33,8 @@ mergeInto(LibraryManager.library, {
   // Twice a second, what's on screen and the shift's state, as window.oneMoreFloor: the page's loading screen waits for
   // the title, and Tools/check-pages.mjs reads it ({screen, score, delivered, time, fidelity, fullscreen, largeText}).
   OneMoreFloor_Status: function (json) {
-    var s = JSON.parse(UTF8ToString(json));
+    var s;
+    try { s = JSON.parse(UTF8ToString(json)); } catch (e) { console.warn('[Status] unreadable report: ' + e); return; }
     var first = !window.oneMoreFloor;
     window.oneMoreFloor = s;
     if (first && window.oneMoreFloorReady) window.oneMoreFloorReady(s.screen);
@@ -42,7 +43,8 @@ mergeInto(LibraryManager.library, {
   // Whenever it changes, what the on-screen controls can do now (WebBridge.cs): the page shows them during a shift
   // and greys out the ones with nothing to act on ({shift, board, letOff, picked, zoomed}).
   OneMoreFloor_TouchState: function (json) {
-    var s = JSON.parse(UTF8ToString(json));
+    var s;
+    try { s = JSON.parse(UTF8ToString(json)); } catch (e) { console.warn('[Touch] unreadable state: ' + e); return; }
     if (window.oneMoreFloorTouch) window.oneMoreFloorTouch.update(s);
   },
 });

@@ -174,7 +174,7 @@ namespace OneMoreFloor
         {
             if (Sim == null || Sim.Ended || Paused) return false;
             bool sent = Sim.SendTo(slot);
-            if (touchLog) Debug.Log($"[Touch] send to slot {slot} ({(fromPanel ? "panel" : "world")}): {(sent ? "going" : "refused")}, car {Sim.Car.State}");
+            if (TouchTest) Debug.Log($"[Touch] send to slot {slot} ({(fromPanel ? "panel" : "world")}): {(sent ? "going" : "refused")}, car {Sim.Car.State}");
             if (!sent) return false;
             if (!Attract && AutoBot == null) Log.Action("send");
             Hud.Panel.Press(slot);
@@ -281,8 +281,9 @@ namespace OneMoreFloor
         /// <summary>Touch play: the floor a first tap picked (its trip is previewed); a second tap sends the car there.</summary>
         public FloorId? TouchFloor { get; private set; }
         readonly Queue<(Vector2 pos, bool hold)> touchQueue = new Queue<(Vector2, bool)>();
-        /// <summary>-omfTouchLog: log what each tap and long press did (the browser's console; Tools/check-mobile.mjs passes it).</summary>
-        static readonly bool touchLog = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-omfTouchLog") >= 0;
+        /// <summary>-omfTouchTest (Tools/check-mobile.mjs passes it): log what each tap and long press did, in the browser's
+        /// console, and report where guests and floors are on the screen (GameRoot.ReportToPage).</summary>
+        public static readonly bool TouchTest = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-omfTouchTest") >= 0;
 
         /// <summary>The shift takes the player's input right now (not paused, not between screens, not the title's tower).</summary>
         public bool TakesInput => Sim != null && !Sim.Ended && InputEnabled && !Paused && !Attract && !ScreenDoors.Busy;
@@ -369,11 +370,11 @@ namespace OneMoreFloor
         {
             if (OverUi(screen))
             {
-                if (touchLog) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: on the UI ({uiHits[0].gameObject.name})");
+                if (TouchTest) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: on the UI ({uiHits[0].gameObject.name})");
                 return;
             }
             Pick(screen, out var hitP, out var hitF);
-            if (touchLog) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: guest {(hitP != null ? hitP.P.Id : -1)}, floor {(hitF != null ? hitF.Id.ToString() : "none")}; " +
+            if (TouchTest) Debug.Log($"[Touch] {(hold ? "hold" : "tap")} at {screen.x:0},{screen.y:0}: guest {(hitP != null ? hitP.P.Id : -1)}, floor {(hitF != null ? hitF.Id.ToString() : "none")}; " +
                                     $"picked guest {TouchPid}, floor {(TouchFloor.HasValue ? TouchFloor.Value.ToString() : "none")}; car {Sim.Car.State} at {Sim.Car.Pos:0.0}");
             if (hold && hitP != null && hitP.P.State == PState.Riding && Sim.Car.IsOpen)
             {

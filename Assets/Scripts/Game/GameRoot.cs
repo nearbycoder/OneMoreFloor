@@ -426,11 +426,11 @@ namespace OneMoreFloor
                        + ",\"open\":" + (sim != null && sim.Car.IsOpen ? "true" : "false")
                        + ",\"picked\":" + (InShift ? Runner.TouchPid : -1) + ",\"pickedFloor\":" + (InShift && Runner.TouchFloor.HasValue ? (int)Runner.TouchFloor.Value : -1)
                        + ",\"zoom\":" + Rig.Zoom.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-                       + (sim != null ? WhereThingsAre(sim) : "") + "}");
+                       + (sim != null && ShiftRunner.TouchTest ? WhereThingsAre(sim) : "") + "}");
         }
 
         /// <summary>
-        /// For the touch checks: where each guest and floor is on the screen (canvas pixels from the bottom left), so a test
+        /// For the touch checks (-omfTouchTest only, to keep the report small): where each guest and floor is on the screen (canvas pixels from the bottom left), so a test
         /// can tap them. Guests as [id, riding, x, y]; floors as [slot, floor, x, y], a point on the floor clear of its queue.
         /// </summary>
         string WhereThingsAre(Core.ShiftSim sim)
@@ -441,7 +441,8 @@ namespace OneMoreFloor
             void Add(int a, int b, Vector3 world)
             {
                 var p = WorldCam.WorldToScreenPoint(world);
-                if (p.z <= 0f) return;
+                // behind the camera, or not a number (a view mid-transition): left out, so the JSON stays valid
+                if (!(p.z > 0f) || float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsInfinity(p.x) || float.IsInfinity(p.y)) return;
                 sb.Append(first ? "" : ",").Append('[').Append(a).Append(',').Append(b).Append(',')
                   .Append(p.x.ToString("0", ci)).Append(',').Append(p.y.ToString("0", ci)).Append(']');
                 first = false;
