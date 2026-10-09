@@ -6,8 +6,9 @@
 //
 // Options:
 //   --browser chromium|firefox|all   which browsers (default all)
-//   --play                           also: sound starts after the first click, a setting survives a reload, and a short
-//                                    scripted shift scores (the full local test; the title check is the default)
+//   --play                           also: sound starts after the first click (and, in Chromium, not before it), a
+//                                    setting survives a reload, and a short scripted shift scores (the full local
+//                                    test; the title check is the default)
 //   --out <dir>                      logs and screenshots (default Logs/pages-check), one folder per browser
 //   --timeout <s>                    how long the title may take to come up (default 240)
 //
@@ -151,12 +152,15 @@ const audioProbe = () => {
     }
     return { peak, contexts: analysers.length, states: analysers.map((a) => a.context.state) };
   };
-  // Does this browser hold sound back until the first input at all? A context of our own, made before any input
-  // (Firefox starts every context suspended for a moment, so give it time to start).
+  // Does this browser hold sound back until the first input at all? A context of our own, made and resumed before any
+  // input: where sound may start, resume() settles (Firefox takes a moment, longer on a busy machine); where it must
+  // wait for input, it doesn't within 3 s.
   let blocks = null;
   setTimeout(() => {
     const ctx = new AudioContext();
-    setTimeout(() => { blocks = ctx.state !== "running"; ctx.close(); }, 500);
+    const done = (b) => { if (blocks === null) { blocks = b; ctx.close(); } };
+    ctx.resume().then(() => done(ctx.state !== "running"), () => done(true));
+    setTimeout(() => done(ctx.state !== "running"), 3000);
   }, 0);
   // The page reports to the check through the console four times a second: page.evaluate counts as a user gesture,
   // which would let the game's sound start before the first click and spoil that check.
@@ -188,8 +192,8 @@ async function check(engine, url) {
     mkdirSync(process.env.TMPDIR, { recursive: true });
     launch.channel = "moz-firefox";
     launch.executablePath = process.env.FIREFOX_PATH || "/usr/bin/firefox";
-    // block autoplay as Firefox does by default for sites the player hasn't interacted with
-    launch.firefoxUserPrefs = { "media.autoplay.default": 1, "media.autoplay.blocking_policy": 0, "media.autoplay.block-webaudio": true };
+    // Firefox's default prefs: it lets Web Audio start without input (media.autoplay.block-webaudio is off), and when
+    // that's turned on, headless Firefox under automation applies it to some contexts and not others
   }
 
   let browser;
@@ -268,11 +272,12 @@ async function check(engine, url) {
         after = latest.audio;
         if (after.peak > 0.001 && after.states.every((s) => s === "running")) break;
       }
-      if (blocks)
+      if (blocks && engine === "chromium")
         ok(before.states.every((s) => s !== "running") || before.peak === 0,
            `no sound before the first click (contexts ${before.states.join(",") || "none"}, peak ${before.peak.toFixed(4)})`);
-      else console.log(`[${engine}] SKIP no sound before the first click: this browser lets pages play sound without one ` +
-                       `(contexts ${before.states.join(",") || "none"})`);
+      else console.log(`[${engine}] INFO before the first click: contexts ${before.states.join(",") || "none"}, peak ` +
+                       `${before.peak.toFixed(4)} (${engine === "firefox" ? "Firefox lets Web Audio start without input by default"
+                                                                       : "this browser lets pages play sound without input"})`);
       ok(after.peak > 0.001 && after.states.includes("running"),
          `sound plays after the first click (contexts ${after.states.join(",")}, peak ${after.peak.toFixed(3)})`);
 

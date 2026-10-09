@@ -36,7 +36,8 @@ game on `main`, built for the web (WebGL 2), no install.
 - **Download:** about 25 MB the first time (Brotli-compressed, unpacked by the page itself); the browser keeps it, so
   later visits start faster. The title came up in about 3 to 5 seconds from a local server on the test machine.
 - **Tested** headless in Chromium 151 and Firefox 157 on Linux (AMD Radeon 8060S): loading, the title, a scripted shift
-  by keyboard, sound starting after the first click, and settings surviving a reload. Not tried on Safari, Windows,
+  by keyboard, sound waiting for the first click (Firefox lets Web Audio start without one by default) and then
+  playing, and settings surviving a reload. Not tried on Safari, Windows,
   macOS or phones.
 - **What's different from the desktop game:** it starts at **MEDIUM** graphics fidelity (LOW to ULTRA are all in
   Settings) and renders at most 2560×1440 pixels. Progress and settings are saved in the browser (IndexedDB), separate
